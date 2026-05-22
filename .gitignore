@@ -25,3 +25,5 @@ node_modules/
 
 # Docker
 docker-compose-apps.yml
+
+aios.bundle
