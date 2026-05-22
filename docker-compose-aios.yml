@@ -122,7 +122,6 @@ services:
   # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
 
   gitops:
-    user: "1000:1000"
     image: alpine:latest
     container_name: aios-gitops
     hostname: gitops
@@ -132,22 +131,22 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /aios:/aios
-      - ~/.ssh:/.ssh:ro
+      - ~/.ssh:/root/.ssh
     environment:
-      HOME: /
       GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=accept-new"
     command: >
       sh -c "
         apk add --no-cache git docker-cli >/dev/null 2>&1 &&
-        git config --global safe.directory /aios &&
         echo '[GitOps] Watching github.com:aioslablhr/aios.git every 30s' &&
         while true; do
           cd /aios &&
-          timeout 10 git fetch origin main 2>/dev/null &&
-          if [ \"\$(git rev-parse HEAD)\" != \"\$(git rev-parse origin/main)\" ]; then
+          REMOTE_SHA=\$(timeout 10 git ls-remote origin HEAD 2>/dev/null | awk '{print \$1}') &&
+          LOCAL_SHA=\$(git rev-parse HEAD 2>/dev/null) &&
+          if [ -n \"\$REMOTE_SHA\" ] && [ \"\$REMOTE_SHA\" != \"\$LOCAL_SHA\" ]; then
             echo '[GitOps] Change detected, pulling...' &&
-            git pull --ff-only origin main &&
-            docker compose -f /aios/docker-compose-aios.yml up -d &&
+            timeout 10 git pull --ff-only origin main 2>/dev/null &&
+            chown -R ai:ai /aios/.git 2>/dev/null || true &&
+            docker compose -f /aios/docker-compose-aios.yml up -d 2>/dev/null &&
             echo '[GitOps] Deployed commit: \$(git rev-parse --short HEAD)'
           fi &&
           sleep 30
