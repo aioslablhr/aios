@@ -1,0 +1,47 @@
+---
+- name: Install NVIDIA drivers + container toolkit
+  hosts: aios
+  become: yes
+
+  tasks:
+    - name: Detect GPU
+      command: lspci | grep -i nvidia
+      register: gpu_check
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Fail if no NVIDIA GPU found
+      fail:
+        msg: "No NVIDIA GPU detected on this machine"
+      when: gpu_check.rc != 0
+
+    - name: Install NVIDIA driver (Ubuntu 22.04)
+      apt:
+        name: nvidia-driver-470
+        state: present
+      when: ansible_distribution_version == "22.04"
+
+    - name: Install nvidia-container-toolkit
+      apt:
+        name: nvidia-container-toolkit
+        state: present
+
+    - name: Configure Docker runtime for NVIDIA
+      command: nvidia-ctk runtime configure --runtime=docker
+      args:
+        creates: /etc/docker/daemon.json
+
+    - name: Restart Docker
+      systemd:
+        name: docker
+        state: restarted
+        daemon_reload: yes
+
+    - name: Verify GPU in container
+      command: docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi
+      register: gpu_test
+      changed_when: false
+
+    - name: Print GPU info
+      debug:
+        msg: "GPU ready: {{ gpu_test.stdout_lines[0] if gpu_test.stdout_lines else 'FAILED' }}"

@@ -1,0 +1,56 @@
+name: AIOS CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint & Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate YAML files
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq yamllint
+          yamllint -d "{extends: relaxed, rules: {line-length: disable}}" \
+            docker-compose-aios.yml .github/workflows/ci.yml
+
+      - name: Validate Docker Compose syntax
+        run: |
+          docker compose -f docker-compose-aios.yml config --quiet
+
+      - name: Shell check scripts
+        run: |
+          if ls scripts/*.py 2>/dev/null; then
+            python3 -m py_compile scripts/*.py
+          fi
+
+      - name: Check for secrets in code
+        run: |
+          if grep -rP '(?<!dummy)(sk-[a-zA-Z0-9]{20,}|api_key|password\s*=\s*[''"][a-zA-Z0-9]{16,})' \
+            --include='*.yml' --include='*.yaml' --include='*.json' \
+            --exclude-dir=.git --exclude-dir=node_modules .; then
+            echo "Potential secret found!"
+            exit 1
+          fi
+          echo "No secrets detected"
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'

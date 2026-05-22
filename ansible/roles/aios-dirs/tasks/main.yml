@@ -1,0 +1,31 @@
+---
+- name: Create /aios/ directory structure
+  hosts: aios
+  become: yes
+
+  tasks:
+    - name: Create top-level directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0755"
+      loop:
+        - /aios
+        - /aios/configs/traefik
+        - /aios/configs/crowdsec
+        - /aios/configs/keycloak
+        - /aios/configs/bifrost
+        - /aios/configs/grafana
+        - /aios/n8n/workflow-templates/capabilities
+        - /aios/n8n/workflow-templates/use-case-templates
+        - /aios/n8n/clients
+        - /aios/n8n/internal
+        - /aios/langfuse/prompts
+        - /aios/clients
+        - /aios/scripts
+        - /aios/data
+        - /aios/ansible/roles
+        - /aios/backups
+        - /aios/docs/capabilities

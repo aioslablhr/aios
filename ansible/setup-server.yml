@@ -1,0 +1,65 @@
+---
+- name: AIOS — Full Server Setup
+  hosts: aios
+  become: yes
+  vars:
+    docker_compose_url: "https://github.com/docker/compose/releases/latest"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install base packages
+      apt:
+        name:
+          - curl
+          - git
+          - python3
+          - python3-pip
+          - jq
+          - htop
+          - iotop
+          - net-tools
+          - openssh-server
+          - ufw
+        state: present
+
+  roles:
+    - nvidia
+    - docker
+    - aios-dirs
+
+  post_tasks:
+    - name: Copy docker-compose-aios.yml to server
+      copy:
+        src: /aios/docker-compose-aios.yml
+        dest: /aios/docker-compose-aios.yml
+        mode: "0644"
+
+    - name: Create Docker networks
+      docker_network:
+        name: "{{ item.key }}"
+        ipam_config:
+          - subnet: "{{ item.value }}"
+        internal: "{{ true if item.key == 'aios-data' else false }}"
+        state: present
+      loop: "{{ networks | dict2items }}"
+
+    - name: Deploy AIOS stack
+      docker_compose:
+        project_src: /aios
+        files:
+          - docker-compose-aios.yml
+        state: present
+        restarted: yes
+
+    - name: Show status
+      command: docker ps --format "table {{.Names}}\t{{.Status}}"
+      register: docker_ps
+      changed_when: false
+
+    - name: Print running containers
+      debug:
+        msg: "{{ docker_ps.stdout_lines }}"

@@ -1,0 +1,19 @@
+aios:
+  hosts:
+    10.0.0.100:
+      ansible_user: ai
+      ansible_become: yes
+      hostname: aios
+      gpu: quadro-m4000
+      vram_gb: 8
+      ram_gb: 31
+      disk_nvme_gb: 953
+      docker_version: "29.5.1"
+      networks:
+        aios-dmz: "10.10.0.0/24"
+        aios-app: "10.20.0.0/24"
+        aios-data: "10.30.0.0/24"
+        aios-ai: "10.40.0.0/24"
+        aios-voice: "10.50.0.0/24"
+        aios-mon: "10.60.0.0/24"
+        aios-foss: "10.70.0.0/24"

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tones>
+  <cadence priority="0">
+    <cadenceName>USA Internal</cadenceName>
+    <cadenceToneList>
+      <tone tone="0" cadence="1" frequency="440.0">
+        <frequency value="440.0"/>
+        <frequency value="480.0"/>
+        <duration value="2000"/>
+        <duration value="4000"/>
+      </tone>
+    </cadenceToneList>
+  </cadence>
+  <cadence priority="1">
+    <cadenceName>USA External</cadenceName>
+    <cadenceToneList>
+      <tone tone="0" cadence="2" frequency="440.0">
+        <frequency value="440.0"/>
+        <frequency value="480.0"/>
+        <duration value="1000"/>
+        <duration value="3000"/>
+      </tone>
+    </cadenceToneList>
+  </cadence>
+  <cadence priority="2">
+    <cadenceName>USA CallBack</cadenceName>
+    <cadenceToneList>
+      <tone tone="0" cadence="3" frequency="440.0">
+        <frequency value="440.0"/>
+        <frequency value="480.0"/>
+        <duration value="250"/>
+        <duration value="250"/>
+        <duration value="250"/>
+        <duration value="250"/>
+      </tone>
+    </cadenceToneList>
+  </cadence>
+  <cadence priority="3">
+    <cadenceName>USA Priority</cadenceName>
+    <cadenceToneList>
+      <tone tone="0" cadence="4" frequency="440.0">
+        <frequency value="440.0"/>
+        <frequency value="480.0"/>
+        <duration value="400"/>
+        <duration value="200"/>
+        <duration value="400"/>
+        <duration value="2000"/>
+      </tone>
+    </cadenceToneList>
+  </cadence>
+</tones>

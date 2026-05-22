@@ -1,0 +1,29 @@
+#!/bin/bash
+# AIOS AI Agent — AGI Bridge (v1.0)
+# Called from dialplan: exten => 102,1,AGI(ai-agent.agi)
+# AI call processing — to be expanded in AI Layer phase
+
+# Get caller ID
+echo "GET VARIABLE CALLERID(num)"
+read -r CALLERID_RESULT
+echo "GET VARIABLE CALLERID(name)"
+read -r CALLERNAME_RESULT
+
+# Log
+echo "VERBOSE \"AI Agent: incoming call from ${CALLER}${CALLERNAME}\" 3"
+read -r
+
+# Play welcome
+echo "STREAM FILE welcome \"\""
+read -r
+
+# TODO: Phase 5 — Full AI Agent pipeline:
+#   Record → STT (Deepgram/Whisper) → LLM (Bifrost) → TTS (ElevenLabs) → Play
+
+echo "STREAM FILE good-bye \"\""
+read -r
+
+echo "HANGUP"
+read -r
+
+exit 0

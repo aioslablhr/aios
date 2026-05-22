@@ -1,0 +1,27 @@
+# Secrets
+.env
+.env.*
+*.key
+*.pem
+acme.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Data
+/data/
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+docker-compose-apps.yml

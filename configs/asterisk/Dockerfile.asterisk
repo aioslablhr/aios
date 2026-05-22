@@ -1,0 +1,125 @@
+FROM ubuntu:22.04
+LABEL maintainer="AIOS Lab <admin@socialbeesai.com>"
+LABEL description="Asterisk PBX — compiled from source for AIOS voice layer"
+
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+
+# Build dependencies
+RUN apt-get update -qq && \
+    apt-get install -y -qq \
+        build-essential \
+        libssl-dev \
+        libncurses5-dev \
+        libnewt-dev \
+        libxml2-dev \
+        uuid-dev \
+        libjansson-dev \
+        libsqlite3-dev \
+        libedit-dev \
+        libsrtp2-dev \
+        pkg-config \
+        wget \
+        curl \
+        ca-certificates \
+        && rm -rf /var/lib/apt/lists/*
+
+# Download and build Asterisk 22 LTS
+WORKDIR /usr/src
+RUN wget -q https://downloads.asterisk.org/pub/telephony/asterisk/asterisk-22-current.tar.gz && \
+    tar xzf asterisk-22-current.tar.gz && \
+    rm asterisk-22-current.tar.gz && \
+    cd asterisk-22.* && \
+    ./configure \
+        --with-pjproject-bundled \
+        --with-jansson-bundled \
+        --enable-asteriskssl \
+        --sysconfdir=/etc \
+        --localstatedir=/var \
+        --disable-odbc \
+        && make -j$(nproc) && \
+    make install && \
+    ldconfig
+
+# Remove build deps to minimize image
+RUN apt-get purge -y -qq \
+        build-essential \
+        gcc g++ make \
+        dpkg-dev \
+        linux-libc-dev \
+        libc-dev-bin \
+        libssl-dev \
+        libncurses5-dev \
+        libnewt-dev \
+        libxml2-dev \
+        uuid-dev \
+        libjansson-dev \
+        libsqlite3-dev \
+        libedit-dev \
+        libsrtp2-dev \
+        && apt-get autoremove -y -qq \
+        && rm -rf /var/lib/apt/lists/*
+
+# Runtime dependencies
+RUN apt-get update -qq && \
+    apt-get install -y -qq --no-install-recommends \
+        libssl3 \
+        libncurses5 \
+        libxml2 \
+        libuuid1 \
+        libjansson4 \
+        libsqlite3-0 \
+        libedit2 \
+        libsrtp2-1 \
+        procps \
+        netcat-openbsd \
+        asterisk-core-sounds-en \
+        gettext-base \
+        && rm -rf /var/lib/apt/lists/*
+
+# Create asterisk user and directories
+RUN groupadd -r asterisk && \
+    useradd -r -g asterisk -d /var/lib/asterisk -s /sbin/nologin asterisk && \
+    mkdir -p /var/run/asterisk /var/spool/asterisk /var/log/asterisk && \
+    chown -R asterisk:asterisk /var/run/asterisk /var/spool/asterisk /var/log/asterisk /var/lib/asterisk
+
+# Write minimal config for doc generation
+RUN printf '%s\n' \
+    '[directories]' \
+    'astetcdir => /etc/asterisk' \
+    'astmoddir => /usr/lib/asterisk/modules' \
+    'astvarlibdir => /var/lib/asterisk' \
+    'astdbdir => /var/lib/asterisk' \
+    'astkeydir => /var/lib/asterisk' \
+    'astdatadir => /var/lib/asterisk' \
+    'astagidir => /var/lib/asterisk/agi-bin' \
+    'astspooldir => /var/spool/asterisk' \
+    'astrundir => /var/run/asterisk' \
+    'astlogdir => /var/log/asterisk' \
+    > /etc/asterisk/asterisk.conf && \
+    printf '%s\n' \
+    '[modules]' \
+    'autoload = no' \
+    'noload = res_stasis.so' \
+    > /etc/asterisk/modules.conf && \
+    echo '[general]' > /etc/asterisk/http.conf && \
+    echo 'enabled = no' >> /etc/asterisk/http.conf
+
+# Generate XML documentation database at build time
+RUN echo "AIOS: Generating XML documentation..." && \
+    su -s /bin/bash asterisk -c '/usr/sbin/asterisk -g -U asterisk > /dev/null 2>&1 &' && \
+    ASTPID=$! && \
+    for i in 1 2 3 4 5; do sleep 1; /usr/sbin/asterisk -rx "core ping" > /dev/null 2>&1 && break; done && \
+    /usr/sbin/asterisk -rx "xmldoc reload" > /dev/null 2>&1 || true && \
+    /usr/sbin/asterisk -rx "core stop now" > /dev/null 2>&1 || true && \
+    wait $ASTPID > /dev/null 2>&1 || true && \
+    rm -f /etc/asterisk/asterisk.conf /etc/asterisk/modules.conf /etc/asterisk/http.conf && \
+    echo "AIOS: Documentation ready"
+
+# Configs are mounted from host at runtime — template substitution via entrypoint
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+EXPOSE 5060/udp 5060/tcp 5061/tcp 8088/tcp 10000-20000/udp
+
+ENTRYPOINT ["docker-entrypoint.sh"]
