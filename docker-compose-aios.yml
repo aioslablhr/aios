@@ -211,3 +211,15 @@ services:
       retries: 3
       start_period: 30s
     restart: unless-stopped
+
+  dnsmasq-tftp:
+    image: andyshinn/dnsmasq
+    container_name: aios-dnsmasq-tftp
+    hostname: dnsmasq-tftp
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - /tftp:/tftp
+      - /aios/configs/dnsmasq/dnsmasq-tftp.conf:/etc/dnsmasq.conf
+    restart: unless-stopped

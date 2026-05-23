@@ -1,8 +1,10 @@
 # Cisco 7962G SIP Phone — Full Provisioning Record
 
-## ✅ RESOLVED — May 22, 2026
-### Phone now registered and working (ext 100 + ext 9000)
-Firmware: SIP42.8-5-4S (8.5.4 TH1-6)
+## ✅ FULLY RESOLVED — May 23, 2026
+### Phone registered, calling OUT, and calling IN (ext 100 + ext 9000)
+Firmware: SIP42.9-4-2SR3-1S (9.4.2SR3.1)
+
+**Three root causes found and fixed:**
 
 ### Root Cause #1: disable_rport = yes in pjsip.conf [system]
 - Asterisk showed Avail with RTT but phone showed cross icon
@@ -26,6 +28,12 @@ Firmware: SIP42.8-5-4S (8.5.4 TH1-6)
 - `rewrite_contact = yes` on phone-template endpoint
 - [system] has NO disable_rport line
 
+### Root Cause #3: UDP ephemeral socket — incoming calls blocked
+- **Problem**: Phone registers from a random ephemeral UDP port (e.g., 50335) and closes the socket ~2ms after REGISTER. Asterisk stores that port as the contact address. When Asterisk sends an INVITE, the port is gone → `Connection refused`.
+- **Evidence**: Asterisk error `Could not create dialog to invalid URI '9000'. Is endpoint registered and reachable?` Port scan confirms: registered port = `Connection refused`, UDP 5060 = no response, TCP 5060 = `Connection refused`.
+- **Fix**: Change SEP `<transportLayerProtocol>` from `2` (UDP) to `4` (TCP). TCP is connection-oriented — the phone opens one TCP socket to Asterisk and keeps it open. Asterisk sends INVITEs over the same persistent connection.
+- **Verification**: Contact shows `transport=TCP` and status `Avail` with RTT ~20ms. Incoming calls ring phone successfully.
+
 ### Current SEP line config:
 ```xml
 <line button="1">
@@ -44,8 +52,7 @@ Firmware: SIP42.8-5-4S (8.5.4 TH1-6)
 
 ---
 
-## ⚠️ OLD STATE (BEFORE FIX): "UNPROVISIONED" — LAST MILE
-Phone has SIP firmware 9.4(2)SR3, downloaded SEP config from TFTP successfully (verified via tcpdump), but still displays **"Unprovisioned"**. Registration to Asterisk ext 100 NOT working yet. Continue from here.
+## ✅ FULLY RESOLVED — Historical record below documents the debug journey
 
 ---
 
@@ -281,10 +288,12 @@ IP 10.0.0.12.51584 > 10.0.0.100.58351: UDP, length 4 (ACK)
 - Phone might need `SIPDefault.cnf` (default SIP parameters)
 - Phone might need `SIPConfiguration.cnf` (additional config)
 
-### Hypothesis C: Transport mismatch
-- 9.x firmware defaults to TCP. SEP has no `<transportLayerProtocol>` tag → phone might use TCP
-- Asterisk has TCP on 5060, but phone might need explicit `<transportLayerProtocol>2</transportLayerProtocol>` (2=UDP, 4=TCP)
-- Or phone might need TCP transport specified in SEP proxy
+### [RESOLVED] Hypothesis C: Transport mismatch — this was THE fix
+- **Root cause confirmed**: Phone uses ephemeral UDP ports for REGISTER, closes socket immediately.
+- **Fix**: Changed SEP `<transportLayerProtocol>` from `2` (UDP) to `4` (TCP).
+- TCP maintains a persistent connection → Asterisk sends INVITEs over the same socket → phone rings.
+- Without this tag, phone defaults to UDP. With `4`, phone uses TCP. This is not a 9.x default issue.
+- **Verification**: After fix, contact shows `transport=TCP`, status `Avail`, incoming calls work.
 
 ### Hypothesis D: Password still wrong
 - `100pass` is 8 chars, well under 12-char limit
@@ -302,49 +311,34 @@ IP 10.0.0.12.51584 > 10.0.0.100.58351: UDP, length 4 (ACK)
 - May need factory reset before retrying (not just power cycle)
 - Factory reset: hold `#` key while powering on, or Settings → Factory Reset
 
-## 12. NEXT STEPS TO TRY (IN ORDER)
+## 12. HISTORICAL DEBUG STEPS (all resolved — kept for reference)
 
-### Step 1: Verify TFTP and reboot phone
+The following debug steps were taken during the investigation. All issues are now resolved.
+
+### Critical: TFTP container must be running for phone to pick up SEP changes
 ```bash
-# Check TFTP running
-docker ps | grep dnsmasq-tftp
+# Start TFTP container (if not running)
+docker run -d --name aios-dnsmasq-tftp --net=host --cap-add=NET_ADMIN \
+  -v /tftp:/tftp \
+  -v /aios/configs/dnsmasq/dnsmasq-tftp.conf:/etc/dnsmasq.conf \
+  andyshinn/dnsmasq
 
-# Test TFTP serving SEP
+# Verify TFTP serving SEP
 echo 'get SEP00270DC01C92.cnf.xml' | tftp 10.0.0.100
 
-# Verify password in Asterisk
-docker exec aios-asterisk asterisk -rx "pjsip show auth auth100"
-
-# Check Asterisk registration attempts
-docker exec aios-asterisk asterisk -rx "pjsip show endpoints"
-
-# Reboot phone and watch
-sudo tcpdump -i eno1 -nn port 69 -c 30
+# Check Asterisk registration
+docker exec aios-asterisk asterisk -rx "pjsip show contacts"
 ```
 
-### Step 2: Add missing files to /tftp/
-Create `g3-tones.xml` (even minimal) and `SIPDefault.cnf` (even minimal):
-- Phone requests `g3-tones.xml` on boot — missing file might cause silent failure
-- Get from: https://github.com/staskobzar/cisco_prov (has templates for 7942_7962)
-- Or from: https://github.com/lparakhin/-Cisco-7962G-SIP (example configs)
+### Phone must be power-cycled after SEP change
+Phone only reads SEP from TFTP on boot. Pulling the power cord is required.
 
-### Step 3: Try different SEP XML formats
-Options to try:
-a. Add `<transportLayerProtocol>2</transportLayerProtocol>` inside `<sipProfile>` to force UDP
-b. Add `<contact>100</contact>` inside `<line>` for explicit contact
-c. Add `<proxy>USECALLMANAGER</proxy>` inside `<line>` (Cisco uses "USECALLMANAGER" as magic proxy name)
-d. Try format from staskobzar/cisco_prov template at `sip/7942_7962_TEMPL.cnf.xml`
-
-### Step 4: Factory reset phone
-- If no SEP format works, phone might have corrupted cached config
-- Factory reset: hold `#` key during power-on, or via Settings menu
-
-### Step 5: Check Asterisk PJSIP debug
+### Check Asterisk PJSIP debug
 ```bash
 docker exec aios-asterisk asterisk -rx "pjsip set logger on"
 docker logs aios-asterisk --tail 50 -f
 ```
-Look for incoming REGISTER attempts from phone IP (10.0.0.12).
+Look for REGISTER attempts from phone IP (10.0.0.12).
 
 ## 13. FILES REFERENCE
 

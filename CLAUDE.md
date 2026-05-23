@@ -443,11 +443,12 @@ Local models down/busy        OpenRouter → Claude (failover) Multi-tier auto-f
 
 ---
 
-## CISCO 7962G PHONE — CURRENT STATE (May 22)
+## CISCO 7962G PHONE — FULLY WORKING (May 23)
 - MAC: 00:27:0D:C0:1C:92, IP: 10.0.0.12, Ext 9000
-- ✅ **Registers + calls out** — 9.4.2SR3.1 firmware on TFTP
-- ❌ **Incoming calls blocked** — phone uses ephemeral UDP sockets (closes instantly)
-- SEP: `registerWithProxy=true`, `outboundProxy=10.0.0.100`, `natEnabled=false`
+- ✅ **Registers** — 9.4.2SR3.1 firmware on TFTP, transport=TCP
+- ✅ **Calls OUT** — Cisco dials any extension (100-104)
+- ✅ **Incoming calls FIXED** — SEP `transportLayerProtocol=4` (TCP) instead of `2` (UDP). TCP connection stays open, Asterisk sends INVITEs over it.
+- SEP: `registerWithProxy=true`, `outboundProxy=10.0.0.100`, `natEnabled=false`, `transportLayerProtocol=4`
 - PJSIP: `force_rport=no`, `rewrite_contact=yes`, `disable_rport` must be ABSENT
 - `proxy=USECALLMANAGER` is MANDATORY (explicit IP kills REGISTER)
 - Full debug: `docs/capabilities/cisco-7962-provisioning.md`

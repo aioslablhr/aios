@@ -1,5 +1,5 @@
 # AIOS — Build Checkpoint
-## Last Updated: May 22, 2026 — Cisco 7962: registers + calls out, incoming blocked (firmware limit)
+## Last Updated: May 23, 2026 — Cisco 7962: FULLY WORKING (TCP transport fixed incoming calls)
 
 ---
 
@@ -23,14 +23,13 @@
 - `alternativeTftp=true` — phone fetches config from TFTP on every boot
 
 **Cisco 7962G SIP Phone (MAC: 00:27:0D:C0:1C:92):**
-- Firmware versions tested: 8.5.4 (original), 9.3.1 (accidental), 9.4.2SR3.1 (current)
+- Firmware: SIP42.9-4-2SR3-1S (9.4.2SR3.1)
 - ✅ **REGISTERS successfully** — shows green line key on "9000"
 - ✅ **Calls OUT** — Cisco can dial any extension (100-104), works
-- ❌ **Incoming calls blocked** — firmware limitation: phone opens ephemeral UDP socket for each transaction, closes immediately after. No persistent SIP listener for new INVITEs.
-- Root cause confirmed via Cisco console logs: `sip_platform_udp_channel_destroy:closed UDP socket successfully` (2ms after REGISTER)
-- SEP fully configured with: `registerWithProxy=true`, `outboundProxy=10.0.0.100`, `natEnabled=false`, single line 9000
-- `proxy=USECALLMANAGER` confirmed mandatory — changing to explicit IP kills REGISTER
-- `disable_rport=yes` confirmed broken — removing it fixed REGISTER (phone needs rport in 200 OK Via)
+- ✅ **Incoming calls FIXED** — switched SEP `<transportLayerProtocol>` from `2` (UDP) to `4` (TCP). TCP maintains persistent connection; Asterisk sends INVITEs over the same socket. Contact now shows `transport=TCP` with status `Avail`.
+- **Root cause #1**: `disable_rport=yes` in pjsip.conf — phone needs rport in 200 OK Via
+- **Root cause #2**: `proxy=USECALLMANAGER` mandatory — explicit IP kills REGISTER
+- **Root cause #3**: UDP ephemeral sockets close immediately after REGISTER — TCP transport fixes this
 - Full debug trail: `docs/capabilities/cisco-7962-provisioning.md`
 
 **Asterisk fixes this session:**
@@ -43,7 +42,6 @@
 
 ### ❌ KNOWN ISSUES
 
-- **Cisco 7962 incoming calls** — firmware limitation. Phone uses ephemeral SIP sockets that close immediately. Tried: `natEnabled=true/false`, `outboundProxy`, static AOR on port 5060, firmware 8.5.4/9.3.1/9.4.2. Workaround: ATA (FXS gateway) or replace with Yealink/Grandstream. Currently testing 9.4.2SR3.1 firmware.
 - **Vault on host networking** — needs move to `aios-app` network (port 8200 conflict)
 - **Orphan containers** — Traefik, Dashy, Keycloak, CrowdSec, Redis, MinIO not in docker-compose. Deployed manually.
 - **Chat/data subdomains return 504** — no backend yet
@@ -65,13 +63,12 @@
 
 **Phase 4 — Monitoring + Voice:**
 8. Deploy Prometheus, Grafana, Loki, Portainer, Uptime Kuma
-9. Cisco 7962: check 9.4.2SR3.1 firmware result; if still broken, plan ATA or replacement
 
 **Phase 5 — Go-Live:**
-10. Deploy FOSS apps (ERPNext, Metabase, etc.)
-11. Build n8n workflow templates (20 capability sub-workflows)
-12. Integrate WhatsApp, Retell AI, Deepgram, ElevenLabs
-13. First client onboarding via `new-client.py`
+9. Deploy FOSS apps (ERPNext, Metabase, etc.)
+10. Build n8n workflow templates (20 capability sub-workflows)
+11. Integrate WhatsApp, Retell AI, Deepgram, ElevenLabs
+12. First client onboarding via `new-client.py`
 
 ---
 

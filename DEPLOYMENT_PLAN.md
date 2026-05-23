@@ -376,10 +376,9 @@ PHASE 3 AI Core
   STEP 11  Orchestration                       ⬜
 PHASE 4 Monitor + Voice + Visual
   STEP 12  Monitoring                          🟡           Dashy done (10.60.0.70)
-  STEP 13  Voice Layer                         🟡           Asterisk running + 6 extensions,
-  STEP 13  Voice Layer                         🟡             DNSmasq-TFTP for Cisco provisioning,
-  STEP 13  Voice Layer                         🟡             Cisco 7962 registers + calls out,
-  STEP 13  Voice Layer                         🟡             incoming calls blocked (firmware)
+  STEP 13  Voice Layer                         ✅           Asterisk + 6 extensions + TFTP,
+  STEP 13  Voice Layer                         ✅             Cisco 7962 registers + calls OUT + calls IN,
+  STEP 13  Voice Layer                         ✅             TCP transport (SEP transportLayerProtocol=4)
   STEP 14  Visual AI                           ⬜
 PHASE 5 FOSS + Go-Live
   STEP 15  FOSS Apps                           ⬜

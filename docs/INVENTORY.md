@@ -18,7 +18,7 @@
 | GitOps | aios-gitops | alpine:latest | app | 10.20.0.100 | — | ✅ healthy | 84 |
 | Hermes | aios-hermes | alpine:latest | app | 10.20.0.70 | — | ✅ healthy | 120 |
 | Dashy | aios-dashy | lissy93/dashy:latest | dmz | 10.60.0.70 | 80 | ✅ live | — |
-| DNSmasq-TFTP | aios-dnsmasq-tftp | aios-dnsmasq-tftp:latest (source) | host | 10.0.0.100 | 69/udp | ✅ healthy | 143 |
+| DNSmasq-TFTP | aios-dnsmasq-tftp | andyshinn/dnsmasq | host | 10.0.0.100 | 69/udp | ✅ healthy (external image) | — |
 | Asterisk | aios-asterisk | aios-asterisk:latest (source) | host | 10.0.0.100 | 5060/udp, 5061/tcp, 8088, 10000-20000/udp | ✅ healthy | 142 |
 
 ### Services NOT in compose (orphan/manual)
@@ -85,11 +85,12 @@ Need to be added to `docker-compose-aios.yml` or `docker-compose-apps.yml`.
 ### DNSmasq-TFTP (`/aios/configs/dnsmasq/`)
 | File | Purpose | Credentials? |
 |------|---------|-------------|
-| `SEP00270DC01C92.cnf.xml` | Cisco 7962 phone SEP config | plaintext (9000pass) |
+| `SEP00270DC01C92.cnf.xml` | Cisco 7962 phone SEP config (UDP→TCP fixed) | plaintext (9000pass) |
 | `XMLDefault.cnf.xml` | Default phone config | No |
 | `dialplan.xml` | Phone dial plan | No |
 | `g3-tones.xml` | Tone definitions | No |
-| `dnsmasq-tftp.conf` | TFTP server config | No |
+| `dnsmasq-tftp.conf` | TFTP-only server config (no DHCP) | No |
+| `dnsmasq.conf` | Full DHCP+TFTP config (temp/ONT unplugged) | No |
 | Firmware `.loads` files | SIP42.8-5-4S, SIP42.9-4-2SR3-1S | No |
 
 ### Asterisk (`/aios/configs/asterisk/`)
