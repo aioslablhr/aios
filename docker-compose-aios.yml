@@ -118,7 +118,7 @@ services:
       aios-mon:
         ipv4_address: 10.60.0.10
     ports:
-      - "127.0.0.1:3000:3000"
+      - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -142,6 +142,38 @@ services:
       TELEMETRY_ENABLED: "false"
       LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
     restart: unless-stopped
+
+  # ---
+  # AI LAYER --- 10.40.0.0/24 (Inference + Gateway)
+  # ---
+
+  bifrost:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: aios-bifrost
+    hostname: bifrost
+    networks:
+      aios-ai:
+        ipv4_address: 10.40.0.10
+      aios-data:
+    ports:
+      - "127.0.0.1:4000:4000"
+    volumes:
+      - /aios/configs/bifrost/config.yaml:/app/config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      CONFIG_FILE_PATH: /app/config.yaml
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:4000/health/liveliness"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+
 
 
   # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É

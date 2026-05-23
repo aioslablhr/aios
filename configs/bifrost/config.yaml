@@ -1,0 +1,55 @@
+general_settings:
+  master_key: sk-aios-master-admin-key-change-me
+  database_url: postgresql://aios:${POSTGRES_PASSWORD}@10.30.0.10:5432/litellm?sslmode=disable
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+  cache: true
+  cache_params:
+    type: redis
+    host: 10.30.0.30
+    port: 6379
+    ttl: 3600
+
+model_list:
+  - model_name: mistral-7b
+    litellm_params:
+      model: openai/mistral-7b-v0.1
+      api_base: http://10.40.0.40:8000/v1
+      rpm: 60
+  - model_name: qwen-2.5-7b
+    litellm_params:
+      model: openai/qwen-2.5-7b
+      api_base: http://10.40.0.40:8000/v1
+      rpm: 60
+  - model_name: llama-3-8b
+    litellm_params:
+      model: openai/llama-3-8b
+      api_base: http://10.40.0.40:8000/v1
+      rpm: 60
+  - model_name: claude-4-sonnet
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4-20250514
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: gemma-4
+    litellm_params:
+      model: openrouter/google/gemma-4
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: gpt-4o
+    litellm_params:
+      model: openrouter/openai/gpt-4o-2025-01-02
+      api_key: ${OPENROUTER_API_KEY}
+
+router_settings:
+  routing_strategy: usage-based-routing
+  enable_pre_call_checks: true
+  allowed_fails: 3
+  num_retries: 2
+  fallbacks:
+    - mistral-7b: [qwen-2.5-7b, llama-3-8b]
+    - qwen-2.5-7b: [mistral-7b, llama-3-8b]
+    - llama-3-8b: [mistral-7b, qwen-2.5-7b]
+    - claude-4-sonnet: [gemma-4, gpt-4o]
+    - gemma-4: [gpt-4o, claude-4-sonnet]
+    - gpt-4o: [gemma-4, claude-4-sonnet]
