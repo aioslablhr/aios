@@ -28,6 +28,7 @@ volumes:
   asterisk-log:
   mosquitto-data:
   mosquitto-log:
+  clickhouse-data:
 
 services:
   # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
@@ -77,6 +78,71 @@ services:
       timeout: 5s
       retries: 3
     restart: unless-stopped
+
+  # ---
+  # MONITORING LAYER --- 10.60.0.0/24 (AI Observability)
+  # ---
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: aios-clickhouse
+    hostname: clickhouse
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.11
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - /aios/configs/clickhouse/cluster.xml:/etc/clickhouse-server/config.d/cluster.xml:ro
+      - /aios/configs/clickhouse/keeper.xml:/etc/clickhouse-server/config.d/keeper.xml:ro
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'SELECT 1' >&3 && cat <&3 | head -1 | grep -q 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  langfuse:
+    image: langfuse/langfuse:latest
+    container_name: aios-langfuse
+    hostname: langfuse
+    networks:
+      aios-data:
+        ipv4_address: 10.30.0.50
+      aios-mon:
+        ipv4_address: 10.60.0.10
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://aios:${POSTGRES_PASSWORD}@10.30.0.10:5432/langfuse?sslmode=disable
+      CLICKHOUSE_URL: http://default:clickhouse@10.60.0.11:8123
+      CLICKHOUSE_MIGRATION_URL: clickhouse://default:clickhouse@10.60.0.11:9000
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse-events
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minioadmin
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: minioadmin
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://10.30.0.40:9000
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET}
+      SALT: ${LANGFUSE_SALT}
+      HOSTNAME: 0.0.0.0
+      NEXTAUTH_URL: http://10.60.0.10:3000
+      TELEMETRY_ENABLED: "false"
+      LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
+    restart: unless-stopped
+
 
   # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
   # SECURITY LAYER ├óΓé¼ΓÇ¥ 10.20.0.0/24
