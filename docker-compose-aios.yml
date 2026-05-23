@@ -47,7 +47,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: aios
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aios_secret_2026}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: aios
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U aios -d aios"]
@@ -69,7 +69,7 @@ services:
     volumes:
       - qdrant-data:/qdrant/storage
     environment:
-      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:-aios_qdrant_2026}
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY}
       QDRANT__SERVICE__GRPC_PORT: 6334
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/6333 && echo -e 'GET /healthz HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | head -1 | grep -q 200"]
@@ -90,7 +90,6 @@ services:
     user: root
     volumes:
       - /aios/data/vault:/vault/file
-      - /aios/.vault-keys:/vault/config/.vault-keys:ro
     cap_add:
       - IPC_LOCK
     environment:
@@ -109,30 +108,50 @@ services:
         }
         disable_mlock = true
         ui = true
+    command: server
+    healthcheck:
+      test: ["CMD-SHELL", "vault status >/dev/null 2>&1 || test $? -eq 2"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  vault-unseal:
+    image: hashicorp/vault:latest
+    container_name: aios-vault-unseal
+    network_mode: host
+    depends_on:
+      vault:
+        condition: service_healthy
+    volumes:
+      - /aios/.vault-keys:/vault/config/.vault-keys:ro
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_ADDR: http://127.0.0.1:8200
     entrypoint: ""
     command: >
       sh -c "
-        /bin/vault server &
-        VAULT_PID=\$!
-        echo '[Vault] Waiting for server...'
-        for i in \$(seq 1 15); do
-          STATUS=\$(/bin/vault status -format=json 2>/dev/null)
-          if echo \"\$STATUS\" | grep -q '\"sealed\"'; then
+        for i in $$(seq 1 10); do
+          STATUS=$$(/bin/vault status -format=json 2>/dev/null)
+          SEALED=$$(echo \"$$STATUS\" | grep '\"sealed\"' | awk '{print $$2}' | tr -d ' ,')
+          INIT=$$(echo \"$$STATUS\" | grep '\"initialized\"' | awk '{print $$2}' | tr -d ' ,')
+          if [ \"$$INIT\" = 'true' ] && [ \"$$SEALED\" = 'true' ]; then
+            echo '[Vault-Unseal] Sealed — unsealing...'
+            grep '^  Key' /vault/config/.vault-keys | head -3 | awk '{print $$NF}' | while read key; do
+              /bin/vault operator unseal \"$$key\" >/dev/null
+            done
+            echo '[Vault-Unseal] Done — vault is unsealed'
+            break
+          elif [ \"$$INIT\" = 'true' ] && [ \"$$SEALED\" = 'false' ]; then
+            echo '[Vault-Unseal] Already unsealed'
             break
           fi
-          sleep 2
+          echo '[Vault-Unseal] Waiting for vault...'
+          sleep 3
         done
-        SEALED=\$(echo \"\$STATUS\" | grep '\"sealed\"' | awk '{print \$2}' | tr -d ' ,')
-        if [ \"\$SEALED\" = 'true' ]; then
-          echo '[Vault] Sealed — auto-unsealing...'
-          grep '^  Key' /vault/config/.vault-keys | head -3 | awk '{print \$NF}' | while read key; do
-            /bin/vault operator unseal \"\$key\" >/dev/null
-          done
-          echo '[Vault] Unsealed successfully'
-        else
-          echo '[Vault] Already unsealed'
-        fi
-        wait \$VAULT_PID
+        while true; do sleep 3600; done
       "
     restart: unless-stopped
 
