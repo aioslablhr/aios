@@ -90,6 +90,7 @@ services:
     user: root
     volumes:
       - /aios/data/vault:/vault/file
+      - /aios/.vault-keys:/vault/config/.vault-keys:ro
     cap_add:
       - IPC_LOCK
     environment:
@@ -108,13 +109,31 @@ services:
         }
         disable_mlock = true
         ui = true
-    command: server
-    healthcheck:
-      test: ["CMD", "vault", "status"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+    entrypoint: ""
+    command: >
+      sh -c "
+        /bin/vault server &
+        VAULT_PID=\$!
+        echo '[Vault] Waiting for server...'
+        for i in \$(seq 1 15); do
+          STATUS=\$(/bin/vault status -format=json 2>/dev/null)
+          if echo \"\$STATUS\" | grep -q '\"sealed\"'; then
+            break
+          fi
+          sleep 2
+        done
+        SEALED=\$(echo \"\$STATUS\" | grep '\"sealed\"' | awk '{print \$2}' | tr -d ' ,')
+        if [ \"\$SEALED\" = 'true' ]; then
+          echo '[Vault] Sealed — auto-unsealing...'
+          grep '^  Key' /vault/config/.vault-keys | head -3 | awk '{print \$NF}' | while read key; do
+            /bin/vault operator unseal \"\$key\" >/dev/null
+          done
+          echo '[Vault] Unsealed successfully'
+        else
+          echo '[Vault] Already unsealed'
+        fi
+        wait \$VAULT_PID
+      "
     restart: unless-stopped
 
   # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
