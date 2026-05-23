@@ -55,6 +55,13 @@ Bifrost (10.40.0.10:4000) → Ollama (10.40.0.20:11434) → Mistral 7B (GPU)
 6. Set real OpenRouter API key for cloud model access
 7. Wire Traefik → Bifrost route for `ai.socialbeesai.com/bifrost`
 
+### Disk — Urgent Expansion Needed
+Physical: Samsung PM981 NVMe 953.9 GB (1 TB)
+LVM VG:   950 GiB total — only 100 GiB allocated to root, **850 GiB free**
+Root FS:  98 GB filesystem — 58 GB used, 36 GB free (62%)
+Solution: `lvresize -l +100%FREE /dev/ubuntu-vg/ubuntu-lv && resize2fs /dev/ubuntu-vg/ubuntu-lv`
+After:    ~950 GB with ~890 GB free
+
 ### Known Issues
 - `llama-3-8b` model name serves `llama3.2:3b` (3.2B not 8B) — needs `llama3.1:8b` pull
 - OpenRouter API key is placeholder `sk-or-v1-placeholder` — cloud models will 401
@@ -62,3 +69,4 @@ Bifrost (10.40.0.10:4000) → Ollama (10.40.0.20:11434) → Mistral 7B (GPU)
 - Redis, MinIO, Keycloak, Traefik, CrowdSec, Dashy orphan containers (not in compose)
 - No TLS/SSL — Traefik not wired to Cloudflare tunnel
 - `.env` gitignored — manual sync to server required
+- GitOps container detects changes slowly — `ls-remote` vs `rev-parse` comparison logic may have edge cases
