@@ -2,8 +2,9 @@
 """Write cloudflared config to server."""
 import os
 
-config = """tunnel: 710998a2-2ffd-49ac-84e6-5a563ea5a93a
-credentials-file: /home/ai/.cloudflared/710998a2-2ffd-49ac-84e6-5a563ea5a93a.json
+tunnel_id = os.environ.get("CLOUDFLARE_TUNNEL_ID", "710998a2-2ffd-49ac-84e6-5a563ea5a93a")
+config = f"""tunnel: {tunnel_id}
+credentials-file: /home/ai/.cloudflared/{tunnel_id}.json
 
 ingress:
   - hostname: socialbeesai.com

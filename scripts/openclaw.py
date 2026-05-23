@@ -21,7 +21,7 @@ import subprocess
 import sys
 from datetime import datetime
 
-SERVER = "ai@10.0.0.100"
+SERVER = os.environ.get("AIOS_SERVER", "ai@10.0.0.100")
 SSH_OPTS = "-o StrictHostKeyChecking=no -o BatchMode=yes"
 
 
