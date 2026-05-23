@@ -39,9 +39,10 @@ Bifrost (10.40.0.10:4000) → Ollama (10.40.0.20:11434) → Mistral 7B (GPU)
 | gpt-4o | OpenRouter | openrouter/openai/... | 🔴 placeholder key |
 
 ### Bifrost Config Notes
-- Provider: `ollama/` prefix (not `openai/`) for local models
-- Cache: disabled (Redis not deployed properly)
-- Routing: `simple-shuffle` (not `usage-based-routing` — no Redis)
+- Healthcheck: `python3` (not `wget` — not in LiteLLM image; was silently failing)
+- Provider: `ollama/` prefix for local models, `openrouter/` for cloud
+- Cache: disabled (Redis not deployed in compose — would need `usage-based-routing`)
+- Routing: `simple-shuffle` (works without Redis)
 - Fallbacks: cross-configured between local and cloud models
 - Port: `4000:4000` (0.0.0.0 binding, accessible from Dev PC)
 

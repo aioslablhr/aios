@@ -14,16 +14,16 @@
 | Langfuse | aios-langfuse | langfuse/langfuse:latest | data+mon | 10.30.0.50, 10.60.0.10 | 3000 | ✅ live | 112 |
 | ClickHouse | aios-clickhouse | clickhouse/clickhouse-server:latest | mon | 10.60.0.11 | 8123, 9000 | ✅ healthy | 87 |
 | Bifrost | aios-bifrost | ghcr.io/berriai/litellm:main-latest | ai+data | 10.40.0.10 | 4000 | ✅ healthy | 151 |
-| Ollama | aios-ollama | ollama/ollama:latest | ai | 10.40.0.20 | 11434 | ✅ healthy | 177 |
-| Vault | aios-vault | hashicorp/vault:latest | app (host) | 10.0.0.100 | 8200 | ✅ unsealed | 211 |
+| Ollama | aios-ollama | ollama/ollama:latest | ai | 10.40.0.20 | 11434 | ✅ healthy | 178 |
+| Vault | aios-vault | hashicorp/vault:latest | app (host) | 10.0.0.100 | 8200 | ✅ unsealed | 212 |
 | Keycloak | aios-keycloak | quay.io/keycloak/keycloak:26.1 | app | 10.20.0.40 | 8080 | ✅ healthy (orphan) | — |
 | Traefik | aios-traefik | traefik:v3.3 | dmz | 10.10.0.10 | 80, 443 | ✅ healthy (orphan) | — |
 | CrowdSec | aios-crowdsec | crowdsecurity/crowdsec:latest | dmz | 10.10.0.11 | 8080 | ✅ healthy (orphan) | — |
 | Dashy | aios-dashy | lissy93/dashy:latest | dmz | 10.60.0.70 | 80 | ✅ live (orphan) | — |
-| GitOps | aios-gitops | alpine:latest | app | 10.20.0.100 | — | ✅ healthy | 288 |
-| Hermes | aios-hermes | alpine:latest | app | 10.20.0.70 | — | ✅ healthy | 329 |
-| DNSmasq-TFTP | aios-dnsmasq-tftp | andyshinn/dnsmasq | host | 10.0.0.100 | 69/udp | ✅ healthy | 384 |
-| Asterisk | aios-asterisk | aios-asterisk:latest (source) | host | 10.0.0.100 | 5060/udp, 5061/tcp, 8088, 10000-20000/udp | ✅ healthy | 351 |
+| GitOps | aios-gitops | alpine:latest | app | 10.20.0.100 | — | ✅ healthy | 289 |
+| Hermes | aios-hermes | alpine:latest | app | 10.20.0.70 | — | ✅ healthy | 330 |
+| DNSmasq-TFTP | aios-dnsmasq-tftp | andyshinn/dnsmasq | host | 10.0.0.100 | 69/udp | ✅ healthy | 385 |
+| Asterisk | aios-asterisk | aios-asterisk:latest (source) | host | 10.0.0.100 | 5060/udp, 5061/tcp, 8088, 10000-20000/udp | ✅ healthy | 352 |
 
 ### Orphan Services (NOT in docker-compose)
 Redis, MinIO, Keycloak, Traefik, CrowdSec, Dashy were deployed separately.
