@@ -5,28 +5,23 @@ general_settings:
 litellm_settings:
   drop_params: true
   set_verbose: false
-  cache: true
-  cache_params:
-    type: redis
-    host: 10.30.0.30
-    port: 6379
-    ttl: 3600
+  cache: false
 
 model_list:
   - model_name: mistral-7b
     litellm_params:
-      model: openai/mistral-7b-v0.1
-      api_base: http://10.40.0.40:8000/v1
+      model: ollama/mistral
+      api_base: http://10.40.0.20:11434
       rpm: 60
   - model_name: qwen-2.5-7b
     litellm_params:
-      model: openai/qwen-2.5-7b
-      api_base: http://10.40.0.40:8000/v1
+      model: ollama/qwen2.5
+      api_base: http://10.40.0.20:11434
       rpm: 60
   - model_name: llama-3-8b
     litellm_params:
-      model: openai/llama-3-8b
-      api_base: http://10.40.0.40:8000/v1
+      model: ollama/llama3.2
+      api_base: http://10.40.0.20:11434
       rpm: 60
   - model_name: claude-4-sonnet
     litellm_params:
@@ -42,7 +37,7 @@ model_list:
       api_key: ${OPENROUTER_API_KEY}
 
 router_settings:
-  routing_strategy: usage-based-routing
+  routing_strategy: simple-shuffle
   enable_pre_call_checks: true
   allowed_fails: 3
   num_retries: 2
