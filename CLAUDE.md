@@ -114,9 +114,41 @@ DEV PC — 10.0.0.13
 10.30.0.0/24  Data Zone        Supabase, Qdrant, Redis, MinIO
                                 internal:true — NO internet access EVER
 10.40.0.0/24  AI Zone          Bifrost, Ollama(dev), LiteLLM(dev), vLLM
-10.50.0.0/24  Voice Zone       Asterisk, MQTT
+                                Chatterbox AI (TTS, GPU inference)
+10.50.0.0/24  Voice Zone       Asterisk, Dograh, MQTT
 10.60.0.0/24  Monitoring Zone  Langfuse, Prometheus, Grafana, Loki
 10.70.0.0/24  FOSS Zone        ERPNext, Odoo, Twenty CRM, Metabase, Calcom
+
+## KNOWLEDGE LAYER — COMPILED KNOWLEDGE (LLM WIKI PATTERN)
+
+Knowledge is compiled at ingest time, not retrieved at query time:
+
+```
+OBSIDIAN VAULT (raw source — client SOPs, pricing, docs, FAQs)
+  → LLM compiles structured markdown wiki pages (once at ingest)
+  → wiki/ folder (multi-layered: index, concept, entity, source pages)
+  → Agent reads compiled wiki at query time
+  → Qdrant RAG as fallback for overflow/volatile data
+
+WHY: Client knowledge bases are small (<50k tokens).
+     LLM Wiki is simpler, cheaper, and more reliable than RAG for this scale.
+     Qdrant reserved for conversations, temp data, cache overflow.
+```
+
+## VOICE LAYER — SELF-HOSTED VOICE PIPELINE
+
+```
+Asterisk (SIP trunking) — telephony layer
+Dograh (voice agent orchestration) — replaces Retell AI/Vapi
+Chatterbox AI (TTS/voice cloning, local GPU) — replaces ElevenLabs
+
+Voice pipeline:
+  Caller → SIP Trunk → Asterisk → Dograh
+    → STT: Whisper (local GPU) or Dograh built-in
+    → LLM: Bifrost → OpenRouter
+    → TTS: Chatterbox (local GPU)
+  → Audio back → Asterisk → Caller
+```
 ```
 
 ---
@@ -140,6 +172,8 @@ Keycloak:   http://10.20.0.40:8080
 Vault:      http://10.20.0.50:8200
 Traefik:    http://10.10.0.10:80 / 443 (public)
 Asterisk:   http://10.50.0.10 (SIP)
+Dograh:     http://10.50.0.30:3000 (voice agent orchestration)
+Chatterbox: http://10.40.0.30:8000 (TTS/voice cloning, GPU)
 MQTT:       http://10.50.0.20:1883
 Ollama:     http://10.40.0.20:11434 (dev only)
 GitOps:     10.20.0.100          (Auto-deploy — polls GitHub every 30s)

@@ -7,7 +7,7 @@
 ✅ STEP 1: NVIDIA Quadro M4000 driver installed  (nvidia-driver-470.256.02)
 ✅ STEP 2: Docker Engine installed               (Docker 29.5.1 + Compose v5.1.3)
 ✅ STEP 2b: nvidia-container-toolkit configured   (GPU works inside containers)
-⬜ STEP 3-14: Remaining layers
+⬜ Building v1 MVP — 7-layer architecture
 ```
 
 ---
@@ -48,23 +48,44 @@ Storage:  953.9GB NVMe (850GB free LVM)
 Docker:   Docker Engine 29.5.1 + Docker Compose v5.1.3
 ```
 
-**Server runs 4 layers simultaneously:**
+**Server runs 7 architectural layers sequentially (MVP v1):**
 
-#### Layer A — Docker Compose (FOSS business apps)
-`docker-compose-apps.yml` — independent lifecycle
+#### Layer 0 — Networking & Security
 ```
-Odoo, ERPNext/Frappe, Twenty CRM, SuiteCRM, Calcom, Paperless-ngx,
-Docuseal, Planka, Rocket.Chat, Frappe LMS, GnuCash, Metabase
+Cloudflare → Traefik → CrowdSec → Keycloak → Vault → WireGuard
+7 Docker zones (DMZ, App, Data, AI, Voice, Mon, FOSS)
 ```
 
-#### Layer B — Docker Compose (AI core — AIOS engine)
-`docker-compose-aios.yml` — the AIOS engine
+#### Layer 1 — Data
 ```
-Traefik, CrowdSec, Keycloak, HashiCorp Vault, Bifrost, Ollama(dev),
-LiteLLM(dev), MQTT, Asterisk, FreePBX, n8n+workers, Flowise, Dify,
-Paperclip, Hermes, Langfuse, Qdrant, Supabase, Redis, MinIO,
-Open WebUI, Grafana, Prometheus, Loki, Portainer, Dashy,
-Uptime Kuma, Dozzle, GitOps Agent, Watchtower, Trivy, Frigate, go2rtc
+PostgreSQL, Qdrant, Redis, MinIO, ClickHouse, Langfuse
+```
+
+#### Layer 1b — Knowledge (LLM Wiki pattern)
+```
+Obsidian vault (raw .md) → LLM compiles → wiki/ folder → agent queries
+Qdrant RAG fallback for overflow/volatile data
+```
+
+#### Layer 2 — Inference
+```
+Direct OpenRouter API (v1). No Bifrost.
+GPU runs: Whisper (STT), Chatterbox (TTS), nomic-embed-text, LLaVA
+```
+
+#### Layer 3 — Orchestration
+```
+n8n + 2 workers, Flowise, Paperclip, Hermes
+```
+
+#### Layer 4 — MCP & Tools
+```
+Standardized MCP servers: Supabase, Qdrant, WhatsApp, Filesystem
+```
+
+#### Layer 5 — Voice
+```
+Asterisk → Dograh → Whisper STT → n8n → OpenRouter → Chatterbox TTS
 ```
 
 #### Layer C — Dev PC (Windows 11 — 10.0.0.13)
@@ -85,15 +106,14 @@ OpenClaw            — Personal assistant via WhatsApp/Telegram
 
 ### GPU Allocation — Quadro M4000 (8GB VRAM)
 ```
-Model               VRAM     Role
+Process                 VRAM     Role
 ────────────────────────────────────────────
-Mistral 7B Q4       ~5GB     Fast lightweight tasks, high throughput
-Llama 3 8B Q4       ~5.5GB   General reasoning, HR, inventory
-Qwen 2.5 7B Q4      ~5GB     Arabic + Urdu + English multilingual
-LLaVA 7B (Ollama)   ~5GB     Visual — reads images, invoices
-nomic-embed-text    Minimal  Document embeddings
+Whisper (STT)           ~1GB     Voice call transcription (Dograh)
+Chatterbox AI (TTS)     ~1.5GB   Voice cloning + text-to-speech
+nomic-embed-text        <500MB   Document embeddings → Qdrant
+LLaVA 7B (Ollama)       ~5GB     Visual — reads images, invoices
 ```
-NOTE: 8GB VRAM cannot run 70B+ locally — routes to OpenRouter/Claude API.
+NOTE: No LLM inference on GPU. OpenRouter free tier is faster and higher quality than any 4-bit quantized 7B model on this card. GPU reserved for embeddings, STT, TTS, and vision.
 
 ### Resource Allocation
 ```
@@ -439,13 +459,13 @@ Vault       10.20.0.50     App          Secrets management — ALL API keys
 ```
 Service     IP              Role
 ────────────────────────────────────────────────────
-Bifrost     10.40.0.10      AI Gateway — ALL LLM calls, caching, failover,
-                             client budgets, prompt injection detection
-Ollama      10.40.0.20      DEV inference — LLaVA 7B, nomic-embed-text
-LiteLLM     10.40.0.30      DEV gateway — prototyping only
-vLLM        10.40.0.40      Production inference — Mistral 7B, Llama 3 8B,
-                             Qwen 2.5 7B (GPU-accelerated)
+Bifrost     10.40.0.10      AI Gateway — future (v1 direct OpenRouter)
+Ollama      10.40.0.20      Embeddings (nomic-embed-text) + vision (LLaVA)
+Chatterbox  10.40.0.30:8000 TTS/voice cloning — GPU (replaces ElevenLabs)
 ```
+Inference (v1): Direct OpenRouter API. No Bifrost/gateway needed for testing.
+GPU reserved for: embeddings, vision/OCR, Whisper STT, Chatterbox TTS.
+No LLM models on GPU (8GB VRAM too small for production-quality inference).
 
 ### 5.4 Orchestration (10.20.0.0/24)
 ```
@@ -463,14 +483,21 @@ FreePBX        10.20.0.80      Call centre GUI — extensions, recordings, CDR
 WireGuard      10.20.0.90      Admin VPN for remote access
 ```
 
-### 5.5 Voice Layer (10.50.0.0/24)
+### 5.5 Voice Layer (10.50.0.0/24 + 10.40.0.0/24 for TTS GPU)
 ```
-Service     IP              Role
-────────────────────────────────────────────────────
-Asterisk    10.50.0.10      VoIP engine — SIP trunking, call routing, IVR
-MQTT        10.50.0.20      Event bus — Frigate events → n8n workflows
+Zone    Service     IP              Role
+────────────────────────────────────────────────────────────
+Voice   Asterisk    10.50.0.10      SIP trunking, call routing, IVR (host net)
+Voice   Dograh      10.50.0.30      Voice agent orchestration — replaces Retell AI
+Voice   MQTT        10.50.0.20      Event bus — future use
+AI      Chatterbox  10.40.0.30:8000 TTS/voice cloning on GPU — replaces ElevenLabs
 ```
-Voice pipeline: Caller → SIP Trunk → Asterisk → Retell AI/Vapi → Deepgram STT → n8n → Bifrost → vLLM/Claude → ElevenLabs TTS → Asterisk → Caller
+
+Voice pipeline: Caller → SIP Trunk → Asterisk → Dograh
+  → Whisper STT (local GPU)
+  → n8n → OpenRouter → LLM response
+  → Chatterbox TTS (local GPU)
+  → Audio back → Asterisk → Caller
 
 ### 5.6 Visual AI (App zone)
 ```
@@ -614,15 +641,19 @@ Cached/repeated queries              Bifrost semantic cache                     
 Failover: if local models down → skip to OpenRouter → if OpenRouter fails → Claude
 ```
 
-### 6.5 Prompt Registry + RAG Pipeline
+### 6.5 Knowledge Layer — LLM Wiki Pattern
 ```
-Tool              Where           Role
-──────────────────────────────────────────────────────────────────
-Langfuse          Mon zone        ALL system prompts stored, versioned, managed
-                                   centrally. Agents pull at runtime.
-nomic-embed-text  AI zone         Embedding model — docs → vectors
-LlamaIndex        App zone        Document chunking + RAG pipeline
+Layer           Role
+────────────────────────────────────────────────────
+Obsidian vault  Raw source — client SOPs, pricing, docs, FAQs
+LLM compile     Structured markdown wiki (once at ingest)
+wiki/ folder    Multi-layered: index, concept, entity, source pages
+Agent query     Read compiled wiki at message time
+Qdrant RAG      Fallback for overflow/volatile data only
 ```
+Philosophy: Client knowledge bases are small (<50k tokens).
+LLM Wiki is simpler, cheaper, and more reliable than RAG at this scale.
+Qdrant reserved for conversations, temp data, cache overflow.
 
 ### 6.6 Hybrid Cloud Architecture
 ```

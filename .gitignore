@@ -27,4 +27,8 @@ node_modules/
 # Docker
 docker-compose-apps.yml
 
+# Temp scripts
+tmp/
+tmp_*
+
 aios.bundle
