@@ -9,10 +9,10 @@
 |-------|----------|-------------|---------|
 | **L1** | `.env` | **No** (gitignored) | Server passwords, API keys, extension secrets |
 | **L2** | Config files as `${VAR}` | Yes — no real values | `pjsip.conf`, `ari.conf` |
-| **L3** | Vault (future) | No | Planned migration target for all L1 secrets |
+| **L3** | Vault (active) | No | HashiCorp Vault at vault.socialbeesai.com — unsealed |
 
 ### NEVER
-- Hardcode passwords in config files that are tracked in git
+- Hardcode passwords in config files tracked in git
 - Share `.env` via email, chat, or any unencrypted channel
 - Commit `.env` or any file containing real secrets
 
@@ -20,34 +20,79 @@
 
 ## 2. CURRENT CREDENTIAL INVENTORY
 
-### Asterisk (Voice Layer)
+### Infrastructure
+| Credential | Location | Value | Rotation |
+|-----------|----------|-------|----------|
+| Server SSH | `.env` → `SERVER_PASS` | See `.env` | Manual |
+| Cloudflare API | `.env` → `CLOUDFLARE_API_KEY` | See `.env` | Via Cloudflare dashboard |
+| CrowdSec API | `.env` → `CROWDSEC_API_KEY` | See `.env` | Via CrowdSec console |
+
+### Databases (Data Zone — 10.30.0.0/24)
+| Credential | Location | Value | Rotation |
+|-----------|----------|-------|----------|
+| PostgreSQL | `.env` → `POSTGRES_PASSWORD` | aios_secret_2026 | Manual |
+| Qdrant API key | `.env` → `QDRANT_API_KEY` | aios_qdrant_2026 | Manual |
+| MinIO console | `.env` → `MINIO_ROOT_PASSWORD` | minioadmin | Manual |
+
+### AI Gateway & LLM
+| Credential | Location | Value | Rotation |
+|-----------|----------|-------|----------|
+| Bifrost admin key | `.env` → `BIFROST_ADMIN_KEY` | sk-aios-master-admin-key-change-me | Manual |
+| OpenRouter API | `.env` → `OPENROUTER_API_KEY` | sk-or-v1-placeholder | **REPLACE WITH REAL KEY** |
+| Anthropic API | `.env` (commented) | N/A | Not yet configured |
+| OpenAI API | `.env` (commented) | N/A | Not yet configured |
+
+### Workflow Automation (App Zone — 10.20.0.0/24)
+| Credential | Location | Value | Rotation |
+|-----------|----------|-------|----------|
+| n8n DB password | `.env` → `N8N_DB_PASSWORD` | 21e8c7e99182e353a7326dff9b40d4ec | Manual |
+| n8n encryption key | `.env` → `N8N_ENCRYPTION_KEY` | 32-char hex | Manual |
+
+### Voice Layer (Voice Zone — 10.50.0.0/24)
 | Credential | Location | Value | Rotation |
 |-----------|----------|-------|----------|
 | Ext 100 secret | `.env` → `EXT_100_SECRET` | See `.env` | Manual — update env + restart |
 | Ext 101 secret | `.env` → `EXT_101_SECRET` | See `.env` | Manual — update env + restart |
 | Ext 102 secret | `.env` → `EXT_102_SECRET` | See `.env` | Manual — update env + restart |
-| ARI admin password | `.env` → `ARI_ADMIN_PASSWORD` | See `.env` | Manual — update env + restart |
+| Ext 103 secret | `.env` → `EXT_103_SECRET` | See `.env` | Manual |
+| Ext 104 secret | `.env` → `EXT_104_SECRET` | See `.env` | Manual |
+| Ext 9000 (Cisco) | `.env` → `EXT_9000_SECRET` | See `.env` | Manual |
+| ARI admin password | `.env` → `ARI_ADMIN_PASSWORD` | 95vt3r6ke1w8lgqg6qpcui8e | Manual |
+| Voicemail password | `voicemail.conf` (hardcoded) | 1234 | Manual |
+| Dograh JWT secret | `.env` → `DOGRAH_JWT_SECRET` | aios-dograh-jwt-secret-2026 | Manual |
 | SIP trunk password | `.env` (planned) | Not yet configured | N/A |
 
-### Infrastructure
+### Monitoring
 | Credential | Location | Value | Rotation |
 |-----------|----------|-------|----------|
-| Server sudo | `.env` → `SERVER_PASS` | See `.env` | Manual |
-| Cloudflare API | `.env` → `CLOUDFLARE_API_KEY` | See `.env` | Via Cloudflare dashboard |
-| CrowdSec API | `.env` → `CROWDSEC_API_KEY` | See `.env` | Via CrowdSec console |
+| Grafana admin | `.env` → `GRAFANA_ADMIN_PASSWORD` | grafana_admin_2026 | Manual |
+| Langfuse NextAuth | `.env` → `LANGFUSE_NEXTAUTH_SECRET` | Generated random base64 | Manual |
+| Langfuse salt | `.env` → `LANGFUSE_SALT` | Generated random base64 | Manual |
 
-### Cloud LLM APIs (not yet configured — all `<from Vault>`)
+### Vault
+| Credential | Location | Value | Rotation |
+|-----------|----------|-------|----------|
+| Root token | `.vault-keys` (NOT in git) | (see .vault-keys on server) | Via Vault CLI |
+| Unseal key 1 | `.vault-keys` (NOT in git) | (see .vault-keys on server) | Via Vault CLI |
+| Unseal key 2–5 | `.vault-keys` (NOT in git) | (see .vault-keys on server) | Via Vault CLI |
+
+### IP Phones & Cameras
+| Credential | Location | Value | Rotation |
+|-----------|----------|-------|----------|
+| Cisco phone SIP pass | `SEP00270DC01C92.cnf.xml` | 9000pass (hardcoded in XML) | Manual |
+
+### Cloud LLM APIs (not yet configured)
 | Credential | Status |
 |-----------|--------|
-| Anthropic, OpenAI, Google, OpenRouter | Marked `<from Vault>` — Vault uninitialized |
-| Deepgram, ElevenLabs, Retell | Marked `<from Vault>` — Vault uninitialized |
-| WhatsApp token | Marked `<from Vault>` — Vault uninitialized |
+| Anthropic, OpenAI, Google | Not configured — commented in `.env` |
+| Deepgram, ElevenLabs, Retell | Not configured — future voice pipeline |
+| WhatsApp token | Not configured — future notification channel |
 
 ---
 
 ## 3. THE ENVSUBST PATTERN
 
-This is how secrets reach containers without leaking to git:
+Secrets reach containers without leaking to git:
 
 ### How it works
 ```
@@ -115,17 +160,12 @@ docker exec aios-asterisk asterisk -rx "pjsip show endpoint 100"
 # 6. Test registration
 ```
 
-### Rotate a cloud API key
+### Rotate any other credential
 ```bash
-# 1. Revoke old key in cloud provider dashboard
-# 2. Generate new key in cloud provider dashboard
-# 3. Update .env on server
-nano /aios/.env
-
-# 4. Restart affected services
+# 1. Update .env on server
+# 2. Restart affected services
 docker compose -f docker-compose-aios.yml up -d <service>
-
-# 5. Verify integration works
+# 3. Verify the service works
 ```
 
 ---
@@ -139,15 +179,12 @@ docker compose -f docker-compose-aios.yml up -d <service>
 *.key         — NEVER commit private keys
 *.pem         — NEVER commit certificates
 acme.json     — NEVER commit Let's Encrypt data (contains private keys)
+data/         — Runtime data, bind mounts, volumes
+.vault-keys   — Vault root token + unseal keys
 ```
 
-### Secret scanning
-GitHub Actions CI pipeline includes Trivy secret scan on every push.
-If it catches a secret:
-1. **Revoke the leaked credential immediately**
-2. Rotate to a new value
-3. Force-push is prohibited — use `git revert` or `git reset` + new commit
-4. Verify the scan passes on next push
+### Push protection
+GitHub push protection blocks secrets committed to git. `scripts/creds.sh` has secrets redacted — actual values reference ".env on server". Vault root token and Cloudflare API key removed from git-tracked creds.sh.
 
 ### What to do if a secret is committed
 ```bash
@@ -161,11 +198,11 @@ git push                              # clean history
 
 ---
 
-## 6. VAULT STRATEGY (future)
+## 6. VAULT STATUS
 
-Vault container is running at `10.20.0.50` but **uninitialized**.
+Vault is **running and unsealed** at `vault.socialbeesai.com` (host network on 10.0.0.100:8200). Currently stores root CA and internal PKI. Migration target for all L1 secrets from `.env`.
 
-### When Vault is operational
+### When Vault is fully operational
 1. All L1 secrets migrate from `.env` to Vault KV store
 2. Services authenticate via Vault Agent sidecar or AppRole
 3. `.env` shrinks to contain only Vault address + AppRole credentials
@@ -178,4 +215,4 @@ Vault container is running at `10.20.0.50` but **uninitialized**.
 
 ---
 
-*Created May 21, 2026 — AIOS Security & Credential Management*
+*Created May 21, 2026 • Updated May 26, 2026 — AIOS Security & Credential Management*

@@ -7,11 +7,10 @@
 
 ### Before starting work
 ```
-1. Read CHECKPOINT.md        — know current state, known issues, next steps
-2. Read SECURITY.md           — refresh credential locations
-3. git pull                   — ensure Dev PC is current (if git-connected)
-4. Verify running containers  — ssh ai@10.0.0.100 "docker ps"
-5. Check git log --oneline -5 — know what was done last
+1. Read CHECKPOINT.md       — know current state, known issues, next steps
+2. Read INVENTORY.md         — verify IPs, ports, credentials are current
+3. git pull                  — ensure Dev PC is current
+4. git log --oneline -5      — know what was done last
 ```
 
 ### Every time you make a change
@@ -26,8 +25,8 @@
 
 ### Every time you finish a session
 ```
-1. Verify all containers healthy     — docker ps --format '{{.Names}} {{.Status}}'
-2. Sync Dev PC from server           — scp or git pull
+1. Verify all containers healthy     — docker ps --format 'table {{.Names}}\t{{.Status}}'
+2. Run ./scripts/test-all.sh         — verify all 16 public endpoints respond
 3. Update CHECKPOINT.md              — current state, next steps, new known issues
 4. git add + commit + push CHECKPOINT.md and any file changes
 5. Verify push succeeded             — check GitHub Actions CI (if applicable)
@@ -50,8 +49,8 @@
 
 Examples:
   asterisk: compile from source — Stasis init crash in apt package
-  credentials: move secrets to .env via envsubst — configs leaked on public repo
   checkpoint: update for credential vaulting session
+  traefik: fix route for bifrost — add aios-ai to networks
 ```
 
 ### Rules
@@ -66,23 +65,15 @@ Examples:
 
 | Direction | Method | When |
 |-----------|--------|------|
-| Dev PC → Server | `scp` from D:\AIOS to /aios | After editing on Dev PC |
-| Server → Dev PC | `scp` from /aios to D:\AIOS | At session end, or when editing on server |
-| Both | Verify checksums match | After every sync |
-
-### Verify sync
-```powershell
-# Dev PC
-Get-FileHash -Algorithm MD5 "D:\AIOS\<file>" | Select-Object Hash
-
-# Server (run via ssh)
-ssh ai@10.0.0.100 "md5sum /aios/<file>"
-```
+| Dev PC → Server | Git push (GitOps auto-deploy) | Default workflow — Dev PC edits → push → server |
+| Server → Dev PC | Git pull | At session end to sync server-side changes |
+| Both | Verify with `git log --oneline` | After every sync |
 
 ### Source of truth
-The **server's git repo** (`/aios/`) is the source of truth.
-GitHub (`github.com/aioslablhr/aios`) is the remote.
-Dev PC (`D:\AIOS`) is a working copy — sync from server at session end.
+**Dev PC** (`D:\AIOS`) is the primary editing environment and git client.
+**GitHub** (`github.com/aioslablhr/aios`) is the remote.
+**Server** (`/aios/`) deploys via GitOps — DO NOT edit directly on server unless testing.
+If you must edit on server, `scp` back to Dev PC and handle merge conflicts via git.
 
 ---
 
@@ -107,22 +98,34 @@ docker exec -it aios-asterisk bash
 
 ### Check health
 ```bash
-docker inspect aios-asterisk --format '{{.State.Health.Status}}
+docker inspect aios-asterisk --format '{{.State.Health.Status}}'
 docker exec aios-asterisk asterisk -rx "core show version"
+```
+
+### Verify all public endpoints (from server)
+```bash
+./scripts/test-all.sh
+```
+
+### Check container count vs expected (34 services)
+```bash
+docker ps | wc -l
 ```
 
 ---
 
 ## 5. ADDING A NEW SERVICE
 
-1. **Assign Docker network zone** — see CLAUDE.md: network zones table
+1. **Assign Docker network zone** — see INVENTORY.md: network zones table
 2. **Allocate IP** — use next available in the zone's /24
 3. **Add to docker-compose-aios.yml** — with healthcheck, volumes, networks
 4. **Add secrets to .env** — follow envsubst pattern (see SECURITY.md)
-5. **Create entrypoint script** — if the service needs envsubst for configs
-6. **Update PROJECT.md** — only if architecture changes (rare)
-7. **Update CHECKPOINT.md** — current state section
-8. **git add + commit + push**
+5. **Create Traefik route** — add to configs/traefik/dynamic/aios.yml
+6. **Add Dashy tile** — add to configs/dashy/conf.yml
+7. **Update INVENTORY.md** — add to main services table
+8. **Update CHECKPOINT.md** — current state section
+9. **Update creds.sh** — if the service has credentials
+10. **git add + commit + push**
 
 ---
 
@@ -179,7 +182,7 @@ FAIL → read logs → understand → one fix → test → PASS → next
                                               → FAIL → back to "understand"
 ```
 
-### Error isolation (Principle 3)
+### Error isolation
 When a Docker service fails:
 ```
 docker run --rm <image> <binary>  # bypass compose
@@ -188,6 +191,15 @@ docker run --rm <image> <binary>  # bypass compose
 → image wrong?   → Dockerfile problem
 ```
 
+### Network zone debugging
+```
+# Check if service is on correct network
+docker inspect aios-<service> --format '{{json .NetworkSettings.Networks}}' | jq
+
+# Test connectivity between zones
+docker exec aios-traefik curl -s http://<target-ip>:<port>
+```
+
 ---
 
-*Created May 21, 2026 — AIOS Standard Operating Procedures*
+*Updated May 26, 2026 — AIOS Standard Operating Procedures v4.2*

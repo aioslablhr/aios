@@ -21,7 +21,7 @@ sections:
     icon: fas fa-robot
     items:
       - title: Bifrost (LiteLLM)
-        description: AI Gateway — routes all LLM calls. Key: sk-aios-master-admin-key-change-me
+        description: AI Gateway — routes all LLM calls. Key - sk-aios-master-admin-key-change-me
         icon: fas fa-bolt
         url: https://ai.socialbeesai.com
         target: newtab
@@ -31,7 +31,7 @@ sections:
         url: https://langfuse.socialbeesai.com
         target: newtab
       - title: Ollama
-        description: Local LLM runner (embeddings + vision). API: 10.40.0.20:11434
+        description: Local LLM runner (embeddings + vision). API - 10.40.0.20:11434
         icon: fas fa-microchip
         url: http://10.40.0.20:11434
         target: newtab
@@ -69,7 +69,7 @@ sections:
         url: https://data.socialbeesai.com/minio
         target: newtab
       - title: Qdrant Dashboard
-        description: Vector database — API key: aios_qdrant_2026
+        description: Vector database — API key - aios_qdrant_2026
         icon: fas fa-vector-square
         url: https://qdrant.socialbeesai.com/dashboard
         target: newtab
@@ -232,7 +232,7 @@ sections:
         url: http://10.0.0.12
         target: newtab
       - title: IP Cameras
-        description: RTSP feeds for Frigate (TODO: configure)
+        description: RTSP feeds for Frigate (TODO - configure)
         icon: fas fa-video
         url: http://10.0.0.100
         target: newtab

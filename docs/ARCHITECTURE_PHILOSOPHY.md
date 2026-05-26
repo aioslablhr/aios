@@ -35,16 +35,13 @@ voice, video, LLMs, and autonomous agents.
 - No silent failures — if it fails, it should be observable
 - State is truth — checkpoint files, git, and monitoring must agree
 
-### Principle 6: Modern AI Deployment (2026)
-- All LLM calls through Bifrost (never direct)
-- Local inference first, cloud fallback second
-- Semantic caching before any model call
-- Every call logged to Langfuse for observability
-- Multi-tenant isolation at every layer
-- GitOps-driven deployment (push → auto-deploy)
-- Hermes for autonomous 24/7 operations
-
----
+### Principle 6: Modern AI Deployment (2026 — adapted for v1)
+- **v1**: n8n calls OpenRouter API directly (no Bifrost abstraction for MVP speed)
+- **v2 target**: All LLM calls through Bifrost for caching, fallback, and cost control
+- Local inference first (embeddings, vision on GPU), cloud API fallback second
+- Every call logged to Langfuse for observability (v2 when n8n integration is built)
+- GitOps-driven deployment (push → auto-deploy via GitOps agent)
+- Hermes for autonomous 24/7 operations and auto-recovery
 
 ### Principle 7: Compile Critical Infrastructure from Source
 - Do NOT trust distro packages for core telephony (Asterisk, Kamailio, FreeSwitch)
@@ -55,6 +52,12 @@ voice, video, LLMs, and autonomous agents.
 - `autoload = yes` + `noload` for unwanted modules is superior to manual `load` ordering
   (Dependency resolution is complex — let Asterisk handle it)
 
+### Principle 8: Fix Network Connectivity Before Anything Else
+- Traefik must be on EVERY Docker network it routes to — not just the DMZ
+- A 502 error from Traefik is almost always a missing network connection
+- `docker inspect` to verify network membership before changing service configs
+- Host-networked services (Vault, Asterisk) need \`10.0.0.100\` as backend address, not Docker IP
+
 ---
 
-*Added May 21, 2026 — AIOS architecture philosophy*
+*Updated May 26, 2026 — AIOS architecture philosophy v4.2*
