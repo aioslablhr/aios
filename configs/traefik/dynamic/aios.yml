@@ -118,7 +118,7 @@ http:
       middlewares:
         - crowdsec-bouncer
 
-    # Dograh — voice.socialbeesai.com
+    # Dograh — voice.socialbeesai.com (UI)
     voice-dograh:
       rule: "Host(`voice.socialbeesai.com`)"
       service: voice-dograh
@@ -128,6 +128,15 @@ http:
         certResolver: cloudflare
       middlewares:
         - crowdsec-bouncer
+
+    # Dograh API — voice.socialbeesai.com/api
+    voice-dograh-api:
+      rule: "Host(`voice.socialbeesai.com`) && PathPrefix(`/api`)"
+      service: voice-dograh-api
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
 
     # MinIO — data.socialbeesai.com/minio
     data-minio:
@@ -279,11 +288,17 @@ http:
         servers:
           - url: "http://10.0.0.100:8200"
 
-    # Dograh
+    # Dograh UI
     voice-dograh:
       loadBalancer:
         servers:
           - url: "http://10.50.0.31:3010"
+
+    # Dograh API
+    voice-dograh-api:
+      loadBalancer:
+        servers:
+          - url: "http://10.50.0.30:8000"
 
     # MinIO Console
     data-minio:
