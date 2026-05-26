@@ -900,6 +900,8 @@ services:
       dograh-db-init:
         condition: service_started
     environment:
+      ENVIRONMENT: production
+      DEPLOYMENT_MODE: oss
       DATABASE_URL: postgresql+asyncpg://aios:${POSTGRES_PASSWORD}@10.30.0.10:5432/dograh
       REDIS_URL: redis://10.30.0.30:6379/0
       MINIO_ENDPOINT: 10.30.0.40:9000
@@ -910,7 +912,13 @@ services:
       BACKEND_API_ENDPOINT: http://10.50.0.30:8000
       API_URL: http://10.50.0.30:8000
       ENABLE_TELEMETRY: "false"
-      LOG_LEVEL: info
+      LOG_LEVEL: debug
+    healthcheck:
+      test: ["CMD-SHELL", 'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8000/api/v1/health'').read()"']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped
 
   dograh-ui:
