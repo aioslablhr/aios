@@ -221,51 +221,126 @@ http:
 
     # Flowise — app.socialbeesai.com/flowise
     app-flowise:
-      loadBalancer:
-        servers:
-          - url: "http://10.20.0.20:3000"
+      rule: "Host(`app.socialbeesai.com`) && PathPrefix(`/flowise`)"
+      service: app-flowise
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
 
+    # MCP — mcp.socialbeesai.com
     app-mcp:
+      rule: "Host(`mcp.socialbeesai.com`)"
+      service: app-mcp
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+
+  # ── Services ─────────────────────────────────────
+  services:
+    # Landing page — points to Dashy
+    landing:
       loadBalancer:
         servers:
-          - url: "http://10.20.0.30:8000"
+          - url: "http://10.60.0.70:80"
 
+    # n8n
+    app-n8n:
+      loadBalancer:
+        servers:
+          - url: "http://10.20.0.10:5678"
+
+    # Bifrost
+    ai-bifrost:
+      loadBalancer:
+        servers:
+          - url: "http://10.40.0.10:4000"
+
+    # Langfuse
+    mon-langfuse:
+      loadBalancer:
+        servers:
+          - url: "http://10.60.0.10:3000"
+
+    # Keycloak
+    admin-keycloak:
+      loadBalancer:
+        servers:
+          - url: "http://10.20.0.40:8080"
+
+    # Vault
+    admin-vault:
+      loadBalancer:
+        servers:
+          - url: "http://10.20.0.50:8200"
+
+    # Dograh
+    voice-dograh:
+      loadBalancer:
+        servers:
+          - url: "http://10.50.0.31:3010"
+
+    # MinIO Console
+    data-minio:
+      loadBalancer:
+        servers:
+          - url: "http://10.30.0.40:9001"
+
+    # Grafana
     mon-grafana:
       loadBalancer:
         servers:
           - url: "http://10.60.0.30:3000"
 
+    # Prometheus
     mon-prometheus:
       loadBalancer:
         servers:
           - url: "http://10.60.0.20:9090"
 
+    # Portainer
     mon-portainer:
       loadBalancer:
         servers:
           - url: "http://10.60.0.50:9000"
 
+    # cAdvisor
     mon-cadvisor:
       loadBalancer:
         servers:
           - url: "http://10.60.0.60:8080"
 
+    # Qdrant
     data-qdrant:
       loadBalancer:
         servers:
           - url: "http://10.30.0.20:6333"
 
+    # ClickHouse
     mon-clickhouse:
       loadBalancer:
         servers:
           - url: "http://10.60.0.11:8123"
 
+    # Frigate
     ai-frigate:
       loadBalancer:
         servers:
           - url: "http://10.40.0.50:5000"
 
+    # Flowise
     app-flowise:
       loadBalancer:
         servers:
           - url: "http://10.20.0.20:3000"
+
+    # MCP
+    app-mcp:
+      loadBalancer:
+        servers:
+          - url: "http://10.20.0.30:8000"
