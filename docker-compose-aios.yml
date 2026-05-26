@@ -889,7 +889,7 @@ services:
       aios-data:
       aios-ai:
     ports:
-      - "127.0.0.1:8085:8080/tcp"
+      - "127.0.0.1:8085:8000/tcp"
     depends_on:
       postgres:
         condition: service_healthy
@@ -907,8 +907,8 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MINIO_PUBLIC_ENDPOINT: https://data.socialbeesai.com/minio
       OSS_JWT_SECRET: ${DOGRAH_JWT_SECRET}
-      BACKEND_API_ENDPOINT: http://10.50.0.30:8080
-      API_URL: http://10.50.0.30:8080
+      BACKEND_API_ENDPOINT: http://10.50.0.30:8000
+      API_URL: http://10.50.0.30:8000
       ENABLE_TELEMETRY: "false"
       LOG_LEVEL: info
     restart: unless-stopped
@@ -923,7 +923,7 @@ services:
     depends_on:
       - dograh-api
     environment:
-      BACKEND_URL: http://10.50.0.30:8080
+      BACKEND_URL: http://10.50.0.30:8000
       NODE_ENV: oss
       ENABLE_TELEMETRY: "false"
     ports:
