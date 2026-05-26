@@ -6,7 +6,8 @@ api:
   debug: false
   entryPoint: websecure
 
-ping: true
+ping:
+  entryPoint: websecure
 
 entryPoints:
   web:
@@ -18,8 +19,6 @@ entryPoints:
           scheme: https
   websecure:
     address: ":443"
-  traefik:
-    address: ":8083"
   metrics:
     address: ":8082"
 
