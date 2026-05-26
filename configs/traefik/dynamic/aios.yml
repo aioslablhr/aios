@@ -41,6 +41,17 @@ http:
         service: error-service
         query: "/"
 
+    # Strip prefix for subpath backends
+    strip-prometheus:
+      stripPrefix:
+        prefixes:
+          - /prometheus
+
+    strip-portainer:
+      stripPrefix:
+        prefixes:
+          - /portainer
+
   # ── Routers ─────────────────────────────────────
 
   routers:
@@ -71,6 +82,16 @@ http:
     # App subdomain — app.socialbeesai.com
     app-n8n:
       rule: "Host(`app.socialbeesai.com`) && PathPrefix(`/n8n`)"
+      service: app-n8n
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+
+    app-n8n-direct:
+      rule: "Host(`n8n.socialbeesai.com`)"
       service: app-n8n
       entryPoints:
         - websecure
@@ -119,6 +140,7 @@ http:
         certResolver: cloudflare
       middlewares:
         - crowdsec-bouncer
+        - strip-portainer
 
     # Data subdomain — data.socialbeesai.com
     data-supabase:
@@ -174,7 +196,7 @@ http:
         - crowdsec-bouncer
 
     voice-dograh:
-      rule: "Host(`voice.socialbeesai.com`) && PathPrefix(`/dograh`)"
+      rule: "Host(`voice.socialbeesai.com`)"
       service: voice-dograh
       entryPoints:
         - websecure

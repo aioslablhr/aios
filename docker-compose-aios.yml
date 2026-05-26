@@ -45,7 +45,7 @@ services:
   # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
 
   traefik:
-    image: traefik:v3.3
+    image: traefik:latest
     container_name: aios-traefik
     hostname: traefik
     networks:
@@ -54,6 +54,8 @@ services:
       aios-app:  # needs to reach n8n, keycloak, vault
       aios-mon:  # needs to reach grafana, dashy
       aios-data: # needs to reach minio, supabase
+      aios-ai:   # needs to reach bifrost, ollama, frigate
+      aios-voice: # needs to reach dograh, mosquitto
     ports:
       - "80:80"
       - "443:443"
@@ -266,6 +268,7 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.external-url=http://monitor.socialbeesai.com/prometheus'
     restart: unless-stopped
 
   loki:
@@ -297,6 +300,8 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       GF_INSTALL_PLUGINS: grafana-piechart-panel
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/sysops.json
+      GF_SERVER_ROOT_URL: https://monitor.socialbeesai.com/grafana
+      GF_SERVER_SERVE_FROM_SUB_PATH: true
     restart: unless-stopped
 
   portainer:
@@ -833,6 +838,8 @@ services:
         ipv4_address: 10.50.0.30
       aios-data:
       aios-ai:
+    ports:
+      - "127.0.0.1:8085:8080/tcp"
     depends_on:
       postgres:
         condition: service_healthy
@@ -848,8 +855,10 @@ services:
       MINIO_ENDPOINT: 10.30.0.40:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_PUBLIC_ENDPOINT: https://data.socialbeesai.com/minio
       OSS_JWT_SECRET: ${DOGRAH_JWT_SECRET}
       BACKEND_API_ENDPOINT: http://10.50.0.30:8080
+      API_URL: http://10.50.0.30:8080
       ENABLE_TELEMETRY: "false"
       LOG_LEVEL: info
     restart: unless-stopped
