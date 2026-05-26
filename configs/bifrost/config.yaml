@@ -1,6 +1,5 @@
 general_settings:
   master_key: sk-aios-master-admin-key-change-me
-  database_url: postgresql://aios:${POSTGRES_PASSWORD}@10.30.0.10:5432/litellm?sslmode=disable
 
 litellm_settings:
   drop_params: true
@@ -23,17 +22,105 @@ model_list:
       model: ollama/llama3.2
       api_base: http://10.40.0.20:11434
       rpm: 60
-  - model_name: claude-4-sonnet
+  - model_name: openrouter-free
     litellm_params:
-      model: openrouter/anthropic/claude-sonnet-4-20250514
+      model: openrouter/openrouter/free
       api_key: ${OPENROUTER_API_KEY}
-  - model_name: gemma-4
+  - model_name: gemma-4-31b
     litellm_params:
-      model: openrouter/google/gemma-4
+      model: openrouter/google/gemma-4-31b-it:free
       api_key: ${OPENROUTER_API_KEY}
-  - model_name: gpt-4o
+  - model_name: gemma-4-26b
     litellm_params:
-      model: openrouter/openai/gpt-4o-2025-01-02
+      model: openrouter/google/gemma-4-26b-a4b-it:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: llama-70b
+    litellm_params:
+      model: openrouter/meta-llama/llama-3.3-70b-instruct:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: llama-3b
+    litellm_params:
+      model: openrouter/meta-llama/llama-3.2-3b-instruct:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: deepseek-v4
+    litellm_params:
+      model: openrouter/deepseek/deepseek-v4-flash:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: qwen-coder
+    litellm_params:
+      model: openrouter/qwen/qwen3-coder:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: qwen-80b
+    litellm_params:
+      model: openrouter/qwen/qwen3-next-80b-a3b-instruct:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: hermes-405b
+    litellm_params:
+      model: openrouter/nousresearch/hermes-3-llama-3.1-405b:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: cobuddy
+    litellm_params:
+      model: openrouter/baidu/cobuddy:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: owl-alpha
+    litellm_params:
+      model: openrouter/openrouter/owl-alpha
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: liquid-thinking
+    litellm_params:
+      model: openrouter/liquid/lfm-2.5-1.2b-thinking:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: liquid-instruct
+    litellm_params:
+      model: openrouter/liquid/lfm-2.5-1.2b-instruct:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: minimax-m2
+    litellm_params:
+      model: openrouter/minimax/minimax-m2.5:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: gpt-oss-120b
+    litellm_params:
+      model: openrouter/openai/gpt-oss-120b:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: gpt-oss-20b
+    litellm_params:
+      model: openrouter/openai/gpt-oss-20b:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: nemotron-reasoning
+    litellm_params:
+      model: openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: nemotron-nano-30b
+    litellm_params:
+      model: openrouter/nvidia/nemotron-3-nano-30b-a3b:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: nemotron-120b
+    litellm_params:
+      model: openrouter/nvidia/nemotron-3-super-120b-a12b:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: nemotron-vl
+    litellm_params:
+      model: openrouter/nvidia/nemotron-nano-12b-v2-vl:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: nemotron-9b
+    litellm_params:
+      model: openrouter/nvidia/nemotron-nano-9b-v2:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: glm-4
+    litellm_params:
+      model: openrouter/z-ai/glm-4.5-air:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: dolphin-24b
+    litellm_params:
+      model: openrouter/cognitivecomputations/dolphin-mistral-24b-venice-edition:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: poolside-xs
+    litellm_params:
+      model: openrouter/poolside/laguna-xs.2:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: poolside-m
+    litellm_params:
+      model: openrouter/poolside/laguna-m.1:free
       api_key: ${OPENROUTER_API_KEY}
 
 router_settings:
@@ -42,9 +129,17 @@ router_settings:
   allowed_fails: 3
   num_retries: 2
   fallbacks:
+    - openrouter-free: [gemma-4-31b, llama-70b, hermes-405b]
+    - gemma-4-31b: [gemma-4-26b, llama-70b, qwen-80b]
+    - gemma-4-26b: [gemma-4-31b, llama-70b]
+    - llama-70b: [gemma-4-31b, hermes-405b, nemotron-120b]
+    - llama-3b: [liquid-instruct, cobuddy]
+    - deepseek-v4: [gemma-4-26b, llama-70b]
+    - qwen-coder: [gpt-oss-120b, dolphin-24b]
+    - qwen-80b: [gemma-4-31b, llama-70b]
+    - hermes-405b: [nemotron-120b, llama-70b]
+    - cobuddy: [owl-alpha, llama-3b]
+    - owl-alpha: [cobuddy, liquid-thinking]
     - mistral-7b: [qwen-2.5-7b, llama-3-8b]
     - qwen-2.5-7b: [mistral-7b, llama-3-8b]
     - llama-3-8b: [mistral-7b, qwen-2.5-7b]
-    - claude-4-sonnet: [gemma-4, gpt-4o]
-    - gemma-4: [gpt-4o, claude-4-sonnet]
-    - gpt-4o: [gemma-4, claude-4-sonnet]

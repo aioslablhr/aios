@@ -38,7 +38,7 @@
 | Credential | Location | Value | Rotation |
 |-----------|----------|-------|----------|
 | Bifrost admin key | `.env` → `BIFROST_ADMIN_KEY` | sk-aios-master-admin-key-change-me | Manual |
-| OpenRouter API | `.env` → `OPENROUTER_API_KEY` | sk-or-v1-placeholder | **REPLACE WITH REAL KEY** |
+| OpenRouter API | `.env` → `OPENROUTER_API_KEY` | sk-or-v1-0855e04fc... | **REAL KEY SET May 26** |
 | Anthropic API | `.env` (commented) | N/A | Not yet configured |
 | OpenAI API | `.env` (commented) | N/A | Not yet configured |
 
@@ -61,6 +61,13 @@
 | Voicemail password | `voicemail.conf` (hardcoded) | 1234 | Manual |
 | Dograh JWT secret | `.env` → `DOGRAH_JWT_SECRET` | aios-dograh-jwt-secret-2026 | Manual |
 | SIP trunk password | `.env` (planned) | Not yet configured | N/A |
+
+### Added Services (May 26)
+| Credential | Location | Value | Notes |
+|-----------|----------|-------|-------|
+| Flowise admin | (first signup on web) | admin / admin | app.socialbeesai.com/flowise |
+| MCP Server | — | — | No auth required (internal) |
+| Dograh image | compose → `ghcr.io/dograh-hq/*` | OSS (was Docker Hub paid) | Apr 30 swap |
 
 ### Monitoring
 | Credential | Location | Value | Rotation |

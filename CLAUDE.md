@@ -154,27 +154,32 @@ Voice pipeline:
 
 ```
 Bifrost:    http://10.40.0.10:4000  (AI Gateway — ALL LLM calls go here)
-vLLM:       http://10.40.0.40:8000   (Local inference on Quadro M4000)
 n8n:        http://10.20.0.10:5678
 Qdrant:     http://10.30.0.20:6333
-Supabase:   http://10.30.0.10:8000
+Flowise:    http://10.20.0.20:3000
+MCP Server: http://10.20.0.30:8000
 Redis:      redis://10.30.0.30:6379
 MinIO:      http://10.30.0.40:9000
 Langfuse:   http://10.60.0.10:3000
 Grafana:    http://10.60.0.30:3000
 Portainer:  http://10.60.0.50:9000
-Dashy:      http://10.60.0.70:80
+Dashy:      http://10.60.0.70:8080
 Prometheus: http://10.60.0.20:9090
 Keycloak:   http://10.20.0.40:8080
-Vault:      http://10.20.0.50:8200
+Vault:      http://10.0.0.100:8200  (host network mode)
 Traefik:    http://10.10.0.10:80 / 443 (public)
 Asterisk:   http://10.50.0.10 (SIP)
-Dograh:     http://10.50.0.30:3000 (voice agent orchestration)
-Chatterbox: http://10.40.0.30:8000 (TTS/voice cloning, GPU)
+Dograh API: http://10.50.0.30:8000  (voice agent orchestration)
+Dograh UI:  http://10.50.0.31:3010  (voice dashboard)
+Chatterbox: http://10.40.0.30:4123  (TTS/voice cloning, GPU)
 MQTT:       http://10.50.0.20:1883
-Ollama:     http://10.40.0.20:11434 (dev only)
-GitOps:     10.20.0.100          (Auto-deploy — polls GitHub every 30s)
+Ollama:     http://10.40.0.20:11434
+Frigate:    http://10.40.0.50:5000
+ClickHouse: http://10.60.0.11:8123
+GitOps:     10.20.0.100            (Auto-deploy — polls GitHub every 30s)
 ```
+- vLLM: NOT DEPLOYED (no GPU VRAM for LLM inference — Quadro only runs Ollama embeddings/vision)
+- Supabase: NOT DEPLOYED (only PostgreSQL running)
 
 ---
 
@@ -214,9 +219,10 @@ networks:
 
 ### Rule 4: Inference Server NEVER public
 ```
-# Quadro M4000 runs vLLM on local Docker AI zone
-# NEVER expose vLLM port 8000 to internet
-VLLM_URL=http://10.40.0.40:8000
+# LLM inference runs via Ollama on local Docker AI zone
+# NEVER expose Ollama port 11434 to internet
+OLLAMA_URL=http://10.40.0.20:11434
+# vLLM: NOT DEPLOYED (Quadro M4000 has no VRAM for LLM inference)
 ```
 
 ### Rule 5: All client resources via new-client.py only
@@ -477,14 +483,15 @@ Task                          Model                          Reason
 Simple FAQ, classification    Mistral 7B (vLLM)              Fast + free
 Arabic/Urdu conversation      Qwen 2.5 7B (vLLM)            Best multilingual local
 General reasoning, HR tasks   Llama 3 8B (vLLM)             High quality, zero cost
-General reasoning (API)       Gemma 4 (OpenRouter)          Strong + cheaper than Claude
-Complex docs, legal, long ctx Claude 4 Sonnet (API)          Frontier quality needed
-Code, structured output       Gemma 4 / Claude 4 (API)      Both excellent
-Invoice/image reading         GPT-4o + LLaVA                Best vision models
-Any other model               OpenRouter (API)              200+ models available
-Repeated/cached queries       Bifrost cache                 No LLM call at all
-Local models down/busy        OpenRouter → Claude (failover) Multi-tier auto-fallback
-70B+ reasoning                OpenRouter / Claude (API)     Cannot fit in 8GB VRAM
+General reasoning (API)       openrouter-free               Routes to best free model
+Heavy reasoning, long ctx     gemma-4-31b / llama-70b       $0, free tier
+Complex code, structured      qwen-coder / gpt-oss-120b     $0, best coding free models
+Fast/simple Q&A               cobuddy / llama-3b / owl-alpha $0, fast + light
+Frontier reasoning (405B)     hermes-405b / nemotron-120b    $0, massive models
+Invoice/image reading         Not available (paid only)     Free tier has no vision models
+Any other need                openrouter-free               Routes to best available free model
+Local models down/busy        openrouter-free               Multi-tier auto-fallback
+70B+ reasoning                llama-70b / hermes-405b       $0 free tier — plenty of power
 ```
 
 ---

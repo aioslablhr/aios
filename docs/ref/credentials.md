@@ -70,7 +70,7 @@
 
 | Service | Key | Notes |
 |---------|-----|-------|
-| OpenRouter | sk-or-v1-placeholder | **NEEDS REAL KEY** — get from openrouter.ai |
+| OpenRouter | sk-or-v1-0855e04fc... | **REAL KEY** — free tier, 25+ $0 models |
 | Cloudflare | (see .env on server) | DNS:Edit scope, admin@socialbeesai.com |
 | CrowdSec | (see .env on server) | WAF bouncer key |
 | MinIO | admin / minioadmin | Console + API |
