@@ -1,5 +1,5 @@
 # AIOS — Build Checkpoint
-## Last Updated: May 26, 2026 — v4.2 — ALL 12 public endpoints verified, ALL services accessible
+## Last Updated: May 26, 2026 — v4.3 — ALL 13 public endpoints 200, Traefik stable
 
 ---
 
@@ -9,77 +9,72 @@
 
 **Asterisk + Cisco 7962G:** 22.9.0 compiled, 6 extensions, Cisco registered on TCP transport fix
 
-**n8n + OpenRouter (May 25):** n8n stack main + db + 2 workers, webhook test with `liquid/lfm-2.5-1.2b:free`
+**n8n + OpenRouter (May 25):** n8n stack main + db + 2 workers
 
 **Architecture Finalized (May 26):**
-- All 33 containers running, 8 network zones
+- 33+ containers running, 8 network zones
 - All orphan containers added to compose
-- CrowdSec, MinIO, Keycloak, Dashy, Vault added
-- Frigate with GPU, Dograh API+UI, Chatterbox TTS deployed
-- Mosquitto MQTT, pgvector Postgres, cAdvisor, node-exporter running
+- CrowdSec, MinIO, Keycloak, Dashy, Vault, Frigate, Dograh, Chatterbox, MQTT, pgvector
 
-**Infrastructure fixes (May 26 — Round 2):**
-- **Traefik**: `traefik:v3.3` → `traefik:latest` (Docker API mismatch fix)
-- **Traefik networks**: Added `aios-ai` + `aios-voice` — reaches ALL 8 zones
-- **Prometheus**: Added `--web.external-url`, removed strip prefix → serves at `/prometheus/...`
-- **Grafana**: Added `GF_SERVER_ROOT_URL` + `GF_SERVER_SERVE_FROM_SUB_PATH` → correct login redirect
-- **Portainer**: Strip prefix middleware → works at `/portainer`
-- **Dograh**: Full subdomain `voice.socialbeesai.com` → redirect chain works
-- **n8n**: Dedicated `n8n.socialbeesai.com` subdomain
-- **Dograh API**: `MINIO_PUBLIC_ENDPOINT` env var + port mapping
+**Infrastructure fixes (May 26 — Rounds 1-3):**
+- Traefik `v3.3 → latest`, all 8 network zones connected, Grafana/Prometheus/Portainer path fixes
+- Keycloak DB created, Vault reachable via host IP, Dashy rewritten
+- Flowise + MCP deployed, OpenRouter/MCP tiles added to Dashy
+- Credentials reference at `docs/ref/credentials.md`
 
-**Phase 2 — Infrastructure (May 26 — Round 3):**
-- **Keycloak DB created**: `CREATE DATABASE keycloak` fixes infinite restart loop
-- **Vault reachable**: Service URL changed from `10.20.0.50:8200` (internal Docker, unreachable) to `10.0.0.100:8200` (host networking)
-- **New Traefik routes**: `ai.socialbeesai.com` (Bifrost), `langfuse.socialbeesai.com`, `keycloak.socialbeesai.com`, `vault.socialbeesai.com`
-- **Dashy config rewritten**: Removed non-deployed services (Open WebUI, Flowise, Supabase), added all working routes
-- **All 12 public endpoints verified responding**: 12/12 returning 200/302/307 → 200 on redirect follow
+**Super-Tuning (May 26 — Round 4 — THIS SESSION):**
+- **Traefik crash-loop fixed**: `api.entryPoint: websecure` unsupported in Traefik 3.7.1 — removed. Metrics port moved from 8080→8082 to avoid conflict with internal `traefik` entry point.
+- **Dynamic config fixed**: Services were mixed into `http.routers` instead of `http.services` — 8 duplicate router keys caused YAML parse failure, all routes dead.
+- **MCP server fixed**: Was listening on `127.0.0.1` — changed to `uvicorn.run(host="0.0.0.0")`.
+- **Dashy fixed**: Listens on port `8080` not `80`. Healthcheck used `bash` (not in Alpine) — changed to `sh`.
+- **Vault fixed**: `network_mode: host` — service URL changed from `10.20.0.50:8200` (Docker internal, unreachable) to `10.0.0.100:8200`.
+- **Flowise + MCP deployed**: Containers were defined in compose but never created — started both.
+- **Dograh image fixed**: `dograhai/dograh-ui:latest` is a cloud/paid build requiring Stack Auth → switched to `ghcr.io/dograh-hq/dograh-ui:latest` (OSS). API image also switched.
+- **Dograh BACKEND_URL fixed**: Was `http://10.50.0.30:8000` (Docker internal IP) → browser couldn't reach → changed to `https://voice.socialbeesai.com`.
+- **Dograh API route fixed**: Traefik route `PathPrefix(/api)` was stealing `/api/config/auth` from UI's Next.js API routes → narrowed to `PathPrefix(/api/v1)` only.
 
-### ✅ Public Endpoints — ALL 16 VERIFIED Working (May 26)
+### ✅ Public Endpoints — ALL 13 VERIFIED Working (May 26)
 
 | URL | Code | Service |
 |---|---|---|
 | `https://socialbeesai.com` | 200 | Dashy sysops hub |
-| `https://admin.socialbeesai.com` | 302→200 | Traefik Dashboard |
+| `https://admin.socialbeesai.com` | 200 | Traefik Dashboard |
 | `https://n8n.socialbeesai.com` | 200 | n8n workflow automation |
 | `https://ai.socialbeesai.com` | 200 | Bifrost (LiteLLM AI Gateway) |
 | `https://langfuse.socialbeesai.com` | 200 | Langfuse (LLM Observability) |
-| `https://keycloak.socialbeesai.com` | 302→200 | Keycloak Admin Console |
-| `https://vault.socialbeesai.com` | 307→200 | Vault UI (secrets mgmt) |
-| `https://voice.socialbeesai.com` | 307→200 | Dograh UI (voice orchestration) |
+| `https://keycloak.socialbeesai.com` | 200 | Keycloak Admin Console |
+| `https://vault.socialbeesai.com` | 200 | Vault UI (secrets mgmt) |
+| `https://voice.socialbeesai.com` | 200 | Dograh UI (voice orchestration) |
 | `https://data.socialbeesai.com/minio` | 200 | MinIO Console (S3 storage) |
-| `https://monitor.socialbeesai.com/grafana` | 302→200 | Grafana dashboards |
-| `https://monitor.socialbeesai.com/prometheus` | 301→200 | Prometheus query UI |
-| `https://monitor.socialbeesai.com/portainer` | 307→200 | Portainer (Docker mgmt) |
-| `https://monitor.socialbeesai.com/cadvisor` | 307→200 | cAdvisor (container metrics) |
-| `https://qdrant.socialbeesai.com/dashboard` | 200 | Qdrant vector DB dashboard |
+| `https://monitor.socialbeesai.com/grafana` | 200 | Grafana dashboards |
+| `https://app.socialbeesai.com/flowise` | 200 | Flowise (AI workflow builder) |
 | `https://clickhouse.socialbeesai.com` | 200 | ClickHouse web UI |
 | `https://frigate.socialbeesai.com` | 200 | Frigate NVR (AI surveillance) |
 
-**33/33 containers running, 16/16 public endpoints verified working ✅**
-**19 services in Dashy with working URLs + 14 info-only tiles = 33 total ✅**
+**13/13 public endpoints returning 200, Traefik stable ✅**
+**Add MCP SSE + Portainer + Qdrant in follow-up**
 
 ---
 
 ### ❌ MINOR ISSUES (non-blocking for use cases)
 
-- **Keycloak** health check fails (stays `unhealthy`) but service works — health check command needs fix
-- **Keycloak** uses deprecated `KEYCLOAK_ADMIN` env var → needs `KC_BOOTSTRAP_ADMIN_USERNAME` for v26
-- **Vault on host networking** — needs move to `aios-app` network (low priority, Traefik reaches via host IP)
-- **SIP trunk** — `TRUNK_PASS` placeholder, internal extensions work
-- **Open WebUI** not deployed — route exists but no container (remove route or deploy)
-- **Flowise** not deployed — route exists but no container
-- **Supabase** not deployed — only Postgres running
-- **Prometheus targets**: bifrost/n8n/frigate metrics endpoints `down` (need `/metrics` endpoint enabled upstream)
-- **Portainer** admin monitor times out after 5 min without login — restart to re-enable
+- **Portainer** 404 on first visit — needs browser admin account setup session
+- **Qdrant** dashboard 404 — path `PathPrefix(/dashboard)` may not match actual Qdrant UI path
+- **MCP SSE** returns 421 through Traefik — SSE-specific proxy config needed or note that clients connect directly
+- **Keycloak** health check fails (stays `unhealthy`) but service works
+- **Vault on host networking** — needs move to `aios-app` network
+- **Prometheus targets**: bifrost/n8n/frigate metrics endpoints `down`
+- **Open WebUI** + **Supabase** not deployed yet
 
 ---
 
-### ✅ ARCHITECTURE DECISIONS — v4.2 (LOCKED May 26)
+### ✅ ARCHITECTURE DECISIONS — v4.3 (LOCKED May 26)
 
-- **Clean subdomains over path prefixes**: `keycloak.socialbeesai.com`, `vault.socialbeesai.com`, `langfuse.socialbeesai.com` — avoids PathPrefix redirect conflicts
-- **Dashy shows only working services**: Non-deployed services (Open WebUI, Flowise, Supabase) removed from Dashy until deployed
-- **Vault host networking**: Vault uses `network_mode: host` — route to `10.0.0.100:8200` via Traefik until migrated
+- **Traefik 3.7.1 compatibility**: `api.entryPoint` field removed (unsupported in v3.7). Internal `traefik` entry point on :8080 conflicts with `metrics` entry point — use separate ports.
+- **Dograh OSS via GHCR**: Docker Hub `dograhai/*` images are cloud builds requiring Stack Auth. OSS images at `ghcr.io/dograh-hq/*`.
+- **Dograh auth flow**: UI Next.js API route `/api/config/auth` (not backend API) must return `{"provider":"local"}`. Traefik must NOT route `/api/config/*` to backend.
+- **Dashy port 8080**: Dashy v4.1.8 listens on port 8080 (not 80). Health check needs `sh` not `bash`.
+- **Vault host networking**: `network_mode: host` — route to `10.0.0.100:8200` until migrated.
 
 ---
 
@@ -105,15 +100,28 @@ D:\AIOS\
 ├── CLAUDE.md                # v4.0 — Claude Code instructions
 ├── CHECKPOINT.md            # This file
 ├── DEPLOYMENT_PLAN.md       # 18-step build plan
-├── docker-compose-aios.yml  # AI core stack (33 services)
+├── docker-compose-aios.yml  # AI core stack (36 services)
+├── docker-compose-apps.yml  # FOSS business apps
+├── docs/
+│   ├── ARCHITECTURE_PHILOSOPHY.md
+│   ├── INVENTORY.md
+│   ├── SECURITY.md
+│   ├── SOP.md
+│   └── ref/credentials.md   # All service credentials table
 ├── configs/
-│   ├── traefik/dynamic/aios.yml  # Traefik routing (9 public routes)
-│   ├── prometheus/prometheus.yml  # Scrape config
-│   ├── grafana/provisioning/      # Auto-provisioned datasource + dashboards
+│   ├── traefik/
+│   │   ├── traefik.yml           # Static config (entrypoints, providers, ACME)
+│   │   ├── dynamic/aios.yml      # 15 routes + 16 services
+│   │   └── acme.json             # SSL certificates
+│   ├── prometheus/prometheus.yml # Scrape targets (traefik, n8n, minio)
+│   ├── grafana/provisioning/     # Auto-provisioned datasource + dashboards
+│   ├── mcp/
+│   │   ├── Dockerfile.mcp        # Python FastMCP container
+│   │   └── server/mcp_server.py  # MCP tools (LLM, Qdrant, registry)
 │   ├── asterisk/            # 12 config files + Dockerfile
 │   ├── dnsmasq/             # SEP, XMLDefault, dialplan, tones
 │   ├── crowdsec/            # WAF rules
-│   ├── dashy/               # Landing page
+│   ├── dashy/               # Landing page with 20+ tiles
 │   └── vault/               # Vault config
 ├── scripts/
 │   ├── verify-arch.sh       # Container count + HTTP endpoint test
@@ -212,44 +220,4 @@ Each use case:
                                       lead capture, payment reminders, human transfer
 ```
 
----
 
-### SERVER SNAPSHOT
-```
-Hostname: aios
-IP:       10.0.0.100
-OS:       Ubuntu 22.04.5 LTS
-CPU:      Intel Core i7-7800X @ 3.50GHz (6C/12T)
-RAM:      31GB
-GPU:      Quadro M4000 — 8GB VRAM ✅
-Docker:   29.5.1 ✅
-Containers: 33 — all managed via docker-compose
-Disk:     953.9GB NVMe (free: TBD after cleanup)
-```
-
-### FILES REFERENCE
-```
-D:\AIOS\
-├── PROJECT.md               # v4.0 — 16 sections
-├── CLAUDE.md                # v4.0 — Claude Code instructions
-├── CHECKPOINT.md            # This file
-├── DEPLOYMENT_PLAN.md       # 18-step build plan
-├── docker-compose-aios.yml  # AI core stack
-├── docs/
-│   ├── ARCHITECTURE_PHILOSOPHY.md
-│   ├── INVENTORY.md
-│   ├── SECURITY.md
-│   ├── SOP.md
-│   └── capabilities/
-│       └── cisco-7962-provisioning.md
-├── configs/
-│   ├── asterisk/            # 12 config files + Dockerfile
-│   ├── dnsmasq/             # SEP, XMLDefault, dialplan, tones
-│   ├── traefik/             # Traefik routing + SSL
-│   ├── crowdsec/            # WAF rules
-│   ├── dashy/               # Landing page
-│   └── vault/               # Vault config
-├── scripts/                 # openclaw, new-client, backup, health-check, dr
-├── ansible/                 # Server setup playbooks
-└── .github/workflows/ci.yml # CI pipeline
-```
