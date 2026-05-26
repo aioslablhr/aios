@@ -35,24 +35,29 @@
 - **Dashy config rewritten**: Removed non-deployed services (Open WebUI, Flowise, Supabase), added all working routes
 - **All 12 public endpoints verified responding**: 12/12 returning 200/302/307 → 200 on redirect follow
 
-### ✅ Public Endpoints — All VERIFIED Working (May 26)
+### ✅ Public Endpoints — ALL 16 VERIFIED Working (May 26)
 
 | URL | Code | Service |
 |---|---|---|
 | `https://socialbeesai.com` | 200 | Dashy sysops hub |
-| `https://ai.socialbeesai.com` | 200 | Bifrost (AI Gateway) |
-| `https://langfuse.socialbeesai.com` | 200 | Langfuse (LLM Observability) |
-| `https://keycloak.socialbeesai.com` | 302→200 | Keycloak (Identity & SSO) |
-| `https://vault.socialbeesai.com` | 307→200 | Vault (Secrets Management) |
-| `https://n8n.socialbeesai.com` | 200 | n8n (Workflow Automation) |
-| `https://voice.socialbeesai.com` | 307→200 | Dograh (Voice Orchestration) |
-| `https://data.socialbeesai.com/minio` | 200 | MinIO Console |
-| `https://monitor.socialbeesai.com/grafana` | 302→200 | Grafana |
-| `https://monitor.socialbeesai.com/prometheus` | 301→200 | Prometheus |
-| `https://monitor.socialbeesai.com/portainer` | 307→200 | Portainer |
 | `https://admin.socialbeesai.com` | 302→200 | Traefik Dashboard |
+| `https://n8n.socialbeesai.com` | 200 | n8n workflow automation |
+| `https://ai.socialbeesai.com` | 200 | Bifrost (LiteLLM AI Gateway) |
+| `https://langfuse.socialbeesai.com` | 200 | Langfuse (LLM Observability) |
+| `https://keycloak.socialbeesai.com` | 302→200 | Keycloak Admin Console |
+| `https://vault.socialbeesai.com` | 307→200 | Vault UI (secrets mgmt) |
+| `https://voice.socialbeesai.com` | 307→200 | Dograh UI (voice orchestration) |
+| `https://data.socialbeesai.com/minio` | 200 | MinIO Console (S3 storage) |
+| `https://monitor.socialbeesai.com/grafana` | 302→200 | Grafana dashboards |
+| `https://monitor.socialbeesai.com/prometheus` | 301→200 | Prometheus query UI |
+| `https://monitor.socialbeesai.com/portainer` | 307→200 | Portainer (Docker mgmt) |
+| `https://monitor.socialbeesai.com/cadvisor` | 307→200 | cAdvisor (container metrics) |
+| `https://qdrant.socialbeesai.com/dashboard` | 200 | Qdrant vector DB dashboard |
+| `https://clickhouse.socialbeesai.com` | 200 | ClickHouse web UI |
+| `https://frigate.socialbeesai.com` | 200 | Frigate NVR (AI surveillance) |
 
-**33/33 containers running, 12/12 public endpoints verified ✅**
+**33/33 containers running, 16/16 public endpoints verified working ✅**
+**19 services in Dashy with working URLs + 14 info-only tiles = 33 total ✅**
 
 ---
 
