@@ -14,7 +14,7 @@
 | Langfuse | https://langfuse.socialbeesai.com | (create account on first visit) | — | LLM Observability |
 | Keycloak | https://keycloak.socialbeesai.com | admin | admin | SSO / Identity |
 | Vault | https://vault.socialbeesai.com | Root token in .vault-keys on server | — | Secrets management |
-| Dograh UI | https://voice.socialbeesai.com | JWT secret: aios-dograh-jwt-secret-2026 | — | Voice agent orchestration |
+| Dograh UI | https://voice.socialbeesai.com | Sign up on first visit (first user = admin) | — | Voice agent orchestration |
 | MinIO Console | https://data.socialbeesai.com/minio | admin | minioadmin | S3 storage |
 | Grafana | https://monitor.socialbeesai.com/grafana | admin | grafana_admin_2026 | Metrics dashboards |
 | Prometheus | https://monitor.socialbeesai.com/prometheus | — | — | Metrics backend |
@@ -39,8 +39,8 @@
 | MinIO API | 10.30.0.40:9000 | admin / minioadmin | S3 API endpoint |
 | Ollama API | 10.40.0.20:11434 | — | Local LLM (embeddings, vision) |
 | Bifrost API | 10.40.0.10:4000 | Key: sk-aios-master-admin-key-change-me | OpenAI-compatible endpoint |
-| Dograh API | 10.50.0.30:8080 | JWT: aios-dograh-jwt-secret-2026 | Voice backend |
-| Dograh UI | 10.50.0.31:3010 | (through JWT) | Voice dashboard |
+| Dograh API | 10.50.0.30:8080 | JWT secret for backend: aios-dograh-jwt-secret-2026 | Voice backend |
+| Dograh UI | 10.50.0.31:3010 | Sign up on first visit | Voice dashboard |
 | Chatterbox TTS | 10.40.0.30:4123 | — | GPU text-to-speech |
 | Mosquitto MQTT | 10.50.0.20:1883 | — | Event bus |
 | Asterisk ARI | 10.0.0.100:8088 | ai / 95vt3r6ke1w8lgqg6qpcui8e | PBX API |

@@ -166,7 +166,7 @@ All 33 containers represented — 16 with direct URL links, 17 as info tiles (in
 | Vault | https://vault.socialbeesai.com | root token in .vault-keys | — |
 | MinIO | https://data.socialbeesai.com/minio | admin | minioadmin |
 | Grafana | https://monitor.socialbeesai.com/grafana | admin | grafana_admin_2026 |
-| Dograh | https://voice.socialbeesai.com | JWT: aios-dograh-jwt-secret-2026 | — |
+| Dograh | https://voice.socialbeesai.com | Sign up on first visit | — |
 | Frigate | https://frigate.socialbeesai.com | — | — |
 | Full creds: `/aios/scripts/creds.sh` | | | |
 
