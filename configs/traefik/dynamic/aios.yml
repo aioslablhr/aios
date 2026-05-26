@@ -221,57 +221,14 @@ http:
 
     # Flowise — app.socialbeesai.com/flowise
     app-flowise:
-      rule: "Host(`app.socialbeesai.com`) && PathPrefix(`/flowise`)"
-      service: app-flowise
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: cloudflare
-      middlewares:
-        - crowdsec-bouncer
-
-  # ── Services ────────────────────────────────────
-
-  services:
-    landing:
       loadBalancer:
         servers:
-          - url: "http://10.60.0.70:8080"
+          - url: "http://10.20.0.20:3000"
 
-    app-n8n:
+    app-mcp:
       loadBalancer:
         servers:
-          - url: "http://10.20.0.10:5678"
-
-    ai-bifrost:
-      loadBalancer:
-        servers:
-          - url: "http://10.40.0.10:4000"
-
-    mon-langfuse:
-      loadBalancer:
-        servers:
-          - url: "http://10.60.0.10:3000"
-
-    admin-keycloak:
-      loadBalancer:
-        servers:
-          - url: "http://10.20.0.40:8080"
-
-    admin-vault:
-      loadBalancer:
-        servers:
-          - url: "http://10.0.0.100:8200"
-
-    voice-dograh:
-      loadBalancer:
-        servers:
-          - url: "http://10.50.0.31:3010"
-
-    data-minio:
-      loadBalancer:
-        servers:
-          - url: "http://10.30.0.40:9001"
+          - url: "http://10.20.0.30:8000"
 
     mon-grafana:
       loadBalancer:

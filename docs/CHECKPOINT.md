@@ -12,9 +12,12 @@
 2. **MinIO root user** — `MINIO_ROOT_USER` now uses env var `${MINIO_ROOT_USER}` instead of hardcoded `minioadmin`
 3. **Langfuse S3 creds** — now use `${MINIO_ROOT_USER}` / `${MINIO_ROOT_PASSWORD}` instead of hardcoded `minioadmin/minioadmin`
 4. **Prometheus scraping** — added n8n metrics (`10.20.0.10:5678/metrics`) + minio metrics (`10.30.0.40:9000/minio/v2/metrics/cluster`)
-5. **Flowise deployed** — added compose service at `10.20.0.20:3000` + Traefik route `app.socialbeesai.com/flowise` + Dashy tile updated (removed NOT DEPLOYED)
-6. **Traefik route for Flowise** — added router + service to dynamic config
-7. **Dashy conf.yml** — Flowise tile updated from "NOT DEPLOYED" to live
+5. **Flowise deployed** — added compose service at `10.20.0.20:3000` + Traefik route `app.socialbeesai.com/flowise` + Dashy tile updated
+6. **MCP Server deployed** — new Model Context Protocol server at `10.20.0.30:8000`, route `mcp.socialbeesai.com`. Python FastMCP server exposing tools: `llm_chat`, `qdrant_search`, `list_services`, `list_collections`
+7. **OpenRouter tile added** to Dashy (AI section)
+8. **MCP tile added** to Dashy (Automation section)
+9. **Credentials reference** created at `docs/ref/credentials.md` — all URLs, users, passwords in one table
+10. **Endpoint test** — 16/16 core endpoints responding, Flowise and MCP pending GitOps deploy
 
 ## Current State: Phase 4 — All Services Deployed & Verified (May 26, 2026)
 

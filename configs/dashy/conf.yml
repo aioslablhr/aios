@@ -35,6 +35,11 @@ sections:
         icon: fas fa-microchip
         url: http://10.40.0.20:11434
         target: newtab
+      - title: OpenRouter
+        description: Cloud LLM router — 200+ models. Key - sk-or-v1-placeholder (NEEDS REAL KEY)
+        icon: fas fa-cloud
+        url: https://openrouter.ai
+        target: newtab
       - title: Open WebUI
         description: Chat UI (NOT DEPLOYED — run docker to enable)
         icon: far fa-comment-dots
@@ -53,6 +58,11 @@ sections:
         description: Visual LLM app builder — admin / admin
         icon: fas fa-code-branch
         url: https://app.socialbeesai.com/flowise
+        target: newtab
+      - title: MCP Server
+        description: Model Context Protocol — LLM tool access. mcp.socialbeesai.com
+        icon: fas fa-plug
+        url: https://mcp.socialbeesai.com
         target: newtab
       - title: Hermes
         description: 24/7 Autonomous ops agent
