@@ -219,6 +219,17 @@ http:
       middlewares:
         - crowdsec-bouncer
 
+    # Flowise — app.socialbeesai.com/flowise
+    app-flowise:
+      rule: "Host(`app.socialbeesai.com`) && PathPrefix(`/flowise`)"
+      service: app-flowise
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+
   # ── Services ────────────────────────────────────
 
   services:
@@ -296,3 +307,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://10.40.0.50:5000"
+
+    app-flowise:
+      loadBalancer:
+        servers:
+          - url: "http://10.20.0.20:3000"

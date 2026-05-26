@@ -50,7 +50,7 @@ sections:
         url: https://n8n.socialbeesai.com
         target: newtab
       - title: Flowise
-        description: Visual LLM app builder (NOT DEPLOYED)
+        description: Visual LLM app builder — admin / admin
         icon: fas fa-code-branch
         url: https://app.socialbeesai.com/flowise
         target: newtab

@@ -1,16 +1,20 @@
 # AIOS — Session Checkpoint
 
-## This Session (May 26) — Docs & Architecture Sync
+## This Session (May 26) — Architecture Tune & Refine
+
+### Docs & Architecture Sync (previous push)
 - Updated all 5 project docs to reflect current Phase 4 state
-- CHECKPOINT.md: rewrote from stale Phase 3 (15 containers) to Phase 4 (33 containers, 16 endpoints)
-- INVENTORY.md: full inventory refresh — corrected IPs, statuses, added 12+ missing services
-- SECURITY.md: Vault corrected (unsealed), added all service credentials, redacted secrets for GitHub push protection
-- SOP.md: Dev PC is now source of truth, new sync workflow, added endpoint verification steps
-- ARCHITECTURE_PHILOSOPHY.md: Principle 6 aligned with v1 (direct OpenRouter, not Bifrost), added Principle 8 (network connectivity first)
 - .env: fixed duplicated section numbering, added MINIO_ROOT_USER
-- creds.sh: Frigate URL updated (route no longer TODO), n8n encryption key added
-- Squashed + pushed after push protection blocked Vault root token — all commits clean
-- **Last commit**: `2c5133c` — "docs: update all project docs to Phase 4 state"
+- creds.sh: Frigate URL updated, n8n encryption key added
+
+### Fixes Applied (this push)
+1. **Keycloak health check** — added `KC_HEALTH_ENABLED: "true"` + changed probe to `GET /health/ready` (v26.1)
+2. **MinIO root user** — `MINIO_ROOT_USER` now uses env var `${MINIO_ROOT_USER}` instead of hardcoded `minioadmin`
+3. **Langfuse S3 creds** — now use `${MINIO_ROOT_USER}` / `${MINIO_ROOT_PASSWORD}` instead of hardcoded `minioadmin/minioadmin`
+4. **Prometheus scraping** — added n8n metrics (`10.20.0.10:5678/metrics`) + minio metrics (`10.30.0.40:9000/minio/v2/metrics/cluster`)
+5. **Flowise deployed** — added compose service at `10.20.0.20:3000` + Traefik route `app.socialbeesai.com/flowise` + Dashy tile updated (removed NOT DEPLOYED)
+6. **Traefik route for Flowise** — added router + service to dynamic config
+7. **Dashy conf.yml** — Flowise tile updated from "NOT DEPLOYED" to live
 
 ## Current State: Phase 4 — All Services Deployed & Verified (May 26, 2026)
 

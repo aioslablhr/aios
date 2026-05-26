@@ -19,3 +19,13 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets: ["10.10.0.10:8080"]
+
+  - job_name: n8n
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["10.20.0.10:5678"]
+
+  - job_name: minio
+    metrics_path: /minio/v2/metrics/cluster
+    static_configs:
+      - targets: ["10.30.0.40:9000"]
