@@ -32,14 +32,62 @@ volumes:
   ollama-data:
   n8n-data:
   n8n-db:
+  prometheus-data:
+  portainer-data:
+  frigate-data:
+  chatterbox-data:
+  chatterbox-voices:
+  chatterbox-output:
 
 services:
+  # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
+  # DMZ LAYER ├óΓé¼ΓÇ¥ 10.10.0.0/24 (Added orphan containers)
+  # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
+
+  traefik:
+    image: traefik:v3.3
+    container_name: aios-traefik
+    hostname: traefik
+    networks:
+      aios-dmz:
+        ipv4_address: 10.10.0.10
+      aios-app:  # needs to reach n8n, keycloak, vault
+      aios-mon:  # needs to reach grafana, dashy
+      aios-data: # needs to reach minio, supabase
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /aios/configs/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - /aios/configs/traefik/dynamic:/etc/traefik/dynamic:ro
+      - /aios/configs/traefik/acme.json:/etc/traefik/acme.json
+    environment:
+      - CF_API_EMAIL=${CLOUDFLARE_EMAIL}
+      - CF_DNS_API_TOKEN=${CLOUDFLARE_API_KEY}
+    restart: unless-stopped
+
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: aios-crowdsec
+    hostname: crowdsec
+    networks:
+      aios-dmz:
+        ipv4_address: 10.10.0.11
+    volumes:
+      - crowdsec-data:/var/lib/crowdsec/data
+      - /aios/configs/crowdsec:/etc/crowdsec
+    environment:
+      COLLECTIONS: "crowdsecurity/traefik crowdsecurity/linux"
+      GID: ${CROWD_SEC_GID:-1000}
+    restart: unless-stopped
+
   # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
   # DATA LAYER ├óΓé¼ΓÇ¥ 10.30.0.0/24
   # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
 
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:0.8.0-pg16
     container_name: aios-postgres
     hostname: postgres
     networks:
@@ -92,6 +140,33 @@ services:
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ---
+  # DATA LAYER CONTINUED --- Missing orphans
+  # ---
+
+  minio:
+    image: minio/minio:latest
+    container_name: aios-minio
+    hostname: minio
+    networks:
+      aios-data:
+        ipv4_address: 10.30.0.40
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio-data:/data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /minio/health/live HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | head -1 | grep -q 200"]
+      interval: 15s
       timeout: 5s
       retries: 3
     restart: unless-stopped
@@ -160,6 +235,80 @@ services:
       LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
     restart: unless-stopped
 
+  dashy:
+    image: lissy93/dashy:latest
+    container_name: aios-dashy
+    hostname: dashy
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.70
+    volumes:
+      - /aios/configs/dashy/conf.yml:/app/user-data/conf.yml:ro
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/80 && echo -e 'GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | head -1 | grep -q 200"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: aios-prometheus
+    hostname: prometheus
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.20
+    volumes:
+      - prometheus-data:/prometheus
+      - /aios/configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:latest
+    container_name: aios-loki
+    hostname: loki
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.40
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: aios-grafana
+    hostname: grafana
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.30
+      aios-data:
+    depends_on:
+      - prometheus
+      - loki
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    restart: unless-stopped
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: aios-portainer
+    hostname: portainer
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.50
+      aios-dmz:
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer-data:/data
+    command: --http-enabled
+    restart: unless-stopped
+
   # ---
   # AI LAYER --- 10.40.0.0/24 (Inference + Gateway)
   # ---
@@ -221,9 +370,72 @@ services:
 
 
 
+  # ---
+  # VISION LAYER --- Frigate NVR (10.40.0.x)
+  # ---
+
+  frigate:
+    image: ghcr.io/blakeblackshear/frigate:stable
+    container_name: aios-frigate
+    hostname: frigate
+    networks:
+      aios-ai:
+        ipv4_address: 10.40.0.50
+    ports:
+      - "5000:5000"
+    volumes:
+      - /aios/configs/frigate/config.yml:/config/config.yml:ro
+      - /etc/localtime:/etc/localtime:ro
+      - frigate-data:/media/frigate
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      FRIGATE_RTSP_PASSWORD: ${FRIGATE_RTSP_PASSWORD}
+    cap_add:
+      - CAP_PERFMON
+    restart: unless-stopped
+
   # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
   # SECURITY LAYER ├óΓé¼ΓÇ¥ 10.20.0.0/24
   # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    container_name: aios-keycloak
+    hostname: keycloak
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.40
+      aios-data:
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KC_HOSTNAME: keycloak.socialbeesai.com
+      KC_HOSTNAME_PORT: 443
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY: edge
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://10.30.0.10:5432/keycloak
+      KC_DB_USERNAME: aios
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    command: start-dev
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | head -1 | grep -q 200"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
 
   vault:
     image: hashicorp/vault:latest
@@ -534,4 +746,119 @@ services:
     volumes:
       - /tftp:/tftp
       - /aios/configs/dnsmasq/dnsmasq-tftp.conf:/etc/dnsmasq.conf
+    restart: unless-stopped
+
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: aios-mosquitto
+    hostname: mosquitto
+    networks:
+      aios-voice:
+        ipv4_address: 10.50.0.20
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - /aios/configs/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+    restart: unless-stopped
+
+  # ---
+  # VOICE LAYER CONTINUED --- Dograh (Voice Orchestration)
+  # ---
+
+  dograh-db-init:
+    image: postgres:16-alpine
+    container_name: aios-dograh-db-init
+    networks:
+      aios-data:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    command: >
+      sh -c "
+        psql -h 10.30.0.10 -U aios -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname = 'dograh'\" | grep -q 1 ||
+        psql -h 10.30.0.10 -U aios -d postgres -c 'CREATE DATABASE dograh'
+      "
+    restart: on-failure:3
+
+  dograh-api:
+    image: dograhai/dograh-api:latest
+    container_name: aios-dograh-api
+    hostname: dograh-api
+    networks:
+      aios-voice:
+        ipv4_address: 10.50.0.30
+      aios-data:
+      aios-ai:
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+      dograh-db-init:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+asyncpg://aios:${POSTGRES_PASSWORD}@10.30.0.10:5432/dograh
+      REDIS_URL: redis://10.30.0.30:6379/0
+      MINIO_ENDPOINT: 10.30.0.40:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      OSS_JWT_SECRET: ${DOGRAH_JWT_SECRET}
+      BACKEND_API_ENDPOINT: http://10.50.0.30:8080
+      ENABLE_TELEMETRY: "false"
+      LOG_LEVEL: info
+    restart: unless-stopped
+
+  dograh-ui:
+    image: dograhai/dograh-ui:latest
+    container_name: aios-dograh-ui
+    hostname: dograh-ui
+    networks:
+      aios-voice:
+        ipv4_address: 10.50.0.31
+    depends_on:
+      - dograh-api
+    environment:
+      BACKEND_URL: http://10.50.0.30:8080
+      NODE_ENV: oss
+      ENABLE_TELEMETRY: "false"
+    ports:
+      - "3010:3010"
+    restart: unless-stopped
+
+  # ---
+  # AI LAYER CONTINUED --- Chatterbox TTS (GPU)
+  # ---
+
+  chatterbox:
+    image: travisvn/chatterbox-tts-api:latest
+    container_name: aios-chatterbox
+    hostname: chatterbox
+    networks:
+      aios-ai:
+        ipv4_address: 10.40.0.30
+      aios-voice:
+    ports:
+      - "4123:4123"
+    volumes:
+      - chatterbox-data:/cache
+      - chatterbox-voices:/app/voices
+      - chatterbox-output:/app/outputs
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      PORT: 4123
+      USE_MULTILINGUAL_MODEL: "true"
+      EXAGGERATION: 0.5
     restart: unless-stopped

@@ -57,6 +57,16 @@ sections:
         icon: fas fa-hdd
         url: https://data.socialbeesai.com/minio
         target: newtab
+      - title: Qdrant
+        description: Vector database
+        icon: fas fa-vector-square
+        url: http://10.30.0.20:6333/dashboard
+        target: newtab
+      - title: Bifrost
+        description: AI Gateway (LiteLLM)
+        icon: fas fa-bolt
+        url: http://10.40.0.10:4000
+        target: newtab
 
   - name: Monitoring
     icon: fas fa-heartbeat
@@ -77,6 +87,25 @@ sections:
         url: https://monitor.socialbeesai.com/portainer
         target: newtab
 
+  - name: Voice & AI
+    icon: fas fa-phone-alt
+    items:
+      - title: Dograh UI
+        description: Voice orchestration
+        icon: fas fa-robot
+        url: http://10.50.0.31:3010
+        target: newtab
+      - title: Chatterbox
+        description: TTS API
+        icon: fas fa-volume-up
+        url: http://10.40.0.30:4123
+        target: newtab
+      - title: Mosquitto
+        description: MQTT broker
+        icon: fas fa-comments
+        url: http://10.50.0.20:1883
+        target: newtab
+
   - name: Admin
     icon: fas fa-shield-alt
     items:
@@ -94,4 +123,14 @@ sections:
         description: Secrets management
         icon: fas fa-key
         url: https://admin.socialbeesai.com/vault
+        target: newtab
+      - title: Postgres
+        description: Primary database
+        icon: fas fa-database
+        url: http://10.30.0.10:5432
+        target: newtab
+      - title: Redis
+        description: Cache & Queue
+        icon: fas fa-memory
+        url: redis://10.30.0.30:6379
         target: newtab

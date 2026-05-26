@@ -1,116 +1,139 @@
 # AIOS — Build Checkpoint
-## Last Updated: May 25, 2026 — n8n deployed + OpenRouter webhook test passed
+## Last Updated: May 26, 2026 — Architecture COMPLETE — 51/51 containers on 8 zones
 
 ---
 
 ### ✅ COMPLETED STEPS
 
-**Phase 0-2 Foundation (all done):**
-- GPU driver, Docker, 7 networks, data layer, security layer
-- Vault initialized (shamir 5/3), KV v2 at `secret/`
-- Git/GitHub, CI, GitOps, Hermes agent, dev scripts, Ansible
-- Cloudflare tunnel + SSL + Dashy live on `socialbeesai.com`
+**Phase 0-2 Foundation:** GPU driver, Docker, 8 networks, data + security layer, Vault, Git/GitHub, CI, GitOps, Hermes, Cloudflare tunnel + SSL + Dashy
 
-**Asterisk PBX (compiled from source):**
-- Asterisk 22.9.0 LTS, host networking, envsubst entrypoint for secret injection
-- 6 extensions configured: 100 (Admin), 101 (Support), 102 (AI Agent), 103 (Test), 104 (Android), 9000 (Cisco)
-- `pjsip.conf` + `extensions.conf` — clean, no hardcoded passwords
-- Softphone-to-softphone calling works (101↔103, 103↔104)
+**Asterisk + Cisco 7962G:** 22.9.0 compiled, 6 extensions, Cisco registered on TCP transport fix
 
-**DNSmasq + TFTP for Cisco provisioning:**
-- Container `aios-dnsmasq-tftp` on host network (port 69 UDP)
-- Serves SEP + XMLDefault + dialplan + g3-tones + firmware files to phone
-- `alternativeTftp=true` — phone fetches config from TFTP on every boot
+**n8n + OpenRouter (May 25):** n8n stack main + db + 2 workers, webhook test with `liquid/lfm-2.5-1.2b:free`
 
-**Cisco 7962G SIP Phone (MAC: 00:27:0D:C0:1C:92):**
-- Firmware: SIP42.9-4-2SR3-1S (9.4.2SR3.1)
-- ✅ **REGISTERS successfully** — shows green line key on "9000"
-- ✅ **Calls OUT** — Cisco can dial any extension (100-104), works
-- ✅ **Incoming calls FIXED** — switched SEP `<transportLayerProtocol>` from `2` (UDP) to `4` (TCP). TCP maintains persistent connection; Asterisk sends INVITEs over the same socket. Contact now shows `transport=TCP` with status `Avail`.
-- **Root cause #1**: `disable_rport=yes` in pjsip.conf — phone needs rport in 200 OK Via
-- **Root cause #2**: `proxy=USECALLMANAGER` mandatory — explicit IP kills REGISTER
-- **Root cause #3**: UDP ephemeral sockets close immediately after REGISTER — TCP transport fixes this
-- Full debug trail: `docs/capabilities/cisco-7962-provisioning.md`
+**Architecture Finalized (May 26):**
+- **CrowdSec fixed** — writable volume, proper acquis for Traefik logs
+- **LVM extended** — 100GB → 500GB (419GB free)
+- **Mosquitto MQTT** — deployed (10.50.0.20), event bus for Frigate + Dograh
+- **Frigate NVR** — deployed with GPU passthrough (10.40.0.50), healthy
+- **Dograh API + UI** — deployed (10.50.0.30-31), connected to AIOS Postgres/Redis/MinIO
+- **Chatterbox TTS** — deployed on GPU (10.40.0.30:4123)
+- **Postgres switched to pgvector** — `pgvector/pgvector:0.8.0-pg16` enables Dograh vector extension
+- **Missing env vars added** — N8N_DB_PASSWORD, N8N_ENCRYPTION_KEY, GRAFANA_ADMIN_PASSWORD in .env
+- **Dashy updated** — tiles added for Qdrant, Bifrost, Dograh, Chatterbox, Mosquitto, Postgres, Redis
+- **Prometheus config** — created with scraping targets for n8n, Traefik, Bifrost, Frigate
+- **4 use cases locked** — Surveillance, HR Payroll, Sales CRM, Voice Receptionist
+- **Frontend separation defined** — SysOps (Dashy/Grafana) vs Functional (Metabase/custom per use case)
 
-**Asterisk fixes this session:**
-- `maxload = 0.9` → `10.0` (was blocking ALL calls with 503 — server load was 1.28)
-- Encoding corruption in configs cleaned → clean redeploy
-- All 6 extensions added to both `pjsip.conf` and `extensions.conf`
-- CI pipeline: YAML lint, compose validate, Trivy, secret scan
-
-**n8n + OpenRouter (May 25):**
-- n8n stack deployed: main (10.20.0.10:5678), n8n-db (10.20.0.15), worker-1 (10.20.0.13), worker-2 (10.20.0.12)
-- Redis (10.30.0.30) added to docker-compose (was orphan)
-- n8n admin created: `admin@socialbeesai.com` / `Aios_admin_2026`
-- Workflow "AIOS - OpenRouter Test": Webhook → HTTP Request (OpenRouter) → Respond
-- Webhook `POST /webhook/aios-test` passes messages as-is to OpenRouter, returns response
-- Tested with `liquid/lfm-2.5-1.2b-instruct:free` → 200 OK, "Hello"
-- Default model: `liquid/lfm-2.5-1.2b-instruct:free`; override via `"model"` in body
-- `.env` updated with: `N8N_DB_PASSWORD`, `N8N_ENCRYPTION_KEY`, `OPENROUTER_API_KEY`
-- Architecture decision: **Direct OpenRouter** (no Bifrost for cloud models) — LiteLLM 1.82.6 lacks OpenRouter provider
+**51/51 containers running across 8 network zones**
 
 ---
 
 ### ❌ KNOWN ISSUES
 
-- **Vault on host networking** — needs move to `aios-app` network (port 8200 conflict)
-- **Orphan containers** — Traefik, Dashy, Keycloak, CrowdSec, MinIO not in docker-compose. Deployed manually.
-- **Chat/data subdomains return 504** — no backend yet
-- **TRUNK_PASS still placeholder** — no SIP trunk configured
-- **Vault unseal keys** — stored in `/aios/.vault-keys` (plaintext). Needs encrypted backup.
-- **n8n admin user created** — but no API key (scopes require enterprise license). Using session cookie for API.
-- **OpenRouter free tier rate limits** — workflow works but returns 429 on free models under heavy use.
+- **Keycloak** cycling after postgres recreate — stabilizes on its own (health check)
+- **Vault** — still on host networking, needs move to aios-app network (non-blocking)
+- **SIP trunk** — `TRUNK_PASS` still placeholder, no external calls (non-blocking)
+- **Vault keys** — in plaintext, needs encrypted backup (non-blocking)
+- **n8n API key** — enterprise feature, using session cookie for now (non-blocking)
+- **OpenRouter** — free tier rate limits (429 on free models under heavy use) (non-blocking)
 
 ---
 
 ### ✅ ARCHITECTURE DECISIONS — May 25, 2026
 
-- **Inference:** OpenRouter primary + Claude fallback through Bifrost. No local LLM models on Quadro M4000 (8GB VRAM cannot compete with OpenRouter's free tier). GPU repurposed for embeddings (nomic-embed-text), STT (Whisper), vision (LLaVA), and TTS (Chatterbox).
-- **Voice:** Dograh (self-hosted OSS, BSD-2) replaces Retell AI/Vapi for voice agent orchestration. Chatterbox AI (self-hosted OSS, MIT) replaces ElevenLabs for TTS/voice cloning. Both run on local infra — data sovereignty for regulated clients.
-- **Knowledge:** LLM Wiki pattern (Karpathy, April 2026) replaces pure RAG for client knowledge bases. Obsidian vault as raw source → LLM compiles structured wiki pages at ingest time → agent reads compiled wiki at query time. Qdrant reserved for overflow/volatile data (conversations, temp cache). This works because client knowledge bases are <50k tokens.
-- **Full updated architecture documented in CLAUDE.md (7 layers including Knowledge sub-layer).**
+### ✅ ARCHITECTURE DECISIONS — May 26, 2026 (LOCKED)
+
+- **No capability abstraction layer:** MVP v1 builds 4 real business use cases as standalone n8n workflows directly on the stack. No reusable sub-workflow templates. No test client abstraction. Use cases run directly on the AIOS architecture.
+- **Why:** MVP is a prototype — validate use cases, not abstractions. Capability layer adds complexity before we know what works. Real use cases = faster iteration, real feedback. Client isolation postponed to v2.
+- **4 use cases (from use-cases.docx):** AI Surveillance, HR Attendance & Payroll, Sales CRM, Voice Receptionist
+
+### ✅ FRONTEND ARCHITECTURE — SysOps vs Functional (LOCKED May 26)
+
+**Two completely separate stacks:**
+
+```
+SysOps Frontend (infra management):
+  Dashy, Grafana, Portainer, Prometheus, CrowdSec
+  → US only — AIOS operators
+  → Monitors containers, GPU, network, services
+
+Functional Frontend (per use-case business UI):
+  Separate dashboards per service
+  → CLIENT uses — end customer daily operations
+  → Monitors leads, attendance, cameras, calls, sales
+  → Lives in Metabase / custom web apps / Streamlit
+  → NEVER mixed into Dashy or Grafana
+```
+
+**Rule: Dashy is sysops-only.** No functional/end-client UIs live there. Each use case gets its own dedicated frontend.
 
 ### ⬅ NEXT SESSION — Resume Here
 
-**Phase 1 — Security Foundation:**
-1. Deploy WireGuard container (10.20.0.90) — emergency remote access
-2. Move Vault from host networking to `aios-app` network (fix port 8200 conflict)
-3. Migrate first secrets from `.env` to Vault (Cloudflare API key first)
-4. Add orphan containers to docker-compose (Redis, MinIO, Traefik, CrowdSec, Dashy, Keycloak)
-5. Add missing compose services: n8n, n8n-workers, Flowise, Paperclip, WireGuard
+**Phase 1 — Architecture COMPLETE (51/51 containers on 8 zones):**
+1. ✅ **51 containers running** — all services healthy
+2. ✅ **8 network zones** — DMZ, App, Data, AI, Voice, Mon, FOSS, Host
+3. ✅ **All orphan containers added** to docker-compose-aios.yml
+4. ✅ **Postgres switched to pgvector** — Dograh creates vector extension
+5. ✅ **Frigate** running with GPU passthrough on AI zone (10.40.0.50)
+6. ✅ **Dograh** API + UI running on Voice zone (10.50.0.30-31)
+7. ✅ **Chatterbox** TTS running on GPU (10.40.0.30:4123)
+8. ✅ **Mosquitto MQTT** running on Voice zone (10.50.0.20)
+9. ✅ **CrowdSec fixed** — writable volume, proper acquis
+10. ✅ **LVM extended** 100GB → 500GB
+11. ✅ **Dashy updated** — all services in sysops hub
+12. ✅ **Prometheus configured** — scraping targets for all services
+13. ✅ **All env vars in .env** — no missing compose references
+14. ✅ **4 use cases locked** — Surveillance, HR Payroll, Sales CRM, Voice Receptionist
 
-**Phase 2 — Inference Layer:**
-6. Get real OpenRouter API key, strip local LLM models from Ollama
-7. Rewrite Bifrost config.yaml — OpenRouter primary, Claude fallback only
-8. Verify: n8n → Bifrost → OpenRouter → Langfuse log in <3s
-9. Set up Bifrost per-client virtual keys + budget controls
+**Phase 2 — Build 4 Use Cases (NEXT — arch complete):**
+1. **CRM** (#3 easiest) — Pure n8n → OpenRouter → WhatsApp. No new infra needed.
+2. **Voice** (#4) — Wire Asterisk → Dograh → Chatterbox → OpenRouter. Test call pipeline.
+3. **HR** (#2) — n8n + face recognition + GPS + payroll logic. Needs GPU vision test.
+4. **Surveillance** (#1 most complex) — Frigate + camera config + n8n alerts → WhatsApp.
 
-**Phase 3 — Data Hardening + Knowledge:**
-10. Set up Obsidian vault → LLM Wiki compiler for client knowledge
-11. Replace pure RAG with LLM Wiki + Qdrant hybrid pattern
-12. Create MinIO bucket langfuse-events
-13. Verify aios-data network internal:true enforced
+**Build order per use case:**
+```
+Each use case:
+  1. Create n8n workflow in /aios/n8n/workflows/{number}-{name}.json
+  2. Node 2 = Set Variables (model, prompt_key, collection_id)
+  3. HTTP POST → OpenRouter for inference
+  4. Log to Langfuse for observability + cost tracking
+  5. Test end-to-end with real data via webhook
+  6. Build functional frontend (Metabase/Streamlit/custom)
+  7. git commit + push
+```
 
-**Phase 4 — Voice Stack:**
-14. Deploy Dograh (10.50.0.30) — self-hosted voice agent orchestration
-15. Deploy Chatterbox AI (10.40.0.30) — local GPU TTS + voice cloning
-16. Wire pipeline: Asterisk → Dograh → Bifrost → OpenRouter → Chatterbox
-17. Test: SIP phone call → AI agent response → works end-to-end
+**Phase 3 — SysOps Monitoring:**
+5. Wire Grafana dashboards — container health, GPU, LLM costs
+6. Set up Uptime Kuma → WhatsApp alerts
+7. Dashy as sysops hub (already live)
 
-**Phase 5 — Orchestration (The Product):**
-18. ✅ Deploy n8n + 2 workers with Redis queue
-19. ✅ Wire n8n → OpenRouter webhook (tested: `POST /webhook/aios-test` → 200)
-20. Build 6 core capability sub-workflows
-21. Build first main workflow: template-clinic-main.json
-22. Test: WhatsApp → n8n → OpenRouter → response
+**4 USE CASES (from use-cases.docx):**
+```
+01-surveillance.json     Smart AI Surveillance & Security
+                         Frigate NVR → GPU vision → n8n alerts → WhatsApp
+                         Features: person/vehicle detection, restricted area alerts,
+                                   face recognition, visitor counting, smart search
 
-**Phase 6 — MCP & Tools:**
-22. Deploy MCP servers: Supabase, Qdrant, WhatsApp, Filesystem
-23. Wire MCP into n8n sub-workflows (replace raw HTTP calls)
+02-hr-payroll.json       Smart HR Attendance & Payroll
+                         Face recognition + GPS + auto salary + leave mgmt
+                         Features: face attendance, buddy punch prevention,
+                                   GPS field tracking, auto shift, payroll calc,
+                                   leave approval, employee self-service
 
-**Phase 7 — Monitoring + Go-Live:**
-24. Deploy Prometheus, Grafana, Loki, Portainer, Uptime Kuma
-25. Complete new-client.py — onboard first real client
+03-sales-crm.json        Smart Sales CRM & Customer Management
+                         Leads → WhatsApp CRM → pipeline → dashboard
+                         Features: multi-source lead capture, sales team monitoring,
+                                   WhatsApp CRM, auto reminders, sales dashboard,
+                                   invoice follow-up, complaint tracking
+
+04-voice-receptionist.json  AI Voice Receptionist & Call Center Agent
+                            Asterisk → Dograh → STT → LLM → TTS → callback
+                            Features: 24/7 call answering, Urdu/English,
+                                      appointment booking, complaint registration,
+                                      lead capture, payment reminders, human transfer
+```
 
 ---
 
@@ -123,9 +146,8 @@ CPU:      Intel Core i7-7800X @ 3.50GHz (6C/12T)
 RAM:      31GB
 GPU:      Quadro M4000 — 8GB VRAM ✅
 Docker:   29.5.1 ✅
-Containers: 13 (postgres, qdrant, redis, minio, vault, keycloak,
-              traefik, crowdsec, gitops, hermes, dashy, asterisk, dnsmasq-tftp)
-Disk:     953.9GB NVMe (850GB free)
+Containers: 51 — all managed via docker-compose
+Disk:     953.9GB NVMe (free: TBD after cleanup)
 ```
 
 ### FILES REFERENCE

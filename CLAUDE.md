@@ -83,11 +83,8 @@ DEV PC — 10.0.0.13
 │   ├── /bifrost/
 │   └── /grafana/
 ├── /n8n/
-│   ├── /workflow-templates/
-│   │   ├── /capabilities/           # 20 cap-*.json sub-workflows
-│   │   └── /use-case-templates/     # 12 template-*-main.json
-│   ├── /clients/                    # Deployed per-client workflows
-│   └── /internal/                   # Internal lab workflows
+│   ├── /workflows/                  # 4 standalone use-case workflows
+│   └── /internal/                   # Lab/internal workflows
 ├── /langfuse/
 │   └── /prompts/
 ├── /clients/
@@ -263,66 +260,81 @@ This is how per-client billing is calculated.
 
 ---
 
-## MULTI-TENANT ISOLATION — HOW IT WORKS
+## MULTI-TENANT ISOLATION — v2 (NOT IN MVP v1)
 
-Each SMB client is completely isolated across all layers:
+MVP v1 runs direct use cases on the stack — no client isolation layer.
+Multi-tenant model is postponed to v2 when we onboard actual clients.
 
 ```
-Keycloak:  One Organization per client (Keycloak 26 Organizations feature)
-Qdrant:    One collection per client — named {client_id}-knowledge
-Supabase:  One schema per client — named {client_id} with RLS enforced
-Bifrost:   One virtual key per client — with monthly budget limit
-n8n:       One main workflow per client — tagged with client_id
-Langfuse:  One project per client — for cost tracking + prompts
-Paperclip: One company per client — agents, budgets, org chart
+Future v2 isolation per client:
+  Keycloak:  One Organization per client (Keycloak 26 Organizations feature)
+  Qdrant:    One collection per client — named {client_id}-knowledge
+  Supabase:  One schema per client — named {client_id} with RLS enforced
+  Bifrost:   One virtual key per client — with monthly budget limit
+  n8n:       One main workflow per client — tagged with client_id
+  Langfuse:  One project per client — for cost tracking + prompts
+  Paperclip: One company per client — agents, budgets, org chart
 ```
 
 ---
 
-## CAPABILITY ARCHITECTURE — CRITICAL UNDERSTANDING
+## MVP v1 ARCHITECTURE — DIRECT USE-CASES (LOCKED May 26)
 
+### Decision: No capability abstraction layer
+Capabilities (reusable n8n sub-workflows) are REMOVED from MVP v1.
+Instead, build 4-5 real business use cases as standalone n8n workflows
+running directly on the AIOS stack. No test client layer.
+
+### Why
+- MVP v1 is a prototype — we validate use cases, not abstractions
+- Capability layer adds complexity before we know what works
+- Real use cases on real stack = faster iteration, real feedback
+- Client isolation model can be added in v2 when we onboard actual clients
+
+### Structure
 ```
-CAPABILITY  = Reusable n8n sub-workflow (no client hardcoding)
-              Location: /aios/n8n/workflow-templates/capabilities/
-              Named: cap-[name].json
-              All client data = variables passed from main workflow
-
-MAIN WORKFLOW = Client-specific orchestrator
-              Location: /aios/n8n/workflow-templates/use-case-templates/
-              Named: template-[industry]-main.json
-              Cloned per client to: /aios/n8n/clients/[client-id]/
-
-AGENT       = Paperclip company entry + Langfuse prompt + n8n workflow
-              Paperclip manages goals, budget, heartbeat
-              Langfuse stores versioned system prompt
-              n8n executes the actual workflow logic
-```
-
-### Adding a New Capability Sub-Workflow
-
-```
-1. Build prototype in Flowise or Dify (rapid visual)
-2. Export logic to n8n sub-workflow JSON
-3. Replace ALL client-specific values with variables
-4. Test with at least 2 different dummy client configs
-5. Validate in Langfuse — check prompt quality + cost
-6. Save to: /aios/n8n/workflow-templates/capabilities/cap-[name].json
-7. Write doc: /aios/docs/capabilities/cap-[name].md
-8. Update new-client.py to support this capability
-9. git commit + push → GitOps deploys to n8n
+/aios/n8n/workflows/
+├── 01-surveillance.json           # Smart AI Surveillance & Security
+│                                  #   Frigate NVR → GPU vision → n8n alerts → WhatsApp
+├── 02-hr-payroll.json             # Smart HR Attendance & Payroll
+│                                  #   Face recognition + GPS + auto salary + leave mgmt
+├── 03-sales-crm.json              # Smart Sales CRM & Customer Management
+│                                  #   Leads → WhatsApp CRM → pipeline → dashboard
+├── 04-voice-receptionist.json     # AI Voice Receptionist & Call Center Agent
+│                                  #   Asterisk → Dograh → STT → LLM → TTS → callback
+└── internal/                      # Lab/internal workflows
 ```
 
-### Adding a New Use Case (Main Workflow)
+### Frontend Architecture — Two Separate Stacks
 
 ```
-1. Identify which capabilities it chains
-2. Build main workflow in n8n — chain capability sub-workflows
-3. All client variables defined in Node 2 (Set Variables)
-4. Intent routing (IF/SWITCH) routes to correct capabilities
-5. Final nodes: Supabase log + Langfuse log
-6. Test with dummy client data end-to-end
-7. Save to: /aios/n8n/workflow-templates/use-case-templates/
-8. git commit + push
+SysOps Frontend (infrastructure — US only):
+  Dashy, Grafana, Portainer, Prometheus, CrowdSec, Langfuse
+  → AIOS operators manage containers, GPU, network, services
+  → NEVER expose client UIs here
+
+Functional Frontend (business — per use case, for END CLIENTS):
+  Each use case has its own dashboard + control panel
+  → Surveillance: camera grid, alerts timeline, search, visitor counts
+  → HR: attendance reports, payroll sheets, leave approvals
+  → CRM: lead pipeline, sales performance, invoice follow-ups
+  → Voice: call logs, lead captures, appointment calendar
+  → Built in Metabase / Streamlit / custom web app per use case
+  → NEVER mixed into Dashy or Grafana
+```
+
+### Adding a New Use Case (Direct Workflow)
+
+```
+1. Build the workflow in n8n — self-contained, all logic in one workflow
+2. Node 2 = Set Variables: model, prompt_key, collection_id, etc.
+3. HTTP POST node → OpenRouter for LLM calls
+4. Log every call to Langfuse (observability + cost tracking)
+5. Read/write PostgreSQL + Qdrant directly from workflow
+6. Test end-to-end with real data
+7. Save to: /aios/n8n/workflows/[number]-[name].json
+8. Build functional frontend for end-client dashboard
+9. git commit + push
 ```
 
 ### Scripts Reference
@@ -491,7 +503,7 @@ Local models down/busy        OpenRouter → Claude (failover) Multi-tier auto-f
 
 - Founder has 20+ years IT infra experience — do not over-explain basics
 - Target market: Pakistan SMBs → UAE → USA/Canada
-- Phase 1: 45-day lab setup + 5 prototype use cases
+- Phase 1: 45-day lab setup + 4 prototype use cases
 - Phase 2: First clients Month 3, break-even Month 7
 - Phase 3: 60 clients, PKR 940K MRR by Month 12
 - This is production from Day 1 — not a prototype that gets rebuilt

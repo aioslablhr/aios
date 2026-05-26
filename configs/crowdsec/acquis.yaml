@@ -1,0 +1,13 @@
+# Traefik logs
+source: docker
+container_name:
+ - aios-traefik
+labels:
+  type: traefik
+
+# Linux system logs
+source: journalctl
+journalctl_filter:
+ - "_SYSTEMD_UNIT=sshd.service"
+labels:
+  type: syslog

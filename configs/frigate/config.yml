@@ -1,0 +1,53 @@
+mqtt:
+  enabled: true
+  host: 10.50.0.20
+  port: 1883
+  topic_prefix: frigate
+  client_id: frigate
+
+cameras:
+  # Template — add cameras here:
+  # office:
+  #   ffmpeg:
+  #     inputs:
+  #       - path: rtsp://user:pass@camera-ip:554/stream
+  #         roles:
+  #           - detect
+  #           - record
+  #   detect:
+  #     width: 1280
+  #     height: 720
+  #     fps: 5
+
+detectors:
+  cpu1:
+    type: cpu
+
+ffmpeg:
+  hwaccel_args: preset-nvidia-h264
+
+record:
+  enabled: true
+  retain:
+    days: 7
+    mode: motion
+
+snapshots:
+  enabled: true
+  timestamp: true
+  bounding_box: true
+  retain:
+    default: 7
+
+objects:
+  track:
+    - person
+    - car
+    - truck
+    - motorcycle
+    - bicycle
+    - dog
+    - cat
+
+genai:
+  enabled: false
