@@ -247,7 +247,7 @@ http:
     landing:
       loadBalancer:
         servers:
-          - url: "http://10.60.0.70:80"
+          - url: "http://10.60.0.70:8080"
 
     # n8n
     app-n8n:
@@ -277,7 +277,7 @@ http:
     admin-vault:
       loadBalancer:
         servers:
-          - url: "http://10.20.0.50:8200"
+          - url: "http://10.0.0.100:8200"
 
     # Dograh
     voice-dograh:
