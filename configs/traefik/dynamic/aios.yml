@@ -131,7 +131,7 @@ http:
 
     # Dograh API — voice.socialbeesai.com/api
     voice-dograh-api:
-      rule: "Host(`voice.socialbeesai.com`) && PathPrefix(`/api`)"
+      rule: "Host(`voice.socialbeesai.com`) && PathPrefix(`/api/v1`)"
       service: voice-dograh-api
       entryPoints:
         - websecure
