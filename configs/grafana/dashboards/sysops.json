@@ -1,0 +1,171 @@
+{
+  "title": "AIOS SysOps — System Overview",
+  "uid": "aios-sysops",
+  "schemaVersion": 39,
+  "version": 1,
+  "timezone": "utc",
+  "editable": false,
+  "tags": ["aios", "sysops"],
+  "panels": [
+    {
+      "title": "Host CPU",
+      "type": "gauge",
+      "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+      "targets": [{
+        "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+        "legendFormat": "CPU"
+      }],
+      "options": {
+        "reduceOptions": {"calcs": ["mean"]},
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "thresholds": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]
+    },
+    {
+      "title": "Host RAM",
+      "type": "gauge",
+      "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
+      "targets": [{
+        "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+        "legendFormat": "RAM"
+      }],
+      "options": {
+        "reduceOptions": {"calcs": ["mean"]},
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "thresholds": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]
+    },
+    {
+      "title": "Host Disk",
+      "type": "gauge",
+      "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+      "targets": [{
+        "expr": "(1 - (node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"})) * 100",
+        "legendFormat": "Disk"
+      }],
+      "options": {
+        "reduceOptions": {"calcs": ["mean"]},
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "thresholds": [{"color": "green", "value": null}, {"color": "orange", "value": 80}, {"color": "red", "value": 95}]
+    },
+    {
+      "title": "Uptime",
+      "type": "stat",
+      "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+      "targets": [{
+        "expr": "node_time_seconds - node_boot_time_seconds",
+        "legendFormat": "Uptime"
+      }],
+      "options": {
+        "reduceOptions": {"calcs": ["mean"]},
+        "orientation": "auto",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0
+        }
+      }
+    },
+    {
+      "title": "Containers Running",
+      "type": "stat",
+      "gridPos": {"h": 8, "w": 6, "x": 0, "y": 8},
+      "targets": [{
+        "expr": "count(container_last_seen{name=~\".+\"})",
+        "legendFormat": "Containers"
+      }],
+      "options": {
+        "reduceOptions": {"calcs": ["last"]},
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "title": "Container CPU by Zone",
+      "type": "bargauge",
+      "gridPos": {"h": 8, "w": 9, "x": 6, "y": 8},
+      "targets": [{
+        "expr": "sum(rate(container_cpu_usage_seconds_total{name=~\"aios-.*\"}[5m])) by (name) * 100",
+        "legendFormat": "{{name}}"
+      }],
+      "options": {
+        "orientation": "horizontal",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "thresholds": [{"color": "green", "value": null}, {"color": "orange", "value": 50}, {"color": "red", "value": 80}]
+    },
+    {
+      "title": "Container Memory by Zone",
+      "type": "bargauge",
+      "gridPos": {"h": 8, "w": 9, "x": 15, "y": 8},
+      "targets": [{
+        "expr": "sum(container_memory_working_set_bytes{name=~\"aios-.*\"}) by (name) / 1048576",
+        "legendFormat": "{{name}}"
+      }],
+      "options": {
+        "orientation": "horizontal",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "MB"
+        }
+      },
+      "thresholds": [{"color": "green", "value": null}, {"color": "orange", "value": 500}, {"color": "red", "value": 1000}]
+    },
+    {
+      "title": "DMZ Zone (10.10.0.0/24)",
+      "type": "table",
+      "gridPos": {"h": 8, "w": 6, "x": 0, "y": 16},
+      "targets": [{
+        "expr": "count(container_last_seen{name=~\"aios-(traefik|crowdsec).*\"})",
+        "legendFormat": "Containers"
+      }],
+      "description": "Traefik, CrowdSec"
+    },
+    {
+      "title": "App Zone (10.20.0.0/24)",
+      "type": "table",
+      "gridPos": {"h": 8, "w": 6, "x": 6, "y": 16},
+      "targets": [{
+        "expr": "count(container_last_seen{name=~\"aios-(n8n|keycloak|gitops|hermes).*\"})",
+        "legendFormat": "Containers"
+      }],
+      "description": "n8n, Keycloak, GitOps, Hermes"
+    },
+    {
+      "title": "Data Zone (10.30.0.0/24)",
+      "type": "table",
+      "gridPos": {"h": 8, "w": 6, "x": 12, "y": 16},
+      "targets": [{
+        "expr": "count(container_last_seen{name=~\"aios-(postgres|qdrant|redis|minio|clickhouse).*\"})",
+        "legendFormat": "Containers"
+      }],
+      "description": "Postgres, Qdrant, Redis, MinIO, ClickHouse"
+    },
+    {
+      "title": "AI Zone (10.40.0.0/24)",
+      "type": "table",
+      "gridPos": {"h": 8, "w": 6, "x": 18, "y": 16},
+      "targets": [{
+        "expr": "count(container_last_seen{name=~\"aios-(bifrost|ollama|frigate|chatterbox).*\"})",
+        "legendFormat": "Containers"
+      }],
+      "description": "Bifrost, Ollama, Frigate, Chatterbox"
+    }
+  ]
+}

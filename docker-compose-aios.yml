@@ -286,6 +286,9 @@ services:
       aios-mon:
         ipv4_address: 10.60.0.30
       aios-data:
+    volumes:
+      - /aios/configs/grafana/provisioning:/etc/grafana/provisioning:ro
+      - /aios/configs/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
       - loki
@@ -293,6 +296,7 @@ services:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       GF_INSTALL_PLUGINS: grafana-piechart-panel
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/sysops.json
     restart: unless-stopped
 
   portainer:
@@ -307,6 +311,41 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - portainer-data:/data
     command: --http-enabled
+    restart: unless-stopped
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: aios-cadvisor
+    hostname: cadvisor
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.60
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: aios-node-exporter
+    hostname: node-exporter
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.61
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
     restart: unless-stopped
 
   # ---

@@ -93,7 +93,7 @@ sections:
       - title: Dograh UI
         description: Voice orchestration
         icon: fas fa-robot
-        url: http://10.50.0.31:3010
+        url: https://voice.socialbeesai.com/dograh
         target: newtab
       - title: Chatterbox
         description: TTS API

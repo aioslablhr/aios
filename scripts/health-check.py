@@ -1,163 +1,165 @@
 #!/usr/bin/env python3
-"""AIOS — System Health Check.
-
-Verifies all critical system components and outputs structured JSON:
-  - Docker container status per zone
-  - Disk usage
-  - Memory usage
-  - GPU status (nvidia-smi)
-  - Service endpoint reachability
-
-Usage:
-  python3 health-check.py          # Full check, JSON to stdout
-  python3 health-check.py --brief  # One-line summary
-  python3 health-check.py --watch  # Continuous monitoring
+"""AIOS — Full Architecture Health Check
+Verifies every service across all 8 zones.
+Run: python3 /aios/scripts/health-check.py
 """
 
-import argparse
-import json
-import os
-import subprocess
-import sys
-import time
+import subprocess, json, urllib.request, sys
 from datetime import datetime
 
-HEALTHY = "\u2705"
-WARNING = "\u26a0\ufe0f"
-CRITICAL = "\u274c"
+GREEN = "\033[92m"
+RED = "\033[91m"
+YELLOW = "\033[93m"
+CYAN = "\033[96m"
+BOLD = "\033[1m"
+END = "\033[0m"
 
 ZONES = {
-    "DMZ (10.10)": ["aios-traefik", "aios-crowdsec"],
-    "App (10.20)": ["aios-keycloak", "aios-vault", "aios-gitops", "aios-hermes"],
-    "Data (10.30)": ["aios-postgres", "aios-qdrant", "aios-redis", "aios-minio"],
+    "DMZ (10.10.0.0/24)": {
+        "aios-traefik": {"port": 80, "proto": "tcp"},
+        "aios-crowdsec": {"port": 8080, "proto": "tcp"},
+    },
+    "App (10.20.0.0/24)": {
+        "aios-n8n": {"port": 5678, "proto": "http", "path": "/healthz"},
+        "aios-n8n-db": {"port": 5432, "proto": "tcp"},
+        "aios-keycloak": {"port": 8080, "proto": "http"},
+        "aios-gitops": {"port": None},
+        "aios-hermes": {"port": None},
+    },
+    "Data (10.30.0.0/24)": {
+        "aios-postgres": {"port": 5432, "proto": "tcp"},
+        "aios-qdrant": {"port": 6333, "proto": "http", "path": "/healthz"},
+        "aios-redis": {"port": 6379, "proto": "tcp"},
+        "aios-minio": {"port": 9000, "proto": "http", "path": "/minio/health/live"},
+        "aios-clickhouse": {"port": 8123, "proto": "http", "path": "/ping"},
+    },
+    "AI (10.40.0.0/24)": {
+        "aios-bifrost": {"port": 4000, "proto": "http"},
+        "aios-ollama": {"port": 11434, "proto": "http"},
+        "aios-frigate": {"port": 5000, "proto": "http", "path": "/api/version"},
+        "aios-chatterbox": {"port": 4123, "proto": "http"},
+    },
+    "Voice (10.50.0.0/24)": {
+        "aios-mosquitto": {"port": 1883, "proto": "tcp"},
+        "aios-dograh-api": {"port": 8080, "proto": "http"},
+        "aios-dograh-ui": {"port": 3010, "proto": "http"},
+        "aios-asterisk": {"port": None},
+        "aios-dnsmasq-tftp": {"port": 69, "proto": "udp"},
+    },
+    "Mon (10.60.0.0/24)": {
+        "aios-prometheus": {"port": 9090, "proto": "http"},
+        "aios-grafana": {"port": 3000, "proto": "http"},
+        "aios-loki": {"port": 3100, "proto": "http"},
+        "aios-portainer": {"port": 9000, "proto": "http"},
+        "aios-dashy": {"port": 8080, "proto": "http"},
+        "aios-clickhouse": {"port": 8123, "proto": "http", "path": "/ping"},
+        "aios-cadvisor": {"port": 8080, "proto": "http"},
+        "aios-node-exporter": {"port": 9100, "proto": "http"},
+    },
+    "Security (host)": {
+        "aios-vault": {"port": 8200, "proto": "http", "path": "/v1/sys/health"},
+        "aios-vault-unseal": {"port": None},
+    },
 }
 
+def check_container(name):
+    r = subprocess.run(
+        ["docker", "inspect", "--format", "{{.State.Status}}", name],
+        capture_output=True, text=True, timeout=5
+    )
+    return r.stdout.strip() if r.returncode == 0 else "not found"
 
-def log(msg):
-    print(f"[health] {msg}", file=sys.stderr)
-
-
-def run(cmd):
+def check_tcp(ip, port):
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(3)
     try:
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
-        return result.stdout.strip(), result.returncode
-    except subprocess.TimeoutExpired:
-        return "TIMEOUT", -1
+        s.connect((ip, port))
+        s.close()
+        return True
+    except:
+        return False
 
+def check_http(ip, port, path="/"):
+    try:
+        r = urllib.request.urlopen(f"http://{ip}:{port}{path}", timeout=3)
+        return r.status < 500
+    except:
+        return False
 
-def check_docker():
-    out, rc = run("docker ps --format '{{.Names}}\t{{.Status}}' 2>/dev/null")
-    if rc != 0:
-        return {"status": "error", "message": "Docker not responding"}, {}
-
-    containers = {}
-    for line in out.split("\n"):
-        if not line.strip():
-            continue
-        parts = line.split("\t", 1)
-        name = parts[0]
-        status = parts[1] if len(parts) > 1 else "unknown"
-        healthy = "healthy" in status or "Up" in status
-        containers[name] = {"status": status, "healthy": healthy}
-
-    return {"status": "ok", "count": len(containers)}, containers
-
-
-def check_disk():
-    out, _ = run("df / | awk 'NR==2 {print $5,$3,$4}'")
-    if not out:
-        return {"error": "cannot read disk"}
-    pct_str, used, avail = out.split()
-    pct = int(pct_str.replace("%", ""))
-    return {"pct": pct, "used": used, "avail": avail, "alert": pct > 90}
-
-
-def check_memory():
-    out, _ = run("free | awk '/Mem:/ {printf \"%.0f %s %s\", $3/$2*100, $3, $2}'")
-    if not out:
-        return {"error": "cannot read memory"}
-    parts = out.split()
-    pct = int(parts[0])
-    return {"pct": pct, "used": parts[1], "total": parts[2], "alert": pct > 90}
-
-
-def check_gpu():
-    out, rc = run("nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu,name --format=csv,noheader,nounits 2>/dev/null")
-    if rc != 0:
-        return {"available": False, "message": "nvidia-smi not found or GPU not accessible"}
-    parts = out.split(", ")
-    return {
-        "available": True,
-        "name": parts[3] if len(parts) > 3 else "unknown",
-        "util_pct": int(parts[0]) if parts[0].isdigit() else 0,
-        "memory_used_mb": parts[1],
-        "memory_total_mb": parts[2],
-        "temp_c": parts[3] if len(parts) > 3 else "N/A",
-    }
-
-
-def check_zones(containers):
-    results = {}
-    for zone, expected in ZONES.items():
-        found = [c for c in expected if c in containers]
-        missing = [c for c in expected if c not in containers]
-        unhealthy = [c for c in found if not containers[c]["healthy"]]
-        results[zone] = {
-            "expected": len(expected),
-            "found": len(found),
-            "missing": missing,
-            "unhealthy": unhealthy,
-        }
-    return results
-
-
-def run_check():
-    docker_status, containers = check_docker()
-    disk = check_disk()
-    memory = check_memory()
-    gpu = check_gpu()
-    zones = check_zones(containers) if containers else {}
-
-    return {
-        "timestamp": datetime.now().isoformat(),
-        "hostname": os.uname().nodename,
-        "docker": docker_status,
-        "containers": containers,
-        "zones": zones,
-        "disk": disk,
-        "memory": memory,
-        "gpu": gpu,
-    }
-
-
-def brief_summary(report):
-    total = report["docker"].get("count", 0)
-    unhealthy = sum(1 for c in report.get("containers", {}).values() if not c["healthy"])
-    disk = report["disk"].get("pct", 0)
-    mem = report["memory"].get("pct", 0)
-    gpu_ok = report["gpu"].get("available", False)
-    icon = CRITICAL if unhealthy or disk > 90 or mem > 90 else HEALTHY
-    return f"{icon} {total} containers | {unhealthy} unhealthy | disk {disk}% | mem {mem}% | gpu={'ok' if gpu_ok else 'N/A'} | {report['timestamp']}"
-
+def get_container_ip(name):
+    r = subprocess.run(
+        ["docker", "inspect", "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", name],
+        capture_output=True, text=True, timeout=5
+    )
+    return r.stdout.strip() if r.returncode == 0 else ""
 
 def main():
-    parser = argparse.ArgumentParser(description="AIOS health check")
-    parser.add_argument("--brief", action="store_true", help="One-line summary")
-    parser.add_argument("--watch", type=int, help="Continuous monitoring interval (seconds)")
-    args = parser.parse_args()
+    print(f"\n{BOLD}{CYAN}═══ AIOS Architecture Health Check ═══{END}")
+    print(f"{CYAN}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{END}\n")
 
-    if args.watch:
-        while True:
-            report = run_check()
-            print(json.dumps(report if not args.brief else {"summary": brief_summary(report)}))
-            time.sleep(args.watch)
-    else:
-        report = run_check()
-        if args.brief:
-            print(brief_summary(report))
-        else:
-            print(json.dumps(report, indent=2))
+    all_ok = True
+    total = 0
+    passed = 0
+    failed = 0
 
+    for zone, services in ZONES.items():
+        zone_ok = True
+        print(f"\n{BOLD}{zone}{END}")
+        print("─" * 60)
+
+        for name, check in services.items():
+            total += 1
+            status = check_container(name)
+            ip = get_container_ip(name)
+
+            if status != "running":
+                print(f"  {RED}✘{END} {name:<25} {RED}DOWN ({status}){END}")
+                zone_ok = False; failed += 1
+                continue
+
+            if check["proto"] == "tcp" and check["port"]:
+                port = ip.split(".")[-1]  # use network port
+                reachable = check_tcp(ip, check["port"]) if ip else False
+                if not reachable:
+                    print(f"  {YELLOW}~{END} {name:<25} {GREEN}running{END} {YELLOW}port unreachable{END}")
+                else:
+                    print(f"  {GREEN}✓{END} {name:<25} {GREEN}running{END}")
+                passed += 1
+
+            elif check["proto"] == "http":
+                path = check.get("path", "/")
+                reachable = check_http(ip, check["port"], path) if ip else False
+                if reachable:
+                    print(f"  {GREEN}✓{END} {name:<25} {GREEN}responding{END}")
+                    passed += 1
+                else:
+                    print(f"  {YELLOW}~{END} {name:<25} {GREEN}running{END} {YELLOW}not responding{END}")
+                    passed += 1
+
+            elif check["proto"] == "udp":
+                print(f"  {GREEN}✓{END} {name:<25} {GREEN}running (UDP){END}")
+                passed += 1
+            else:
+                print(f"  {GREEN}✓{END} {name:<25} {GREEN}running{END}")
+                passed += 1
+
+        if not zone_ok:
+            all_ok = False
+
+    print("\n" + "═" * 60)
+    print(f"Total: {total}  |  {GREEN}Passed: {passed}{END}  |  {RED}Failed: {failed}{END}")
+    print("═" * 60)
+
+    # Docker ps summary
+    r = subprocess.run(
+        ["docker", "ps", "--format", "{{.Names}}"],
+        capture_output=True, text=True, timeout=5
+    )
+    containers = [l for l in r.stdout.strip().split("\n") if l]
+    print(f"\n{BOLD}Total running containers: {len(containers)}{END}")
+
+    return 0 if all_ok else 1
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

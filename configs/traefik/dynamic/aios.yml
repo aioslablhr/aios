@@ -173,6 +173,16 @@ http:
       middlewares:
         - crowdsec-bouncer
 
+    voice-dograh:
+      rule: "Host(`voice.socialbeesai.com`) && PathPrefix(`/dograh`)"
+      service: voice-dograh
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+
   # ── Services ────────────────────────────────────
 
   services:
@@ -230,7 +240,7 @@ http:
     ai-open-webui:
       loadBalancer:
         servers:
-          - url: "http://10.40.0.50:3000"
+          - url: "http://10.40.0.20:3000"
 
     # Admin services (placeholder)
     admin-keycloak:
@@ -251,3 +261,7 @@ http:
       loadBalancer:
         servers:
           - url: "http://10.50.0.20:1883"
+    voice-dograh:
+      loadBalancer:
+        servers:
+          - url: "http://10.50.0.31:3010"
