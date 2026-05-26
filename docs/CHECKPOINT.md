@@ -1,5 +1,17 @@
 # AIOS — Session Checkpoint
 
+## This Session (May 26) — Docs & Architecture Sync
+- Updated all 5 project docs to reflect current Phase 4 state
+- CHECKPOINT.md: rewrote from stale Phase 3 (15 containers) to Phase 4 (33 containers, 16 endpoints)
+- INVENTORY.md: full inventory refresh — corrected IPs, statuses, added 12+ missing services
+- SECURITY.md: Vault corrected (unsealed), added all service credentials, redacted secrets for GitHub push protection
+- SOP.md: Dev PC is now source of truth, new sync workflow, added endpoint verification steps
+- ARCHITECTURE_PHILOSOPHY.md: Principle 6 aligned with v1 (direct OpenRouter, not Bifrost), added Principle 8 (network connectivity first)
+- .env: fixed duplicated section numbering, added MINIO_ROOT_USER
+- creds.sh: Frigate URL updated (route no longer TODO), n8n encryption key added
+- Squashed + pushed after push protection blocked Vault root token — all commits clean
+- **Last commit**: `2c5133c` — "docs: update all project docs to Phase 4 state"
+
 ## Current State: Phase 4 — All Services Deployed & Verified (May 26, 2026)
 
 ### 33 Containers Running — All Healthy
