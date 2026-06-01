@@ -1,5 +1,5 @@
 # AIOS — Build Checkpoint
-## Last Updated: May 26, 2026 — v4.3 — ALL 13 public endpoints 200, Traefik stable
+## Last Updated: Jun 1, 2026 — v4.4 — Full stack restart + A-Z audit, 35/36 containers running, 13/13 endpoints 200
 
 ---
 
@@ -148,9 +148,13 @@ Functional Frontend (per use-case business UI):
 
 **Rule: Dashy is sysops-only.** No functional/end-client UIs live there. Each use case gets its own dedicated frontend.
 
+#### This session (Jun 1): Stack was fully down (0 containers) → full restart, comprehensive A-Z audit, Hermes fix
+
 ### ⬅ NEXT SESSION — Resume Here
 
-**Phase 1 — Architecture COMPLETE (33/33 containers, 8 zones, ALL verified ✅):**
+**Current stack state (verified Jun 1): 35/36 containers running, all 13 public endpoints responding ✅**
+
+**Phase 1 — Architecture COMPLETE (35 containers, 7+1 zones, ALL verified ✅):**
 1. ✅ **33 containers running** — all services healthy
 2. ✅ **8 network zones** — DMZ, App, Data, AI, Voice, Mon, FOSS, Host
 3. ✅ **All orphan containers added** to docker-compose-aios.yml
@@ -171,7 +175,16 @@ Functional Frontend (per use-case business UI):
 18. ✅ **Frontend separation** — SysOps (Dashy/Grafana) vs Functional (per use case)
 19. ✅ **Git pushed** — GitOps deploys automatically
 
-**Phase 2 — Build 4 Use Cases (NEXT — arch complete):**
+**Minor issues still open (from A-Z audit Jun 1):**
+- Qdrant unhealthy (telemetry blocked by data zone internal:true — harmless, service works)
+- Dashy unhealthy (healthcheck port mismatch — port 80 vs 8080)
+- MinIO unhealthy (healthcheck timing — WebUI responds 200 at /minio)
+- ClickHouse unhealthy (IPv6 disabled on host — falls back to v4, service works)
+- Hermes had restart loop (`/scripts/hermes.sh: Permission denied`) → fixed with `chmod +x`
+
+**All services verified working: Asterisk, Bifrost, cAdvisor, Chatterbox, ClickHouse, CrowdSec, Dashy, DNSmasq-TFTP, Dograh API, Dograh UI, Flowise, Frigate, GitOps, Grafana, Hermes, Keycloak, Langfuse, Loki, MCP, MinIO, Mosquitto, n8n, n8n-db, n8n-worker-1, n8n-worker-2, Node Exporter, Ollama, Portainer, PostgreSQL, Prometheus, Qdrant, Redis, Traefik, Vault, Vault Unseal**
+
+**Phase 2 — Build 4 Use Cases (NEXT — arch complete, stack verified):**
 1. **CRM** (#3 easiest) — Pure n8n → OpenRouter → WhatsApp. No new infra needed.
 2. **Voice** (#4) — Wire Asterisk → Dograh → Chatterbox → OpenRouter. Test call pipeline.
 3. **HR** (#2) — n8n + face recognition + GPS + payroll logic. Needs GPU vision test.
