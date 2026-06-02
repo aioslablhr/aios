@@ -563,6 +563,8 @@ services:
     depends_on:
       ollama:
         condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://10.40.0.20:11434
     command: >
       sh -c "
         echo 'Pulling nomic-embed-text...' &&
