@@ -506,8 +506,12 @@ services:
       - "4000:4000"
     volumes:
       - /aios/configs/bifrost/config.yaml:/app/config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       CONFIG_FILE_PATH: /app/config.yaml
+      DATABASE_URL: postgresql://aios:${POSTGRES_PASSWORD}@10.30.0.10:5432/litellm
       BIFROST_ADMIN_KEY: ${BIFROST_ADMIN_KEY}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
