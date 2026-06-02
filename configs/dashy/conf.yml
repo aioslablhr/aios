@@ -1,8 +1,8 @@
 ---
 pageInfo:
   title: AIOS AI Control Panel
-  description: 'Data Layer — 8 services operational'
-  footer: AIOS Lahore Lab
+  description: 'Enterprise AI Platform v1.0'
+  footer: AIOS
 
 appConfig:
   theme: colorful

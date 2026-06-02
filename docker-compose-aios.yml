@@ -555,6 +555,7 @@ services:
   ollama-pull:
     image: ollama/ollama:latest
     container_name: aios-ollama-pull
+    entrypoint: [""]
     networks:
       aios-ai:
     volumes:
