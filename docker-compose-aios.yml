@@ -506,9 +506,6 @@ services:
       - "4000:4000"
     volumes:
       - /aios/configs/bifrost/config.yaml:/app/config.yaml:ro
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
       CONFIG_FILE_PATH: /app/config.yaml
       BIFROST_ADMIN_KEY: ${BIFROST_ADMIN_KEY}
