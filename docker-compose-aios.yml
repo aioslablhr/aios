@@ -221,6 +221,8 @@ services:
       aios-app:
         ipv4_address: 10.20.0.50
       aios-data:
+    ports:
+      - "8000:8000"
     environment:
       QDRANT_HOST: 10.30.0.20
       QDRANT_PORT: 6333
@@ -254,6 +256,8 @@ services:
       aios-app:
         ipv4_address: 10.20.0.60
       aios-data:
+    ports:
+      - "8001:8000"
     environment:
       MINIO_ENDPOINT: 10.30.0.40:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}

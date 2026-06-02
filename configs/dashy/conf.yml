@@ -12,71 +12,66 @@ appConfig:
 
 sections:
 
-  - name: 🗄️ Data Layer (Phase A — Deployed ✅)
+  - name: Data Layer (Phase A - Deployed)
     icon: fas fa-database
     items:
       - title: PostgreSQL
-        description: '✅ Running — Relational DB + pgvector 0.8.0'
+        description: 'Relational DB + pgvector 0.8.0'
         icon: fas fa-database
-        url: http://10.30.0.10:5432
-        target: newtab
+        url: ''
       - title: Qdrant
-        description: '✅ Running — Vector store (RAG + mem0)'
+        description: 'Vector store (RAG + mem0)'
         icon: fas fa-vector-square
-        url: http://10.30.0.20:6333/dashboard
+        url: http://10.0.0.100:6333/dashboard
         target: newtab
       - title: Redis
-        description: '✅ Running — Cache + Queue + Streams'
+        description: 'Cache + Queue + Streams'
         icon: fas fa-memory
-        url: redis://10.30.0.30:6379
-        target: newtab
+        url: ''
       - title: MinIO
-        description: '✅ Running — S3 Storage (4 buckets)'
+        description: 'S3 Storage (4 buckets)'
         icon: fas fa-hdd
-        url: http://10.30.0.40:9001
+        url: http://10.0.0.100:9001
         target: newtab
       - title: ClickHouse
-        description: '✅ Running — Columnar analytics'
+        description: 'Columnar analytics'
         icon: fas fa-chart-bar
-        url: http://10.60.0.11:8123
-        target: newtab
+        url: ''
       - title: mem0
-        description: '✅ Running — Agent memory layer (awaits Bifrost for embeddings)'
+        description: 'Agent memory layer - API docs'
         icon: fas fa-brain
-        url: http://10.20.0.50:8000/docs
+        url: http://10.0.0.100:8000/docs
         target: newtab
       - title: docling
-        description: '✅ Running — Document parser (PDF, DOCX, HTML, TXT)'
+        description: 'Document parser API - Swagger docs'
         icon: fas fa-file-alt
-        url: http://10.20.0.60:8000/docs
+        url: http://10.0.0.100:8001/docs
         target: newtab
       - title: Knowledge Ingest
-        description: '✅ Running — Daemon watching raw-uploads bucket'
+        description: 'Daemon watching raw-uploads bucket'
         icon: fas fa-upload
-        url: http://10.20.0.55:8000
-        target: newtab
+        url: ''
 
-  - name: 📞 Voice Layer (Partial)
+  - name: Voice Layer (Partial)
     icon: fas fa-phone-alt
     items:
       - title: Asterisk
-        description: '✅ Running — SIP PBX (Cisco 7962G registered)'
+        description: 'SIP PBX (Cisco 7962G registered)'
         icon: fas fa-phone
         url: http://10.0.0.100:8088
         target: newtab
-        status: ok
       - title: DNSMasq-TFTP
-        description: '✅ Running — Phone provisioning'
+        description: 'Phone provisioning'
         icon: fas fa-server
         url: http://10.0.0.100
         target: newtab
       - title: Dashy
-        description: '✅ This dashboard'
+        description: 'This dashboard'
         icon: fas fa-home
         url: https://socialbeesai.com
         target: newtab
 
-  - name: ⏳ Future Phases (Not Yet Deployed)
+  - name: Future Phases (Not Yet Deployed)
     icon: fas fa-clock
     displayData:
       collapsed: true
