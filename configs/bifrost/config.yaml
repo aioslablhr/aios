@@ -227,7 +227,7 @@ model_list:
       api_key: ${OPENROUTER_API_KEY}
 
 router_settings:
-  routing_strategy: usage-based
+  routing_strategy: usage-based-routing
   enable_pre_call_checks: true
   allowed_fails: 3
   num_retries: 2
