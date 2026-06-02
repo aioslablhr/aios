@@ -71,9 +71,9 @@ sections:
         url: http://10.0.0.100
         target: newtab
       - title: Dashy
-        description: '✅ This dashboard'
+        description: '✅ This dashboard — access at http://10.0.0.100:8082'
         icon: fas fa-home
-        url: http://10.60.0.70:8080
+        url: http://10.0.0.100:8082
         target: newtab
 
   - name: ⏳ Future Phases (Not Yet Deployed)
