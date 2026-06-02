@@ -1,8 +1,8 @@
 ---
 pageInfo:
-  title: AIOS AI Control Panel = Full AI Business Platform version 1.0
-  description: 'Data Layer: all infrastructure services operational'
-  footer: AIOS v1.0 — Data Layer | Lahore AI Lab
+  title: AIOS AI Control Panel
+  description: 'Data Layer — 8 services operational'
+  footer: AIOS Lahore Lab
 
 appConfig:
   theme: colorful
@@ -12,7 +12,7 @@ appConfig:
 
 sections:
 
-  - name: Data Layer (Phase A - Deployed)
+  - name: Data Layer
     icon: fas fa-database
     items:
       - title: PostgreSQL
