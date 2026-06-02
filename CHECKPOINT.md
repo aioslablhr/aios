@@ -1,7 +1,23 @@
 # AIOS — Build Checkpoint
+## Dual-Layer Status: AIOS Infrastructure Layer = COMPLETE (35 containers, 13 endpoints). AI Transformation Layer = BUILDING (4 use cases).
 ## Last Updated: Jun 1, 2026 — v4.4 — Full stack restart + A-Z audit, 35/36 containers running, 13/13 endpoints 200
 
 ---
+
+### ✅ AIOS INFRASTRUCTURE LAYER — COMPLETE (the engine room)
+
+All 7 architectural layers deployed and verified:
+- Layer 0 (Security): Traefik, CrowdSec, Keycloak, Vault, Cloudflare — 200 on all 13 endpoints
+- Layer 1 (Data): PostgreSQL, Qdrant, Redis, MinIO, ClickHouse, Langfuse
+- Layer 2 (Inference): OpenRouter via Bifrost, Whisper STT (GPU), Chatterbox TTS (GPU)
+- Layer 3 (Orchestration): n8n + workers, Flowise, Paperclip, Hermes
+- Layer 4 (Voice): Asterisk, Dograh, MQTT
+- Layer 5 (Monitoring): Prometheus, Grafana, Loki, Portainer, Dashy
+- Layer D (Dev Tools): Claude Code, GitOps, CI runner
+
+### ✅ AI TRANSFORMATION LAYER — IN PROGRESS (the product)
+
+4 use cases being built as standalone n8n workflows on top of infrastructure:
 
 ### ✅ COMPLETED STEPS
 
@@ -140,13 +156,12 @@ SysOps Frontend (infra management):
 
 Functional Frontend (per use-case business UI):
   Separate dashboards per service
-  → CLIENT uses — end customer daily operations
-  → Monitors leads, attendance, cameras, calls, sales
+  → Use case operators monitor leads, attendance, cameras, calls, sales
   → Lives in Metabase / custom web apps / Streamlit
   → NEVER mixed into Dashy or Grafana
 ```
 
-**Rule: Dashy is sysops-only.** No functional/end-client UIs live there. Each use case gets its own dedicated frontend.
+**Rule: Dashy is sysops-only.** No functional UIs live there. Each use case gets its own dedicated frontend.
 
 #### This session (Jun 1): Stack was fully down (0 containers) → full restart, comprehensive A-Z audit, Hermes fix
 
@@ -154,7 +169,7 @@ Functional Frontend (per use-case business UI):
 
 **Current stack state (verified Jun 1): 35/36 containers running, all 13 public endpoints responding ✅**
 
-**Phase 1 — Architecture COMPLETE (35 containers, 7+1 zones, ALL verified ✅):**
+**AIOS Infrastructure Layer — COMPLETE (35 containers, 7+1 zones, ALL verified ✅):**
 1. ✅ **33 containers running** — all services healthy
 2. ✅ **8 network zones** — DMZ, App, Data, AI, Voice, Mon, FOSS, Host
 3. ✅ **All orphan containers added** to docker-compose-aios.yml
@@ -184,9 +199,9 @@ Functional Frontend (per use-case business UI):
 
 **All services verified working: Asterisk, Bifrost, cAdvisor, Chatterbox, ClickHouse, CrowdSec, Dashy, DNSmasq-TFTP, Dograh API, Dograh UI, Flowise, Frigate, GitOps, Grafana, Hermes, Keycloak, Langfuse, Loki, MCP, MinIO, Mosquitto, n8n, n8n-db, n8n-worker-1, n8n-worker-2, Node Exporter, Ollama, Portainer, PostgreSQL, Prometheus, Qdrant, Redis, Traefik, Vault, Vault Unseal**
 
-**Phase 2 — Build 4 Use Cases (NEXT — arch complete, stack verified):**
+**AI Transformation Layer — Build 4 Use Cases (NEXT — infrastructure complete, stack verified):**
 1. **CRM** (#3 easiest) — Pure n8n → OpenRouter → WhatsApp. No new infra needed.
-2. **Voice** (#4) — Wire Asterisk → Dograh → Chatterbox → OpenRouter. Test call pipeline.
+2. **Voice** (#4) — Wire Asterisk → Dograh → TTS (Chatterbox GPU / Kokoro CPU, Dograh auto-selects). Test call pipeline.
 3. **HR** (#2) — n8n + face recognition + GPS + payroll logic. Needs GPU vision test.
 4. **Surveillance** (#1 most complex) — Frigate + camera config + n8n alerts → WhatsApp.
 

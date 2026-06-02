@@ -6,6 +6,11 @@ mkdir -p "$RUNTIME_CONF"
 
 cp /etc/asterisk/*.conf "$RUNTIME_CONF/"
 
+# Copy AGI scripts to AGI bin directory
+cp /etc/asterisk/*.agi /var/lib/asterisk/agi-bin/ 2>/dev/null || true
+chown asterisk:asterisk /var/lib/asterisk/agi-bin/*.agi 2>/dev/null || true
+chmod +x /var/lib/asterisk/agi-bin/*.agi 2>/dev/null || true
+
 for f in "$RUNTIME_CONF"/*.conf; do
   envsubst < "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
 done

@@ -1,35 +1,36 @@
 # AIOS — AI Operating System
-## Complete Project Reference for Claude Code
-### Lahore AI Lab · May 2026 · FINAL LOCKED
-
-### Build Status — See CHECKPOINT.md for current progress
-```
-✅ STEP 1: NVIDIA Quadro M4000 driver installed  (nvidia-driver-470.256.02)
-✅ STEP 2: Docker Engine installed               (Docker 29.5.1 + Compose v5.1.3)
-✅ STEP 2b: nvidia-container-toolkit configured   (GPU works inside containers)
-⬜ Building v1 MVP — 7-layer architecture
-```
+## 2026 Reference Architecture for SMB & Enterprise AI Transformation
+### Lahore AI Lab · June 2026
 
 ---
 
-## 1. PROJECT OVERVIEW
+## 1. PROJECT OVERVIEW — TWO LAYERS
 
-### What This Is
-AIOS (AI Operating System) is a production-grade, self-hosted hybrid AI platform built in a physical lab in Lahore, Pakistan. Designed to:
+### Layer 1: AI Infrastructure (the engine room)
+AIOS is a **2026-aligned best-practice self-hosted AI stack** — production-grade, scalable, state-of-the-art:
+- 7-layer Docker architecture: Security → Data → Inference → Orchestration → Voice
+- 8 isolated network zones (DMZ, App, Data, AI, Voice, Mon, FOSS, Dev)
+- Bifrost AI Gateway | Langfuse observability | Qdrant vector store
+- Asterisk → Dograh → Whisper → Bifrost → TTS (Dograh auto-selects Chatterbox/Kokoro)
+- CrowdSec WAF + Traefik + Cloudflare (defense in depth)
+- All infrastructure runs on a single server (NVIDIA Quadro M4000)
 
-1. **Serve as an AI R&D lab** — build, test, prototype AI use cases
-2. **Serve as a production template** — same architecture cloned for each SMB client
-3. **Power a commercial AI agency** — selling AI Digital Employees to SMBs across Pakistan, UAE, and USA
+### Layer 2: AI Transformation (the product)
+Running ON the infrastructure — **4 AI Digital Employees replacing manual business processes**:
+- Smart Surveillance (Frigate → GPU vision → n8n alerts)
+- Smart HR & Payroll (face recognition + GPS → attendance + salary)
+- Smart Sales CRM (WhatsApp leads → pipeline → closing)
+- AI Voice Receptionist (SIP calls → AI conversation → booking)
 
 ### Business Context
 - **Founder:** Senior IT infrastructure specialist, 20+ years, documented government-scale AI deployment (38,000-school SED)
-- **Model:** Sell AI Digital Employees (voice agents, WhatsApp agents, workflow automation) to SMBs
+- **Model:** Sell AI Digital Employees (AI Transformation Layer) to SMBs, running on the AIOS Infrastructure Layer
 - **Target markets:** Pakistan (Lahore) → UAE (Dubai/Abu Dhabi) → USA/Canada (white-label)
-- **Revenue:** PKR 35–75K setup + PKR 12–22K monthly recurring per client
+- **Revenue:** PKR 35–75K setup + PKR 12–22K monthly recurring per use case per client
 - **Target:** 60 clients by Month 12, PKR 940K MRR
 
 ### Core Principle
-The lab IS the product. Built and tested here = exactly what clients get. New client = configuration only, zero new infrastructure.
+The AIOS Infrastructure Layer is the reference architecture. The AI Transformation Layer (use cases) is the product. Build and test the infrastructure once — deploy AI Digital Employees on top.
 
 ---
 
@@ -48,7 +49,7 @@ Storage:  953.9GB NVMe (850GB free LVM)
 Docker:   Docker Engine 29.5.1 + Docker Compose v5.1.3
 ```
 
-**Server runs 7 architectural layers sequentially (MVP v1):**
+**AIOS Infrastructure Layer — 7 architectural layers:**
 
 #### Layer 0 — Networking & Security
 ```
@@ -67,10 +68,16 @@ Obsidian vault (raw .md) → LLM compiles → wiki/ folder → agent queries
 Qdrant RAG fallback for overflow/volatile data
 ```
 
-#### Layer 2 — Inference
+#### Layer 2 — Inference (4-Tier Routing)
 ```
-Direct OpenRouter API (v1). No Bifrost.
-GPU runs: Whisper (STT), Chatterbox (TTS), nomic-embed-text, LLaVA
+Tier 1 — Bifrost semantic cache (repeated queries → 50ms, $0)
+Tier 2 — Local GPU: Ollama (Whisper STT, nomic-embed, LLaVA vision)
+                    Frigate (YOLO object detection on GPU)
+                    Chatterbox (TTS on GPU)
+Tier 3 — OpenRouter free tier: llama-70b, gemma-4-31b, hermes-405b,
+         qwen-2.5-72b, deepseek-v4, qwen-coder (primary — $0)
+Tier 4 — OpenRouter paid tier: Claude 4 Sonnet, GPT-4o
+         (complex docs, legal, high-stakes via OpenRouter, not direct API)
 ```
 
 #### Layer 3 — Orchestration
@@ -85,7 +92,7 @@ Standardized MCP servers: Supabase, Qdrant, WhatsApp, Filesystem
 
 #### Layer 5 — Voice
 ```
-Asterisk → Dograh → Whisper STT → n8n → OpenRouter → Chatterbox TTS
+Asterisk → Dograh → Whisper STT → n8n → OpenRouter → TTS (Dograh auto-selects Chatterbox/Kokoro)
 ```
 
 #### Layer C — Dev PC (Windows 11 — 10.0.0.13)
@@ -104,16 +111,54 @@ Hermes Agent        — Autonomous 24/7 server ops (Docker B)
 OpenClaw            — Personal assistant via WhatsApp/Telegram
 ```
 
+---
+
+## 2b. AI TRANSFORMATION LAYER — 4 USE CASES
+
+Running on top of the Infrastructure Layer — each use case is a standalone
+n8n workflow that replaces a manual business process with AI automation:
+
+```
+USE CASE 1 — Smart Surveillance
+  Cameras → Frigate GPU detection → LLaVA scene analysis
+  → MQTT → n8n → WhatsApp alerts to owner
+  → PostgreSQL log of all events
+  Replaces: security guard monitoring 20 cameras
+
+USE CASE 2 — Smart HR & Payroll
+  Face recognition (Ollama + LLaVA) for attendance
+  GPS check-in verification + auto timesheets
+  Automatic salary calculation + leave management
+  Replaces: HR clerk, manual attendance, Excel payroll
+
+USE CASE 3 — Smart Sales CRM
+  Meta WhatsApp cloud API → n8n webhook → lead capture
+  AI conversation + qualification → Bifrost → Twenty CRM
+  Pipeline management + quote generation + follow-up automation
+  Replaces: sales assistant, manual lead follow-up
+
+USE CASE 4 — AI Voice Receptionist
+  SIP call → Asterisk → Dograh orchestration
+  Whisper STT (GPU) → Bifrost → OpenRouter LLM
+  Chatterbox TTS (GPU) — primary → voice response (Dograh auto-selects)
+  Appointment booking + FAQ + call routing
+  Replaces: human receptionist, call center agent
+```
+
+Each use case is a self-contained n8n workflow at `/aios/n8n/workflows/` calling Bifrost for inference, logging to Langfuse for observability, and storing data in PostgreSQL + Qdrant.
+
 ### GPU Allocation — Quadro M4000 (8GB VRAM)
 ```
 Process                 VRAM     Role
 ────────────────────────────────────────────
 Whisper (STT)           ~1GB     Voice call transcription (Dograh)
-Chatterbox AI (TTS)     ~1.5GB   Voice cloning + text-to-speech
+Chatterbox AI (TTS)     ~1.5GB   Voice cloning + text-to-speech (primary GPU)
+Kokoro TTS              0 (CPU)  Lighter TTS — fallback when GPU busy
 nomic-embed-text        <500MB   Document embeddings → Qdrant
 LLaVA 7B (Ollama)       ~5GB     Visual — reads images, invoices
+Frigate (YOLO)          ~1-2GB   Object detection — cameras, people, vehicles
 ```
-NOTE: No LLM inference on GPU. OpenRouter free tier is faster and higher quality than any 4-bit quantized 7B model on this card. GPU reserved for embeddings, STT, TTS, and vision.
+NOTE: No LLM inference on GPU. OpenRouter free tier is faster and higher quality than any 4-bit quantized 7B model on this card. GPU reserved for embeddings, STT, TTS, vision, and object detection. Frigate uses YOLO models (yolov7 default) natively on GPU — not a separate layer.
 
 ### Resource Allocation
 ```
@@ -150,7 +195,7 @@ Layer 4 — CrowdSec (DMZ — 10.10.0.11)
   WAF, IP reputation, rate limiting, brute force detection
 
 Layer 5 — Keycloak (App zone — 10.20.0.40)
-  SSO, multi-tenant isolation, RBAC, OAuth2/OIDC
+   SSO, RBAC, OAuth2/OIDC
 ```
 
 ### 3.3 Docker Network Zones (7 isolated)
@@ -161,7 +206,7 @@ Zone 2 — Application: 10.20.0.0/24   n8n, Flowise, Dify, Open WebUI, Keycloak,
                                        Vault, FreePBX, WireGuard, Paperclip, Hermes
 Zone 3 — Data:        10.30.0.0/24   Supabase, Qdrant, Redis, MinIO
                                        internal:true — NO internet access
-Zone 4 — AI:          10.40.0.0/24   Bifrost, Ollama(dev), LiteLLM(dev), vLLM
+Zone 4 — AI:          10.40.0.0/24   Bifrost, Ollama
                                        GPU-accelerated via Quadro M4000
 Zone 5 — Voice:       10.50.0.0/24   Asterisk, MQTT
 Zone 6 — Monitoring:  10.60.0.0/24   Langfuse, Prometheus, Grafana, Loki,
@@ -180,18 +225,7 @@ Zone 7 — FOSS:        10.70.0.0/24   ERPNext, Odoo, Twenty CRM, Metabase, Calc
 - Injected at container runtime via .env files pulled from Vault
 - NEVER hardcode secrets. NEVER commit secrets to Git.
 
-### 3.6 Multi-Tenant Client Isolation
-```
-Keycloak:   Separate Organization per client
-Qdrant:     Separate collection — {client_id}-knowledge
-Supabase:   Separate schema per client + RLS enforced
-Bifrost:    Separate virtual key + monthly budget limit
-n8n:        Separate workflow tagged to client_id
-Langfuse:   Separate project per client
-Paperclip:  Separate company per client
-```
-
-### 3.7 Protocols & Standards
+### 3.6 Protocols & Standards
 ```
 Protocol          Standard              Role
 ────────────────────────────────────────────────────────────
@@ -199,7 +233,7 @@ MCP               Anthropic             Standardised tool connections for all ag
 A2A               Google                Agent-to-agent communication
 OpenTelemetry     CNCF                  Distributed tracing across all services
 OAuth2 / OIDC     Industry standard     All auth flows via Keycloak
-OpenAI API        De facto LLM standard Bifrost + vLLM both expose this
+OpenAI API        De facto LLM standard Bifrost exposes this
 MQTT              IoT standard          Frigate event bus to n8n
 SIP               Telecoms standard     Asterisk trunking
 RTSP              Camera standard       All IP cameras to go2rtc
@@ -210,7 +244,9 @@ RTSP              Camera standard       All IP cameras to go2rtc
 ## 4. DEVELOPMENT LAYER
 
 ### 4.1 Architecture Type
-AIOS is infrastructure development — Docker Compose configs, n8n workflow JSON, Python scripts, Ansible playbooks, shell scripts. NOT React apps or APIs.
+AIOS is a dual-layer system:
+- **Infrastructure dev** — Docker Compose configs, n8n workflow JSON, Python scripts, Ansible playbooks, shell scripts
+- **Transformation dev** — n8n use-case workflows, Langfuse prompts, Qdrant collections, Bifrost routing, frontend dashboards
 
 ### 4.2 The 7 Non-Negotiable Dev Tools
 ```
@@ -248,14 +284,14 @@ READS:       /aios/ (entire project)
 
 WRITES:
   docker-compose-aios.yml / docker-compose-apps.yml changes
-  Ansible playbooks, Python scripts (new-client.py, backup.py)
+  Ansible playbooks, Python scripts (backup.py, health-check.py)
   n8n workflow JSON templates
   GitHub Actions CI, Bifrost configs, Traefik rules
 
 EXECUTES ON SERVER:
   docker-compose up -d
   ansible-playbook setup-server.yml
-  python3 new-client.py --client-id clinic-abc
+    python3 health-check.py
 ```
 
 ### 4.4 Ansible Structure
@@ -307,7 +343,7 @@ Workflow: feature branch → push → CI validates → PR to dev → test → ma
 ├── /clients/
 │   └── /[client-id]/                # Per-client configs + knowledge docs
 ├── /scripts/
-│   ├── new-client.py                # Client onboarding automation
+│   ├── health-check.py              # System health verification
 │   ├── backup.py                    # Nightly backup script
 │   ├── health-check.py              # System health verification
 │   └── disaster-recovery.py         # Full system restore
@@ -330,13 +366,8 @@ DEV_PC_IP=10.0.0.13
 BIFROST_URL=http://10.40.0.10:4000
 BIFROST_ADMIN_KEY=<from Vault>
 
-# vLLM — local inference (Quadro M4000)
-VLLM_URL=http://10.40.0.40:8000
-VLLM_API_KEY=<from Vault>
-
-# Cloud LLMs (via Bifrost — do NOT call directly)
-ANTHROPIC_API_KEY=<from Vault>
-OPENAI_API_KEY=<from Vault>
+# Cloud LLMs (via OpenRouter through Bifrost — do NOT call directly)
+OPENROUTER_API_KEY=<from Vault>
 GOOGLE_API_KEY=<from Vault>
 OPENROUTER_API_KEY=<from Vault>
 
@@ -366,31 +397,20 @@ LANGFUSE_KEY=<from Vault>
 ```
 1. NEVER call any LLM API directly — ALL go through Bifrost (http://10.40.0.10:4000)
 2. NEVER hardcode secrets — all in Vault, injected at runtime
-3. ALWAYS tag n8n workflows with client_id — no cross-client leaks
-4. ALWAYS enforce Supabase RLS — schema per client + RLS = double isolation
-5. Quadro M4000 has 8GB VRAM — no 70B+ locally, routes to OpenRouter/Claude
-6. ALWAYS log every LLM call to Langfuse — this is how we bill clients
-7. Data Zone (10.30.0.0/24) has internal:true — NEVER change this
-8. ALL new client resources via new-client.py only — never manual
-9. ALL capability sub-workflows = zero client hardcoding (variables only)
-10. ALWAYS commit to Git before production changes — Git is source of truth
+3. Quadro M4000 has 8GB VRAM — no 70B+ locally, routes to OpenRouter/Claude
+4. ALWAYS log every LLM call to Langfuse — observability + cost tracking
+5. Data Zone (10.30.0.0/24) has internal:true — NEVER change this
+6. ALWAYS commit to Git before production changes — Git is source of truth
 ```
 
-### 4.9 Adding New Templates
+### 4.9 Adding a New Use Case Workflow
 
-**New Capability:**
 ```
-1. Prototype in Flowise/Dify → 2. Export to n8n sub-workflow JSON
-3. Replace ALL values with variables → 4. Test with 2+ dummy clients
-5. Validate in Langfuse → 6. Save to /n8n/workflow-templates/capabilities/
-7. Write docs → 8. Update new-client.py → 9. git commit + push
-```
-
-**New Use Case (workflow):**
-```
-1. Build/test in Flowise or Dify → 2. Translate to n8n workflow
-3. Test with Ollama dev (zero cost) → 4. Validate with Langfuse
-5. Save as template → 6. Document + update new-client.py
+1. Build/test n8n workflow on the stack
+2. HTTP POST → Bifrost → OpenRouter for inference
+3. Log to Langfuse for observability + cost tracking
+4. Save to /aios/n8n/workflows/{number}-{name}.json
+5. git commit + push
 ```
 
 ### 4.10 Dev PC / Laptop Setup (10.0.0.13 — Windows 11)
@@ -420,7 +440,7 @@ NOT NEEDED ON LAPTOP:
 /aios/scripts/
 ├── openclaw.py             # AIOS Lab Assistant — CLI for Dev PC (running)
 ├── hermes.sh               # 24/7 autonomous ops agent (running)
-├── new-client.py           # Client onboarding automation (TODO)
+├── health-check.py         # System health verification
 ├── backup.py               # Nightly encrypted backup (TODO)
 ├── health-check.py         # On-demand health verification (TODO)
 ├── disaster-recovery.py    # Full system restore (TODO)
@@ -451,7 +471,7 @@ Service     IP              Zone         Role
 ───────────────────────────────────────────────────────────────
 Traefik     10.10.0.10     DMZ          Reverse proxy, HTTPS termination
 CrowdSec    10.10.0.11     DMZ          WAF, rate limiting, IP reputation
-Keycloak    10.20.0.40     App          SSO, multi-tenant, OAuth2/OIDC
+Keycloak     10.20.0.40     App          SSO, OAuth2/OIDC
 Vault       10.20.0.50     App          Secrets management — ALL API keys
 ```
 
@@ -459,13 +479,15 @@ Vault       10.20.0.50     App          Secrets management — ALL API keys
 ```
 Service     IP              Role
 ────────────────────────────────────────────────────
-Bifrost     10.40.0.10      AI Gateway — future (v1 direct OpenRouter)
-Ollama      10.40.0.20      Embeddings (nomic-embed-text) + vision (LLaVA)
-Chatterbox  10.40.0.30:8000 TTS/voice cloning — GPU (replaces ElevenLabs)
+Bifrost     10.40.0.10      AI Gateway — 4-tier routing (LiteLLM)
+Ollama      10.40.0.20      Local GPU — embeddings (nomic), vision (LLaVA), fast models (mistral/qwen/llama)
+Chatterbox  10.40.0.30:4123 TTS/voice cloning — GPU (replaces ElevenLabs)
+Frigate     10.40.0.50:5000 NVR + YOLO object detection — GPU
 ```
-Inference (v1): Direct OpenRouter API. No Bifrost/gateway needed for testing.
-GPU reserved for: embeddings, vision/OCR, Whisper STT, Chatterbox TTS.
-No LLM models on GPU (8GB VRAM too small for production-quality inference).
+GPU reserved for: embeddings, vision, STT, TTS (Chatterbox GPU), object detection (Frigate YOLO).
+Kokoro TTS always on CPU — fallback if GPU busy. Dograh auto-selects between them.
+No LLM inference on GPU — 8GB VRAM too small for production-quality LLM.
+ALL text LLM goes through Bifrost: Tier 3 (OpenRouter free) primary, Tier 4 (OpenRouter paid) frontier.
 
 ### 5.4 Orchestration (10.20.0.0/24)
 ```
@@ -483,20 +505,21 @@ FreePBX        10.20.0.80      Call centre GUI — extensions, recordings, CDR
 WireGuard      10.20.0.90      Admin VPN for remote access
 ```
 
-### 5.5 Voice Layer (10.50.0.0/24 + 10.40.0.0/24 for TTS GPU)
+### 5.5 Voice Layer (10.50.0.0/24 + 10.40.0.0/24 for TTS)
 ```
 Zone    Service     IP              Role
 ────────────────────────────────────────────────────────────
 Voice   Asterisk    10.50.0.10      SIP trunking, call routing, IVR (host net)
 Voice   Dograh      10.50.0.30      Voice agent orchestration — replaces Retell AI
 Voice   MQTT        10.50.0.20      Event bus — future use
-AI      Chatterbox  10.40.0.30:8000 TTS/voice cloning on GPU — replaces ElevenLabs
+AI      Chatterbox  10.40.0.30:4123 TTS/voice cloning on GPU (primary — Dograh auto-selects)
+AI      Kokoro      10.40.0.31:8880 TTS on CPU (fallback — Dograh auto-selects)
 ```
 
 Voice pipeline: Caller → SIP Trunk → Asterisk → Dograh
   → Whisper STT (local GPU)
-  → n8n → OpenRouter → LLM response
-  → Chatterbox TTS (local GPU)
+  → n8n → Bifrost → OpenRouter → LLM response
+  → Dograh auto-selects TTS: Chatterbox (GPU, high quality) or Kokoro (CPU, lighter)
   → Audio back → Asterisk → Caller
 
 ### 5.6 Visual AI (App zone)
@@ -548,7 +571,7 @@ Trivy             10.60.0.120     Container security scanning
 ```
 Channel              Tool / Protocol              What It Carries
 ─────────────────────────────────────────────────────────────────
-Voice calls          Asterisk SIP + Retell AI     Audio calls
+Voice calls          Asterisk SIP + Dograh      Audio calls
 WhatsApp             Meta WhatsApp Business API   Text, images, voice notes, docs
 Web chat             React widget + n8n webhook   Text conversations
 REST API/Webhooks    n8n webhook nodes            External triggers, form submissions
@@ -569,9 +592,10 @@ Microsoft 365         OAuth → n8n     Enterprise integrations
 JazzCash / EasyPaisa  REST API        Pakistan payments
 Stripe                REST API        UAE / US payments
 MCP servers           Anthropic MCP   Standardised tool connections
-Retell AI / Vapi      REST API        Voice agent platform
-Deepgram Nova 3       WebSocket       STT — Arabic/Urdu/English
-ElevenLabs            REST API        TTS — 29+ languages
+Retell AI / Vapi      REST API        Voice agent platform (REPLACED by Dograh)
+Deepgram Nova 3       WebSocket       STT — Arabic/Urdu/English (REPLACED by Whisper local GPU)
+TTS (Chatterbox GPU)    REST API  TTS voice cloning — GPU (replaces ElevenLabs)
+TTS (Kokoro CPU)        REST API  Lighter TTS — CPU fallback (Dograh auto-selects)
 ```
 
 ### 5.11 Dashboards
@@ -586,62 +610,94 @@ Client-facing:         Metabase (primary), React + Supabase white-label portal,
 
 ---
 
-## 6. AI LAYER & LLM ROUTING
+## 6. AI LAYER & LLM ROUTING — 4-TIER ARCHITECTURE
 
-### 6.1 Production AI Gateway — Bifrost (10.40.0.10:4000)
+### 6.1 AI Gateway — Bifrost (LiteLLM at 10.40.0.10:4000)
 ALL LLM calls go through Bifrost. NEVER call APIs directly. Bifrost provides:
-- 11μs overhead, 5000+ RPS
-- Semantic caching (40-60% cost saving)
-- Per-client virtual keys + monthly budget controls
-- Automatic failover (local → OpenRouter → Claude)
-- Prompt injection detection + PII sanitisation
-- MCP support, OpenAI-compatible endpoint
-- Full cost tracking per client per call
+- OpenAI-compatible `/v1/chat/completions` endpoint
+- 4-tier routing with cross-tier fallback chains
+- Semantic caching via Redis (Tier 1 — 50ms, $0)
+- Langfuse logging on every call
+- Usage-based routing (least-loaded model first)
 
-### 6.2 All Models — Complete Reference
-```
-Model               Location         VRAM/Cost     Capabilities
-──────────────────────────────────────────────────────────────────────────
-Mistral 7B Q4       vLLM (local)     ~5GB free     FAQ, classification, routing
-Llama 3 8B Q4       vLLM (local)     ~5.5GB free   General reasoning, HR, inventory
-Qwen 2.5 7B Q4      vLLM (local)     ~5GB free     Arabic/Urdu conversation
-LLaVA 7B            Ollama (local)   ~5GB free     Image/invoice reading
-nomic-embed-text    Ollama (local)   Minimal free  Document embeddings → Qdrant
-Claude 4 Sonnet     Anthropic (API)  Per-token     Complex docs, legal, long context (PRIMARY)
-GPT-4o              OpenAI (API)     Per-token     Vision, structured extraction
-Gemma 4             OpenRouter (API) Per-token     General reasoning, code, multilingual
-Gemini 2.0          Google (API)     Per-token     Multimodal, very long context
-Any 70B+/other      OpenRouter (API) Per-token     DeepSeek, Qwen 72B, 200+ models
-```
+### 6.2 The 4 Tiers
 
-### 6.3 Bifrost Routing Logic
 ```
-Task Type                           Routes To                                    Reason
-─────────────────────────────────────────────────────────────────────────────────────────
-Simple FAQ, routing, classification  Mistral 7B (local vLLM)                     Fast, free
-Arabic/Urdu conversation             Qwen 2.5 7B (local vLLM)                    Best multilingual
-General reasoning, HR, inventory     Llama 3 8B (local vLLM)                     High quality, zero cost
-General reasoning (API supplement)   Gemma 4 via OpenRouter (API)                Strong + cheaper than Claude
-Code, structured output              Gemma 4 / Claude 4 Sonnet via OpenRouter    Both excellent at code
-Complex docs, legal, long context    Claude 4 Sonnet (API)                       Frontier quality needed
-Invoice/image reading                GPT-4o (API) + LLaVA (local)               Best vision models
-Any hosted model needed              OpenRouter (API)                            200+ models — Llama, Mistral,
-                                                                                  Qwen, DeepSeek, Gemma, etc.
-Local models under load/down         OpenRouter → Claude (auto-failover)          Multi-tier auto-fallback
-Cached/repeated queries              Bifrost semantic cache                      No LLM call at all
-70B+ reasoning                       OpenRouter / Claude API (cloud)             Cannot fit in 8GB VRAM
+TIER 1 — SEMANTIC CACHE (50ms, $0)
+  Bifrost semantic cache via Redis (10.30.0.30)
+  similarity_threshold: 0.85, TTL: 3600s
+  Hit → return cached response. No LLM call at all.
+  40-60% cost savings on repeated queries.
+
+TIER 2 — LOCAL GPU (200ms-2s, $0)
+  Ollama on Quadro M4000 (10.40.0.20:11434)
+    → mistral-7b + qwen-2.5-7b + llama-3.2-3b  (fast FAQ, classification)
+    → nomic-embed-text                             (embeddings)
+    → LLaVA 7B                                     (vision)
+  Frigate YOLO on GPU                              (object detection)
+  Whisper STT via Dograh (GPU)                     (transcription)
+  Chatterbox TTS (GPU)                             (primary voice synthesis — Dograh auto-selects)
+  Kokoro TTS (CPU)                                 (fallback voice synthesis — Dograh auto-selects)
+
+TIER 3 — OPENROUTER FREE (2-8s, $0)
+  Primary text LLM — 90%+ of all calls
+    → general-reasoning: gemma-4-31b → llama-70b → hermes-405b → nemotron-120b
+    → multilingual:      qwen-2.5-72b → gemma-4-31b
+    → code:              qwen-coder → deepseek-v4 → gpt-oss-120b
+    → fast-simple:       cobuddy → llama-3b → liquid-instruct
+
+TIER 4 — OPENROUTER PAID (3-10s, ~$0.50/1M tokens)
+  Frontier models for complex/long-context tasks
+    → frontier-reasoning: Claude 4 Sonnet → GPT-4o (via OpenRouter, NOT direct)
+    → frontier-vision:    GPT-4o-vision → Claude 4 Sonnet (via OpenRouter)
+    → frontier-code:      Claude 4 Sonnet → GPT-4o (via OpenRouter)
 ```
 
-### 6.4 Routing Priority (every LLM call)
+### 6.3 Task-Based Routing
+
 ```
-1. Bifrost semantic cache hit  → return cached response (zero cost)
-2. Local vLLM (Mistral/Llama/Qwen) → run on Quadro (zero cost)
-3. OpenRouter API → pay-per-token for hosted models
-4. Claude API → direct Anthropic for frontier tasks
-Failover: if local models down → skip to OpenRouter → if OpenRouter fails → Claude
+Task                          Primary Route                Fallback Chain
+────────────────────────────────────────────────────────────────────────────────────────
+FAQ, classification           Tier 2 (mistral-7b local)    → Tier 3 (gemma-4 free)
+Arabic/Urdu conversation      Tier 2 (qwen-2.5-7b local)   → Tier 3 (qwen-2.5-72b free)
+General reasoning, CRM, HR    Tier 3 (gemma-4-31b free)    → Tier 3 (llama-70b) → hermes-405b
+Complex docs, legal, contracts Tier 4 (Claude 4 Sonnet     → Tier 4 (GPT-4o)
+                              via OpenRouter paid)
+Code generation               Tier 3 (qwen-coder free)     → Tier 3 (deepseek-v4 free)
+Vision (images, invoices)     Tier 2 (LLaVA 7B local GPU)  → Tier 4 (GPT-4o paid)
+STT (voice transcription)     Tier 2 (Whisper local GPU)   — no cloud fallback
+TTS (voice response)          Tier 2 (Chatterbox GPU →         — always local
+                              Kokoro CPU fallback)              Dograh auto-selects
+Embeddings (RAG)              Tier 2 (nomic-embed-text)    — always local
+Object detection              Tier 2 (Frigate GPU/YOLO)    — always local
 ```
 
-### 6.5 Knowledge Layer — LLM Wiki Pattern
+### 6.4 Cross-Tier Failure Handling
+
+```
+Local GPU down (Tier 2) → OpenRouter free tier takes over (slower but works)
+Free tier down          → OpenRouter paid tier takes over (frontier models)
+OpenRouter down         → SERVICE DEGRADED — all cloud LLM unavailable
+                          (local GPU models + cache still serve)
+All tiers failed        → n8n returns graceful error to end user
+```
+
+### 6.5 Available Models Reference
+
+```
+Model Group            Models (ordered by preference)
+────────────────────────────────────────────────────────────────────────
+local-fast             mistral-7b → qwen-2.5-7b → llama-3.2-3b
+general-reasoning      gemma-4-31b → llama-70b → hermes-405b → nemotron-120b
+multilingual           qwen-2.5-72b → gemma-4-31b
+code                   qwen-coder → deepseek-v4 → gpt-oss-120b
+fast-simple            cobuddy → llama-3b → liquid-instruct
+frontier-reasoning     Claude 4 Sonnet (OpenRouter paid) → GPT-4o (OpenRouter paid)
+frontier-vision        GPT-4o-vision (OpenRouter paid) → Claude 4 Sonnet (OpenRouter paid)
+frontier-code          Claude 4 Sonnet (OpenRouter paid) → GPT-4o (OpenRouter paid)
+```
+
+### 6.6 Knowledge Layer — LLM Wiki Pattern
 ```
 Layer           Role
 ────────────────────────────────────────────────────
@@ -651,130 +707,111 @@ wiki/ folder    Multi-layered: index, concept, entity, source pages
 Agent query     Read compiled wiki at message time
 Qdrant RAG      Fallback for overflow/volatile data only
 ```
-Philosophy: Client knowledge bases are small (<50k tokens).
-LLM Wiki is simpler, cheaper, and more reliable than RAG at this scale.
-Qdrant reserved for conversations, temp data, cache overflow.
+Client knowledge bases are small (<50k tokens). LLM Wiki is simpler, cheaper, and more reliable than RAG at this scale. Qdrant reserved for conversations, temp data, cache overflow.
 
-### 6.6 Hybrid Cloud Architecture
+### 6.7 Hybrid Cloud Architecture
 ```
-ON-PREM (never leaves):
+ON-PREM (never leaves the server):
   Client data, agent memory, conversations, documents
   RAG knowledge bases, business logic, workflow execution
-  Camera feeds, voice recordings, all FOSS app data
+  Camera feeds (Frigate), voice recordings (Asterisk)
+  All FOSS app data, vector embeddings (nomic-embed-text)
+  TTS voice cloning (Chatterbox), vision (LLaVA), STT (Whisper)
 
-CLOUD (necessary only — via Bifrost):
-  LLM inference (text only — Bifrost strips PII)
-  STT audio (Deepgram — voice call audio)
-  Encrypted backups (S3 — AES-256 encrypted)
-  Email (SES — reports/notifications)
-  Static assets (CloudFront — dashboard CSS/JS)
+CLOUD (necessary only — all via OpenRouter through Bifrost):
+  Text LLM inference — OpenRouter free tier (Tier 3)
+  Frontier LLM — OpenRouter paid tier (Tier 4 — Claude/GPT-4o via OpenRouter)
+  DNS/SSL — Cloudflare
+  Git — GitHub
 
-AWS HYBRID ($200 free tier):
-  S3 backups, CloudFront CDN, SES email, EC2 overflow, Lambda webhooks
+NOT IN CLOUD (processed locally for privacy/cost):
+  Audio streams/recordings — Whisper STT + Chatterbox/Kokoro TTS local
+  Camera feeds — Frigate GPU YOLO local
+  Client documents — MinIO + Qdrant local
 ```
 
 ---
 
-## 7. CAPABILITIES LAYER
-
-Capabilities sit between Core Infrastructure and Use Cases. Each capability = combination of multiple tiers. Built once. Reused across all industries.
-
-```
-#   Capability                    Tiers Used                          Industries
-────────────────────────────────────────────────────────────────────────────────
-1   Voice Conversation AI         T1+T3+T5+T6+T7                      Clinic, Hotel, Call centre
-2   WhatsApp Conversational AI    T1+T3+T6+T7                         All industries
-3   Appointment Booking           T1+T3+T6+T7+T8(Calcom)              Clinic, Salon, Legal
-4   Lead Qualification            T1+T3+T6+T7+T8(CRM)                 Real estate, Insurance
-5   FAQ + Customer Support        T1+T3+T6+T7(Qdrant RAG)             Any customer-facing
-6   Document Processing           T1+T3(LLaVA)+T6+T7                  Legal, Accounting, HR
-7   Order & Inventory Management  T1+T3+T6+T7+T8(ERPNext)             Pharmacy, Retail
-8   HR Self-Service               T1+T3+T6+T7+T8(ERPNext HR)          Any 10+ employee company
-9   Automated Reporting           T3+T6(n8n cron)+T7+T9(Metabase)     All industries
-10  Visual Intelligence           T1(cameras)+T4+T3(LLaVA)+T6         Retail, Security, School
-11  Proactive Notifications       T6(n8n)+T1(WhatsApp/SMS)+T7         All industries
-12  System Integration            T6(n8n)+T8+MCP                      Any business with legacy IT
-13  Multilingual AI               T3(Qwen 7B)+T5(Deepgram)            All UAE/Pakistan industries
-14  Payment Processing            T6(n8n)+T8(JazzCash/Stripe)         Retail, Clinic, Academy
-15  Email Automation              T1(IMAP)+T3+T6(n8n)                 Legal, Accounting, RE
-16  Predictive Analytics          T7(data)+T9(metabase+sklearn)       Retail, Pharmacy, Mfg
-17  Attendance & Access Control   T4(Frigate face)+T8(ERPNext HR)     School, Factory, Office
-18  Contract & E-Signing          T3+T6(n8n)+T8(Docuseal+Paperless)   Legal, Real estate, HR
-19  Multi-Channel Routing         T1+T6(n8n routing)+T5               Call centre, Support
-20  Agent Escalation              T6(n8n human-in-loop)+T1(WhatsApp)  All industries
-```
-
 ---
 
-## 8. USE CASES
+## 8. AI TRANSFORMATION LAYER — 4 USE CASES
 
-Each use case = 1 n8n workflow + 1 Qdrant collection + 1 Keycloak tenant + 1 Bifrost virtual key + 1 Langfuse prompt + 1 Paperclip company agent. Onboarding = 2-3 hours.
+These are the **product** — AI Digital Employees running on the AIOS Infrastructure Layer.
+Each use case = 1 standalone n8n workflow replacing a manual business process.
 
 ```
-#   Use Case                  Channel              LLM                  Replaces              App
-─────────────────────────────────────────────────────────────────────────────────────────────────────
-1   Clinic AI Receptionist    Voice + WhatsApp     Llama 3 8B + Qwen    Manual receptionist   ERPNext Hospital
-2   HR AI Assistant           WhatsApp + Web       Mistral 7B           HR admin routine      ERPNext HR
-3   Real Estate Lead Agent    WhatsApp + Voice     Claude 4 Sonnet      Manual follow-up      Twenty CRM + Calcom
-4   Retail Inventory AI       Web + WhatsApp       Mistral 7B + Frigate  Manual stock mgmt     ERPNext POS
-5   Accounting AI             WhatsApp + Web       GPT-4o + LLaVA       Manual data entry     Paperless-ngx + GnuCash
-6   Pharmacy AI               WhatsApp + Voice     Llama 3 8B + Frigate  Manual ordering       ERPNext POS
-7   Hotel Concierge AI        Voice + WhatsApp     Claude 4 + ElevenLabs Front desk routine   ERPNext Hotel
-8   Call Centre AI            Voice (Asterisk)     Qwen 7B Urdu/Arabic  Human agents          FreePBX + Asterisk
-9   Legal AI                  Web + Email          Claude 4 long ctx    Manual doc review     Paperless-ngx + Docuseal
-10  Academy AI                WhatsApp + Web       Mistral + Qwen       Admin staff           Frappe LMS + ERPNext Edu
-11  Security AI               Camera feeds         Frigate + LLaVA      Manual monitoring     Frigate pipeline
-12  Logistics AI              WhatsApp + API       Mistral 7B           Manual tracking       ERPNext + n8n
+#   Workflow                  Business Problem Solved       AI Digital Employee
+──────────────────────────────────────────────────────────────────────────────────────────
+1   03-sales-crm.json         Manual lead follow-up lost   Sales AI Agent
+                              revenue. No CRM pipeline.    Manages leads, answers queries,
+                              Inconsistent responses.      qualifies, updates Twenty CRM,
+                                                           24/7 on WhatsApp.
+
+2   04-voice-receptionist.json  Missed calls = missed      Voice Receptionist AI
+                              business. No after-hours     Answers calls, books appointments,
+                              coverage. Multi-language     answers FAQs, routes to humans.
+                              callers.                     Urdu + English.
+
+3   02-hr-payroll.json        Attendance fraud. Manual     HR & Payroll AI
+                              salary calc errors. Leave    Face recognition attendance,
+                              tracking chaos.              GPS verification, auto salary,
+                                                            leave management.
+
+4   01-surveillance.json      Single guard can't watch     Security AI Agent
+                              20 cameras. Alerts missed.   Real-time object detection,
+                              No intelligent filtering.    scene understanding, WhatsApp
+                                                            alerts to owner.
 ```
+
+Each workflow at `/aios/n8n/workflows/{number}-{name}.json`, calling Bifrost for inference, logging to Langfuse for cost/observability.
 
 ---
 
 ## 9. DATA FLOWS
 
-### WhatsApp Agent — Complete Request Lifecycle
+### WhatsApp — Use Case Request Lifecycle
 ```
-Client sends WhatsApp message
+End user sends WhatsApp message
 → Meta webhook → Cloudflare → Huawei ONT → Traefik → CrowdSec
-→ Keycloak auth (tenant validated)
-→ n8n workflow (client-specific, tagged to tenant)
-→ Bifrost guardrails (prompt injection scan)
-→ Qdrant semantic search (client knowledge base RAG)
-→ Langfuse (pulls versioned system prompt for this client)
-→ Bifrost semantic cache check (cached? return immediately)
-→ Bifrost routes to vLLM (local) OR OpenRouter/Claude API (cloud)
+→ n8n workflow (use-case specific — Sales CRM, HR, etc.)
+→ Bifrost 4-tier routing:
+    Tier 1 — Semantic cache check (cached? return immediately, 50ms, $0)
+    Tier 2 — Local GPU (fast FAQ, classification via Ollama) — $0
+    Tier 3 — OpenRouter free tier (gemma-4, llama-70b, hermes-405b) — $0
+    Tier 4 — OpenRouter paid tier (Claude 4 Sonnet, GPT-4o) — if free fails
 → Langfuse logs: prompt + response + cost + latency + tokens + model
-→ OpenTelemetry traces full request path
-→ n8n formats reply → WhatsApp API → client receives answer
+→ n8n formats reply → WhatsApp API → end user receives answer
 Total: under 3 seconds end-to-end
 ```
 
 ### Voice Call — Complete Lifecycle
 ```
-Caller dials → SIP trunk → Asterisk (Docker Voice)
-→ Retell AI / Vapi (conversation orchestration)
-→ Deepgram Nova 3 STT (Arabic/Urdu/English real-time)
-→ n8n webhook → same pipeline as WhatsApp above
-→ Bifrost → vLLM / Claude → response text
-→ ElevenLabs TTS (natural voice synthesis)
+Caller dials → SIP trunk → Asterisk (Voice zone — 10.50.0.10)
+→ Dograh (voice agent orchestration — replaces Retell AI/Vapi)
+  → Whisper STT (GPU via Ollama or Dograh built-in)
+  → n8n use case workflow
+  → Bifrost 4-tier routing → OpenRouter → LLM response
+  → TTS: Dograh auto-selects Chatterbox (GPU, high quality)
+                               or Kokoro (CPU, lighter/faster)
 → Audio back → Asterisk → caller
 Call recorded. Full transcript logged in Langfuse.
 ```
 
 ### Visual AI — Camera Event Pipeline
 ```
-IP camera RTSP → go2rtc → Frigate NVR
-→ YOLO on Quadro M4000 (detects object: person/vehicle/face)
-→ LLaVA describes: "delivery driver at front door"
-→ MQTT event → n8n workflow fires
-→ n8n → Bifrost → LLM → decides action
-→ WhatsApp alert to owner + Supabase log + Grafana update
+IP camera RTSP → go2rtc → Frigate (AI zone — 10.40.0.50)
+→ YOLO on Quadro M4000 (built into Frigate — detects: person/vehicle/face)
+→ LLaVA describes scene via Ollama: "delivery driver at front door"
+→ MQTT event (10.50.0.20:1883) → n8n surveillance workflow
+→ n8n → Bifrost → LLM decides action → WhatsApp alert
+→ Langfuse log + PostgreSQL log
 ```
 
 ### Knowledge Document Ingestion
 ```
 Admin uploads .md / PDF / SOP → Supabase Storage
 → n8n ingestion workflow → LlamaIndex chunks document
-→ nomic-embed-text generates vectors → Qdrant stores in client's collection
+→ nomic-embed-text generates vectors → Qdrant stores in knowledge collection
 Agent immediately has access to new knowledge. Zero restart.
 ```
 
@@ -789,40 +826,11 @@ Cron 2:00 AM → n8n workflow
 
 ---
 
-## 10. CLIENT DEPLOYMENT GUIDE
 
-### What Goes vs What Stays
-```
-REMOVED for client (lab-only):
-  Claude Code, Hermes Agent, OpenClaw, Paperclip internal company,
-  LiteLLM, Ollama dev, GitOps Agent, Flowise/Dify (optional)
-
-KEPT for client:
-  All Tiers 1-10, relevant FOSS apps, Paperclip client company,
-  Metabase dashboards, Grafana client org, all monitoring
-```
-
-### Client Onboarding Steps
-```
-Step  Action                                   Tool              Time
-─────────────────────────────────────────────────────────────────────────
-1     Create Keycloak tenant                   Keycloak admin    5 min
-2     Create Qdrant collection                 Qdrant API        2 min
-3     Create Supabase schema + RLS             Supabase dash     5 min
-4     Create Bifrost virtual key + budget      Bifrost admin     2 min
-5     Create Paperclip company                 Paperclip dash    5 min
-6     Upload knowledge docs → Qdrant           n8n ingestion     30 min
-7     Configure system prompt in Langfuse      Langfuse UI       20 min
-8     Clone n8n main workflow from template    n8n dashboard     30 min
-9     Connect WhatsApp or voice number         WA API + Retell   15 min
-10    Test end-to-end → demo → sign-off        Manual            30 min
-─────────────────────────────────────────────────────────────────────────
-      TOTAL                                                     2-3 hours
-```
 
 ---
 
-## 11. PHASES & SCALE PLAN
+## 10. PHASES & SCALE PLAN
 
 ### Phase 1 — Lab (Now, 45 days)
 ```
@@ -865,7 +873,7 @@ Dedicated NAS         Not yet       Phase 2
 
 ---
 
-## 12. MARKET CONTEXT
+## 11. MARKET CONTEXT
 
 ### Target Markets
 ```
@@ -891,11 +899,11 @@ Phase 2B    US & Canada         Month 12-18   White-label with local agencies
 
 ---
 
-## 13. QUICK REFERENCE
+## 12. QUICK REFERENCE
 
 ### Service Ports
 ```
-Bifrost:    http://10.40.0.10:4000   vLLM:       http://10.40.0.40:8000
+Bifrost:    http://10.40.0.10:4000
 n8n:        http://10.20.0.10:5678   Qdrant:     http://10.30.0.20:6333
 Supabase:   http://10.30.0.10:8000   Redis:      redis://10.30.0.30:6379
 MinIO:      http://10.30.0.40:9000   Langfuse:   http://10.60.0.10:3000
@@ -918,264 +926,79 @@ Server Docker Layer B:   Traefik, CrowdSec, Keycloak, Vault, Bifrost,
                           Open WebUI, Grafana, Prometheus, Loki, Portainer,
                           Dashy, Uptime Kuma, Dozzle, GitOps Agent, Watchtower,
                           Trivy, GitHub Actions Runner
-Server GPU:              vLLM, Frigate, LLaVA, YOLO, go2rtc,
+Server GPU:              Frigate YOLO, LLaVA, Whisper, Chatterbox, nomic-embed
                           nvidia-smi exporter, Ollama (GPU models)
 Dev PC:                  Claude Code, OpenClaw, Docker Desktop, WSL2
-Cloud APIs:              Claude 4 Sonnet, GPT-4o, Gemma 4, Gemini,
-                          OpenRouter (200+), Deepgram, ElevenLabs,
-                          Retell AI, WhatsApp API, Twilio
-AWS:                     S3, CloudFront, SES, EC2 t2.micro, Lambda
+Cloud APIs:              OpenRouter (200+ models via 4 tiers)
+                           Tier 3 — free: llama-70b, gemma-4, hermes-405b, qwen-2.5, deepseek-v4
+                           Tier 4 — paid: Claude 4 Sonnet, GPT-4o (via OpenRouter, NOT direct)
+                           NO direct API keys — all cloud through OpenRouter gateway
+WhatsApp:                Meta Business WhatsApp API
+External:                Stripe, JazzCash, AWS (S3/CloudFront/SES), Cloudflare, Twilio
 ```
 
 ### Model Routing Quick Reference
 ```
 Task                          Model                          Reason
 ────────────────────────────────────────────────────────────────────────
-Simple FAQ, classification    Mistral 7B (vLLM)              Fast + free
-Arabic/Urdu conversation      Qwen 2.5 7B (vLLM)            Best multilingual
-General reasoning, HR tasks   Llama 3 8B (vLLM)             Free, quality
-General reasoning (API)       Gemma 4 (OpenRouter)          Strong + cheap
-Complex docs, legal, long ctx Claude 4 Sonnet (API)          Frontier
-Code, structured output       Gemma 4 / Claude 4 (API)      Both excellent
-Invoice/image reading         GPT-4o + LLaVA                Best vision
-Any other model               OpenRouter (API)              200+ models
-Cache hits                    Bifrost cache                 Zero cost
-Local down                    OpenRouter → Claude (failover) Auto-fallback
-70B+ reasoning                OpenRouter / Claude (API)     8GB VRAM limit
+Simple FAQ, classification    Mistral 7B (Ollama local)      Fast, $0
+Arabic/Urdu conversation      Qwen 2.5 7B (Ollama local)     Best multilingual
+General reasoning, CRM, HR    Gemma 4 (OpenRouter free)      Primary — 90%+ calls
+Complex docs, legal, long ctx Claude 4 Sonnet (OpenRouter paid) Frontier
+Code generation               Qwen Coder (OpenRouter free)   Best free coder
+Invoice/image reading         LLaVA 7B (Ollama local)        → GPT-4o paid fallback
+Any other model               OpenRouter free tier           25 models up to 405B
+Cache hits                    Bifrost semantic cache (Redis) Zero cost
+Local down                    OpenRouter free (auto-fallback) Slower but works
+Free tier down                OpenRouter paid (Claude/GPT-4o) Frontier fallback
+All cloud down                Local models only              Degraded — cache still serves
 ```
 
 ---
 
-## 14. CAPABILITIES — TECHNICAL IMPLEMENTATION
-
-### 14.1 What a Capability Is
-A capability is a **reusable n8n sub-workflow template** with variable inputs and no client hardcoding. It does ONE job. It knows nothing about which client is calling it.
-
-**Capability IS:** n8n sub-workflow JSON in `/workflow-templates/capabilities/`, called by "Execute Sub-Workflow" node, reused across unlimited clients.
-**Capability IS NOT:** A Docker container, separate service, or architecture tier.
-
-### 14.2 Three Core Concepts
-```
-CAPABILITY  = Reusable sub-workflow (the building block)
-              Does ONE job. Variables only. No client context.
-              Example: cap-appointment-booking.json
-
-MAIN WORKFLOW = Client-specific orchestrator (the manager)
-              Receives input. Routes. Chains capabilities.
-              Client variables filled at clone time.
-              Example: clinic-abc-main.json
-
-AGENT       = The AI entity with personality, memory, and goal
-              Paperclip entry + Langfuse prompt + n8n workflow
-              Example: "Sarah — Clinic ABC Receptionist"
-```
-
-### 14.3 n8n Folder Structure
-```
-n8n/
-├── /workflow-templates/
-│   ├── /capabilities/                  ← 20 sub-workflows
-│   │   ├── cap-voice-conversation.json
-│   │   ├── cap-whatsapp-conversational.json
-│   │   ├── cap-appointment-booking.json
-│   │   ├── cap-lead-qualification.json
-│   │   ├── cap-faq-support.json
-│   │   ├── cap-document-processing.json
-│   │   ├── cap-inventory-management.json
-│   │   ├── cap-hr-selfservice.json
-│   │   ├── cap-automated-reporting.json
-│   │   ├── cap-visual-intelligence.json
-│   │   ├── cap-proactive-notifications.json
-│   │   ├── cap-system-integration.json
-│   │   ├── cap-multilingual.json
-│   │   ├── cap-payment-processing.json
-│   │   ├── cap-email-automation.json
-│   │   ├── cap-predictive-analytics.json
-│   │   ├── cap-attendance-access.json
-│   │   ├── cap-contract-esigning.json
-│   │   ├── cap-multichannel-routing.json
-│   │   └── cap-agent-escalation.json
-│   │
-│   └── /use-case-templates/            ← 12 main workflows
-│       ├── template-clinic-main.json
-│       ├── template-hr-main.json
-│       ├── template-realestate-main.json
-│       ├── template-retail-main.json
-│       ├── template-accounting-main.json
-│       ├── template-pharmacy-main.json
-│       ├── template-hotel-main.json
-│       ├── template-callcentre-main.json
-│       ├── template-legal-main.json
-│       ├── template-academy-main.json
-│       ├── template-security-main.json
-│       └── template-logistics-main.json
-│
-└── /clients/                           ← deployed per client
-    └── /[client-id]/
-        └── [client-id]-main.json       ← cloned from template
-```
-
-### 14.4 Capability Internal Structure
-```
-INPUT:  variables passed from main workflow
-        { client_id, collection_id, prompt_key, model, [capability-specific vars] }
-
-NODES:  logic steps using Tier 3-8 tools (Bifrost, Qdrant, Supabase, ERPNext, etc.)
-
-OUTPUT: { success: true/false, [capability-specific result data] }
-```
-KEY RULE: No client name, no client data hardcoded. Everything = variable.
-
-### 14.5 Main Workflow Internal Structure
-```
-[NODE 1] Trigger — Webhook (WhatsApp) / SIP (Voice) / Cron
-[NODE 2] Set Variables — client_id, collection_id, prompt_key, model, erp_url
-[NODE 3-N] Execute Sub-Workflow (chained capabilities)
-[FINAL] Log — Supabase conversation + Langfuse cost/tokens
-```
-
-### 14.6 Chaining Example — Clinic Booking
-```
-Patient: "Dr Ahmed se appointment chahiye kal 3 baje" (Urdu)
-
-[MAIN] → [cap-multilingual] → detects Urdu, translates
-       → [cap-intent-detection] → intent: appointment, entities: Dr Ahmed, tomorrow, 3pm
-       → [IF/SWITCH] → appointment_booking
-       → [cap-appointment-booking] → check ERPNext availability
-                                    → query Qdrant rules
-                                    → Bifrost → Qwen 2.5 7B
-                                    → book in ERPNext + Google Calendar
-       → [cap-proactive-notifications] → WhatsApp confirmation in Urdu
-       → [Supabase log + Langfuse log]
-```
-
-### 14.7 Time Estimates
-```
-Add capability to existing client:    30-60 min
-Onboard NEW client (automated):       10-12 min (new-client.py)
-  + Manual (prompt + docs + test):    45-50 min
-  = Total to live:                    ~1 hour
-```
+---
 
 ---
 
-## 15. NEW CLIENT ONBOARDING — FORM FIELDS
+## 11. PHASE 1 DELIVERABLES
 
-### Required Inputs for new-client.py
-```
-BASIC INFO
-  client_id, client_name, industry, contact_name, contact_phone, contact_email
-
-LANGUAGE & REGION
-  primary_language (urdu/arabic/english), secondary_language, region, timezone
-
-AI CONFIGURATION
-  preferred_model (qwen-2.5-7b), monthly_budget (USD), agent_name, agent_personality
-
-CAPABILITIES (true/false — 18 toggles)
-  voice_conversation, whatsapp_conversational, appointment_booking, faq_support,
-  lead_qualification, document_processing, inventory_management, hr_selfservice,
-  proactive_notifications, visual_intelligence, payment_processing, email_automation,
-  predictive_analytics, attendance_access, contract_esigning, multichannel_routing,
-  agent_escalation, multilingual (auto if language != english)
-
-CHANNELS
-  whatsapp_number, voice_number, web_chat, email_inbound
-
-INTEGRATIONS
-  erp_type, erp_url, erp_api_key, calendar_type, calendar_id, crm_type, payment_gateway
-
-AWS RESOURCES
-  create_s3_backup, create_cloudfront, create_ses_domain
-```
-
-### What new-client.py Automates
-```
-  ✅ Keycloak tenant           ✅ Qdrant collection ({client_id}-knowledge)
-  ✅ Supabase schema + RLS     ✅ Bifrost virtual key + budget
-  ✅ Paperclip company + agent ✅ Langfuse project
-  ✅ n8n main workflow cloned  ✅ All variables filled
-  ✅ Capabilities enabled      ✅ SIP extension (Asterisk)
-  ✅ WhatsApp webhook          ✅ AWS S3 + CloudFront (if selected)
-```
-
-### What Requires Manual Input (cannot automate)
-```
-  ❌ System prompt content in Langfuse (15-20 min)
-  ❌ Knowledge base docs → Qdrant (20-30 min)
-  ❌ End-to-end test (15 min)
-```
-
-### Script Output Example
-```
-┌─────────────────────────────────────────────────┐
-│ AIOS NEW CLIENT ONBOARDED                       │
-│ Client ID:    clinic-abc        Industry: Clinic│
-│ Agent Name:   Sarah             Language: Urdu  │
-│ ─────────────────────────────────────────────── │
-│ Keycloak: ✅  Qdrant: ✅  Supabase: ✅          │
-│ Bifrost: ✅   Paperclip: ✅  n8n: ✅            │
-│ WhatsApp: ✅  SIP: ✅       AWS S3: ✅          │
-│ ─────────────────────────────────────────────── │
-│ MANUAL (45 min): Fill prompt → Upload docs      │
-│                  → Test WhatsApp → Test Voice   │
-│ Automation: 11 min  │  Manual: ~45 min          │
-│ Total to live: ~1 hour                          │
-└─────────────────────────────────────────────────┘
-```
-
----
-
-## 16. PHASE 1 DELIVERABLES
-
-### Week-by-Week Build Plan
+### Week-by-Week Build Plan — Build AI Infrastructure first, then AI Transformation use cases on top
 
 ```
-WEEK 1: Infrastructure setup
+WEEK 1: AIOS Infrastructure Layer — base stack
   Server configured — Docker, GPU, networks
   Docker Layer A (FOSS) + Layer B (AI core) deployed
   All services accessible via Dashy
 
-WEEK 2: Capability templates — batch 1
-  cap-voice-conversation, cap-whatsapp-conversational,
-  cap-appointment-booking, cap-multilingual,
-  cap-intent-detection, cap-faq-support
+WEEK 2: AI Transformation — CRM Use Case (#3)
+  Build n8n workflow: 03-sales-crm.json
+  Wire: webhook → OpenRouter → PostgreSQL → Langfuse
+  Test end-to-end via webhook
 
-WEEK 3: Capability templates — batch 2
-  cap-lead-qualification, cap-document-processing,
-  cap-inventory-management, cap-hr-selfservice,
-  cap-proactive-notifications, cap-agent-escalation
+WEEK 3: AI Transformation — Voice Use Case (#4)
+  Wire Asterisk → Dograh → Chatterbox/Kokoro → OpenRouter
+  Test call pipeline end-to-end
+  Build n8n workflow: 04-voice-receptionist.json
 
-WEEK 4: Remaining capabilities + first use cases
-  All remaining 8 capabilities
-  template-clinic-main.json, template-hr-main.json
+WEEK 4: AI Transformation — HR Use Case (#2)
+  Build n8n workflow: 02-hr-payroll.json
+  Test GPU vision (face recognition via Ollama/LLaVA)
+  Wire payroll logic + GPS
 
-WEEK 5-6: Remaining use cases + first client
-  All 10 remaining use case templates
-  new-client.py script built + tested
-  First real client deployed end-to-end
+WEEK 5-6: AI Transformation — Surveillance Use Case (#1)
+  Connect IP cameras → Frigate → GPU detection
+  Build n8n workflow: 01-surveillance.json
+  Wire MQTT → n8n → WhatsApp alerts
+  Full integration test all 4 use cases
 ```
 
-### Definition of Done — Capability
+### Definition of Done — AI Transformation Use Case
 ```
-✅ Sub-workflow in n8n with all variable inputs
-✅ All external calls through Bifrost
-✅ All data queries through Qdrant (collection_id variable)
-✅ Prompts pulled from Langfuse (prompt_key variable)
-✅ Success + failure outputs defined
-✅ Langfuse logging added
-✅ Tested with 2+ client variable sets
-✅ Documented in /docs/capabilities/[name].md
-```
-
-### Definition of Done — Use Case Template
-```
-✅ Main workflow in n8n with all client variables
-✅ Correct capabilities chained in correct order
-✅ Intent routing logic complete (IF/SWITCH)
-✅ Logging to Supabase + Langfuse
-✅ Tested with dummy client data
-✅ new-client.py supports this industry
+✅ n8n workflow in /aios/n8n/workflows/{number}-{name}.json
+✅ HTTP POST → Bifrost → OpenRouter for inference
+✅ All LLM calls logged to Langfuse
+✅ Tested end-to-end with real data via webhook
+✅ Functional frontend/dashboard built (Metabase/Streamlit)
 ```
 
 ---

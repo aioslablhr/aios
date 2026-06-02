@@ -41,7 +41,8 @@
 | Bifrost API | 10.40.0.10:4000 | Key: sk-aios-master-admin-key-change-me | OpenAI-compatible endpoint |
 | Dograh API | 10.50.0.30:8000 | JWT secret for backend: aios-dograh-jwt-secret-2026 | Voice backend |
 | Dograh UI | 10.50.0.31:3010 | Sign up on first visit | Voice dashboard |
-| Chatterbox TTS | 10.40.0.30:4123 | — | GPU text-to-speech |
+| Chatterbox TTS | 10.40.0.30:4123 | — | GPU text-to-speech (primary, Dograh auto-selects) |
+| Kokoro TTS | 10.40.0.31:8880 | — | CPU text-to-speech (fallback, Dograh auto-selects) |
 | Mosquitto MQTT | 10.50.0.20:1883 | — | Event bus |
 | Asterisk ARI | 10.0.0.100:8088 | ai / 95vt3r6ke1w8lgqg6qpcui8e | PBX API |
 | ClickHouse | 10.60.0.11:8123 | default / clickhouse | Analytics DB |

@@ -1,29 +1,97 @@
 #!/bin/bash
-# AIOS AI Agent — AGI Bridge (v1.0)
-# Called from dialplan: exten => 102,1,AGI(ai-agent.agi)
-# AI call processing — to be expanded in AI Layer phase
+# AIOS AI Agent — AGI Bridge v2.0
+# Pipeline: Record → n8n webhook → Whisper(STT) → Bifrost(LLM) → TTS → Play
 
-# Get caller ID
-echo "GET VARIABLE CALLERID(num)"
-read -r CALLERID_RESULT
-echo "GET VARIABLE CALLERID(name)"
-read -r CALLERNAME_RESULT
+N8N_WEBHOOK_URL="${N8N_WEBHOOK_URL:-http://10.20.0.10:5678/webhook/ai-agent}"
+AUDIO_SPOOL="/var/spool/asterisk/audio"
+MAX_LOOPS=20
 
-# Log
-echo "VERBOSE \"AI Agent: incoming call from ${CALLER}${CALLERNAME}\" 3"
-read -r
+while read -r AGI_ENV_LINE; do
+  [[ -z "$AGI_ENV_LINE" ]] && break
+done
 
-# Play welcome
-echo "STREAM FILE welcome \"\""
-read -r
+agi_cmd() {
+  echo "$1"
+  read -r AGI_RESULT
+}
 
-# TODO: Phase 5 — Full AI Agent pipeline:
-#   Record → STT (Deepgram/Whisper) → LLM (Bifrost) → TTS (ElevenLabs) → Play
+record_and_process() {
+  local UNIQUE_ID=$1 CALLER_ID=$2 LOOP_NUM=$3
+  local FILE_PATH="${AUDIO_SPOOL}/${UNIQUE_ID}-L${LOOP_NUM}"
 
-echo "STREAM FILE good-bye \"\""
-read -r
+  agi_cmd "STREAM FILE beep \"\""
+  agi_cmd "RECORD FILE ${FILE_PATH} wav \"#\" 10000 0 3000 3"
 
-echo "HANGUP"
-read -r
+  case "$AGI_RESULT" in
+    *"result=#"*) return 2 ;;
+    *"result=0"*) return 1 ;;
+    *"result="-*) return 1 ;;
+  esac
 
+  local FILE_SIZE=0
+  [[ -f "${FILE_PATH}.wav" ]] && FILE_SIZE=$(stat -c%s "${FILE_PATH}.wav" 2>/dev/null || echo 0)
+  [[ "$FILE_SIZE" -lt 100 ]] && return 1
+
+  local TTS_FILE="${AUDIO_SPOOL}/${UNIQUE_ID}-L${LOOP_NUM}-response"
+  local HTTP_CODE
+  HTTP_CODE=$(curl -s -o "${TTS_FILE}.wav" -w "%{http_code}" \
+    -X POST "$N8N_WEBHOOK_URL" \
+    --data-binary @"${FILE_PATH}.wav" \
+    -H "Content-Type: audio/wav" \
+    -H "X-Caller-ID: ${CALLER_ID}" \
+    -H "X-Session-ID: ${UNIQUE_ID}" \
+    -H "X-Loop-Num: ${LOOP_NUM}")
+
+  rm -f "${FILE_PATH}.wav"
+
+  if [[ "$HTTP_CODE" != "200" ]]; then
+    agi_cmd "VERBOSE \"AI Agent: n8n returned HTTP ${HTTP_CODE}\" 3"
+    agi_cmd "STREAM FILE \"pbx-invalid\" \"\""
+    return 1
+  fi
+
+  if [[ -f "${TTS_FILE}.wav" && $(stat -c%s "${TTS_FILE}.wav" 2>/dev/null || echo 0) -gt 1000 ]]; then
+    local TTS_PLAY="${TTS_FILE}-8k"
+    sox "${TTS_FILE}.wav" -r 8000 -c 1 "${TTS_PLAY}.wav" 2>/dev/null || TTS_PLAY="${TTS_FILE}"
+    agi_cmd "STREAM FILE \"${TTS_PLAY}\" \"#*\""
+    rm -f "${TTS_FILE}.wav" "${TTS_FILE}-8k.wav" 2>/dev/null || true
+  else
+    agi_cmd "STREAM FILE \"vm-isonphone\" \"\""
+  fi
+
+  return 0
+}
+
+agi_cmd "ANSWER"
+
+agi_cmd "GET VARIABLE CALLERID(num)"
+CALLER_ID=$(echo "$AGI_RESULT" | sed -n 's/^200 result=1 (\(.*\))$/\1/p')
+agi_cmd "GET VARIABLE CALLERID(name)"
+CALLER_NAME=$(echo "$AGI_RESULT" | sed -n 's/^200 result=1 (\(.*\))$/\1/p')
+agi_cmd "GET VARIABLE UNIQUEID"
+UNIQUE_ID=$(echo "$AGI_RESULT" | sed -n 's/^200 result=1 (\(.*\))$/\1/p')
+[[ -z "$UNIQUE_ID" ]] && UNIQUE_ID="call-$$"
+
+mkdir -p "$AUDIO_SPOOL"
+agi_cmd "STREAM FILE \"welcome\" \"\""
+
+LOOP_NUM=0
+while [[ "$LOOP_NUM" -lt "$MAX_LOOPS" ]]; do
+  LOOP_NUM=$((LOOP_NUM + 1))
+  record_and_process "$UNIQUE_ID" "$CALLER_ID" "$LOOP_NUM"
+  RC=$?
+
+  if [[ "$RC" -eq 2 ]]; then
+    agi_cmd "STREAM FILE \"good-bye\" \"\""
+    break
+  fi
+
+  if [[ "$RC" -ne 0 ]]; then
+    agi_cmd "WAIT FOR DIGIT 2000"
+    [[ "$AGI_RESULT" == *"result=#"* ]] && { agi_cmd "STREAM FILE \"good-bye\" \"\""; break; }
+  fi
+done
+
+find "$AUDIO_SPOOL" -name "${UNIQUE_ID}*" -mmin +5 -delete 2>/dev/null || true
+agi_cmd "HANGUP"
 exit 0

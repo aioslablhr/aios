@@ -73,6 +73,8 @@ RUN apt-get update -qq && \
         libsrtp2-1 \
         procps \
         netcat-openbsd \
+        curl \
+        sox \
         asterisk-core-sounds-en \
         gettext-base \
         && rm -rf /var/lib/apt/lists/*

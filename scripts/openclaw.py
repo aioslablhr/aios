@@ -11,7 +11,6 @@ Usage:
   openclaw logs <service> → Docker logs
   openclaw deploy         → git add + commit + push
   openclaw backup         → Run backup
-  openclaw client list    → List clients
   openclaw vault init     → Initialize Vault
 """
 
@@ -71,13 +70,6 @@ def cmd_backup():
     print()
 
 
-def cmd_client_list():
-    print("\n--- Onboarded Clients ---\n")
-    out = ssh("ls -1 /aios/clients/ 2>/dev/null || echo '(none yet)'")
-    print(out)
-    print()
-
-
 def cmd_vault_init():
     print("\nInitializing Vault...\n")
     print(ssh("docker exec aios-vault vault operator init 2>&1"))
@@ -103,9 +95,8 @@ def interactive():
         print("  [3] Logs           Show service logs")
         print("  [4] Deploy         Git push + auto-deploy")
         print("  [5] Backup         Run backup")
-        print("  [6] Clients        List onboarded clients")
-        print("  [7] Vault Init     Initialize HashiCorp Vault")
-        print("  [8] Restart        Restart a service")
+        print("  [6] Vault Init     Initialize HashiCorp Vault")
+        print("  [7] Restart        Restart a service")
         print("  [0] Exit")
         print("=" * 60)
 
@@ -121,10 +112,8 @@ def interactive():
         elif choice == "5":
             cmd_backup()
         elif choice == "6":
-            cmd_client_list()
-        elif choice == "7":
             cmd_vault_init()
-        elif choice == "8":
+        elif choice == "7":
             cmd_restart(None)
         elif choice == "0":
             print("Exiting. Lab is running 24/7.\n")
@@ -135,7 +124,7 @@ def main():
     parser = argparse.ArgumentParser(description="OpenClaw — AIOS Lab Assistant")
     parser.add_argument("command", nargs="?", default="menu",
                         choices=["menu", "status", "ps", "logs", "deploy",
-                                 "backup", "client", "vault", "restart"])
+                                 "backup", "vault", "restart"])
     parser.add_argument("arg", nargs="?", help="Additional argument (service name, etc.)")
     args = parser.parse_args()
 
@@ -146,7 +135,6 @@ def main():
         "logs": lambda: cmd_logs(args.arg),
         "deploy": lambda: cmd_deploy(),
         "backup": lambda: cmd_backup(),
-        "client": lambda: cmd_client_list(),
         "vault": lambda: cmd_vault_init(),
         "restart": lambda: cmd_restart(args.arg),
     }

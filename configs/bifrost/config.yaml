@@ -4,142 +4,147 @@ general_settings:
 litellm_settings:
   drop_params: true
   set_verbose: false
-  cache: false
+  cache: true
+  cache_params:
+    type: redis
+    host: 10.30.0.30
+    port: 6379
+    ttl: 3600
+    mode: default_semantic
+    similarity_threshold: 0.85
 
 model_list:
-  - model_name: mistral-7b
+  # ── TIER 2: LOCAL GPU OLLAMA (fast Q&A, classification, multilingual) ──
+  - model_name: local-fast
     litellm_params:
       model: ollama/mistral
       api_base: http://10.40.0.20:11434
       rpm: 60
-  - model_name: qwen-2.5-7b
+  - model_name: local-fast
     litellm_params:
       model: ollama/qwen2.5
       api_base: http://10.40.0.20:11434
       rpm: 60
-  - model_name: llama-3-8b
+  - model_name: local-fast
     litellm_params:
       model: ollama/llama3.2
       api_base: http://10.40.0.20:11434
       rpm: 60
-  - model_name: openrouter-free
-    litellm_params:
-      model: openrouter/openrouter/free
-      api_key: ${OPENROUTER_API_KEY}
-  - model_name: gemma-4-31b
+
+  # ── TIER 3: OPENROUTER FREE — GENERAL REASONING ──
+  - model_name: general-reasoning
     litellm_params:
       model: openrouter/google/gemma-4-31b-it:free
       api_key: ${OPENROUTER_API_KEY}
-  - model_name: gemma-4-26b
-    litellm_params:
-      model: openrouter/google/gemma-4-26b-a4b-it:free
-      api_key: ${OPENROUTER_API_KEY}
-  - model_name: llama-70b
+  - model_name: general-reasoning
     litellm_params:
       model: openrouter/meta-llama/llama-3.3-70b-instruct:free
       api_key: ${OPENROUTER_API_KEY}
-  - model_name: llama-3b
-    litellm_params:
-      model: openrouter/meta-llama/llama-3.2-3b-instruct:free
-      api_key: ${OPENROUTER_API_KEY}
-  - model_name: deepseek-v4
-    litellm_params:
-      model: openrouter/deepseek/deepseek-v4-flash:free
-      api_key: ${OPENROUTER_API_KEY}
-  - model_name: qwen-coder
-    litellm_params:
-      model: openrouter/qwen/qwen3-coder:free
-      api_key: ${OPENROUTER_API_KEY}
-  - model_name: qwen-80b
-    litellm_params:
-      model: openrouter/qwen/qwen3-next-80b-a3b-instruct:free
-      api_key: ${OPENROUTER_API_KEY}
-  - model_name: hermes-405b
+  - model_name: general-reasoning
     litellm_params:
       model: openrouter/nousresearch/hermes-3-llama-3.1-405b:free
       api_key: ${OPENROUTER_API_KEY}
-  - model_name: cobuddy
-    litellm_params:
-      model: openrouter/baidu/cobuddy:free
-      api_key: ${OPENROUTER_API_KEY}
-  - model_name: owl-alpha
-    litellm_params:
-      model: openrouter/openrouter/owl-alpha
-      api_key: ${OPENROUTER_API_KEY}
-  - model_name: liquid-thinking
-    litellm_params:
-      model: openrouter/liquid/lfm-2.5-1.2b-thinking:free
-      api_key: ${OPENROUTER_API_KEY}
-  - model_name: liquid-instruct
-    litellm_params:
-      model: openrouter/liquid/lfm-2.5-1.2b-instruct:free
-      api_key: ${OPENROUTER_API_KEY}
-  - model_name: minimax-m2
-    litellm_params:
-      model: openrouter/minimax/minimax-m2.5:free
-      api_key: ${OPENROUTER_API_KEY}
-  - model_name: gpt-oss-120b
-    litellm_params:
-      model: openrouter/openai/gpt-oss-120b:free
-      api_key: ${OPENROUTER_API_KEY}
-  - model_name: gpt-oss-20b
-    litellm_params:
-      model: openrouter/openai/gpt-oss-20b:free
-      api_key: ${OPENROUTER_API_KEY}
-  - model_name: nemotron-reasoning
-    litellm_params:
-      model: openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
-      api_key: ${OPENROUTER_API_KEY}
-  - model_name: nemotron-nano-30b
-    litellm_params:
-      model: openrouter/nvidia/nemotron-3-nano-30b-a3b:free
-      api_key: ${OPENROUTER_API_KEY}
-  - model_name: nemotron-120b
+  - model_name: general-reasoning
     litellm_params:
       model: openrouter/nvidia/nemotron-3-super-120b-a12b:free
       api_key: ${OPENROUTER_API_KEY}
-  - model_name: nemotron-vl
+
+  # ── TIER 3: OPENROUTER FREE — MULTILINGUAL ──
+  - model_name: multilingual
     litellm_params:
-      model: openrouter/nvidia/nemotron-nano-12b-v2-vl:free
+      model: openrouter/qwen/qwen3-next-80b-a3b-instruct:free
       api_key: ${OPENROUTER_API_KEY}
-  - model_name: nemotron-9b
+  - model_name: multilingual
     litellm_params:
-      model: openrouter/nvidia/nemotron-nano-9b-v2:free
+      model: openrouter/google/gemma-4-31b-it:free
       api_key: ${OPENROUTER_API_KEY}
-  - model_name: glm-4
+
+  # ── TIER 3: OPENROUTER FREE — CODE ──
+  - model_name: code
     litellm_params:
-      model: openrouter/z-ai/glm-4.5-air:free
+      model: openrouter/qwen/qwen3-coder:free
       api_key: ${OPENROUTER_API_KEY}
-  - model_name: dolphin-24b
+  - model_name: code
     litellm_params:
-      model: openrouter/cognitivecomputations/dolphin-mistral-24b-venice-edition:free
+      model: openrouter/deepseek/deepseek-v4-flash:free
       api_key: ${OPENROUTER_API_KEY}
-  - model_name: poolside-xs
+  - model_name: code
     litellm_params:
-      model: openrouter/poolside/laguna-xs.2:free
+      model: openrouter/openai/gpt-oss-120b:free
       api_key: ${OPENROUTER_API_KEY}
-  - model_name: poolside-m
+
+  # ── TIER 3: OPENROUTER FREE — FAST/SIMPLE ──
+  - model_name: fast-simple
     litellm_params:
-      model: openrouter/poolside/laguna-m.1:free
+      model: openrouter/baidu/cobuddy:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: fast-simple
+    litellm_params:
+      model: openrouter/meta-llama/llama-3.2-3b-instruct:free
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: fast-simple
+    litellm_params:
+      model: openrouter/liquid/lfm-2.5-1.2b-instruct:free
+      api_key: ${OPENROUTER_API_KEY}
+
+  # ── TIER 4: OPENROUTER PAID — FRONTIER (via OpenRouter, NOT direct API) ──
+  - model_name: frontier-reasoning
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: frontier-reasoning
+    litellm_params:
+      model: openrouter/openai/gpt-4o
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: frontier-vision
+    litellm_params:
+      model: openrouter/openai/gpt-4o-vision
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: frontier-vision
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: frontier-code
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4
+      api_key: ${OPENROUTER_API_KEY}
+  - model_name: frontier-code
+    litellm_params:
+      model: openrouter/openai/gpt-4o
       api_key: ${OPENROUTER_API_KEY}
 
 router_settings:
-  routing_strategy: simple-shuffle
+  routing_strategy: usage-based
   enable_pre_call_checks: true
   allowed_fails: 3
   num_retries: 2
+
+  # ── CROSS-TIER FALLBACK CHAINS ──
   fallbacks:
-    - openrouter-free: [gemma-4-31b, llama-70b, hermes-405b]
-    - gemma-4-31b: [gemma-4-26b, llama-70b, qwen-80b]
-    - gemma-4-26b: [gemma-4-31b, llama-70b]
-    - llama-70b: [gemma-4-31b, hermes-405b, nemotron-120b]
-    - llama-3b: [liquid-instruct, cobuddy]
-    - deepseek-v4: [gemma-4-26b, llama-70b]
-    - qwen-coder: [gpt-oss-120b, dolphin-24b]
-    - qwen-80b: [gemma-4-31b, llama-70b]
-    - hermes-405b: [nemotron-120b, llama-70b]
-    - cobuddy: [owl-alpha, llama-3b]
-    - owl-alpha: [cobuddy, liquid-thinking]
-    - mistral-7b: [qwen-2.5-7b, llama-3-8b]
-    - qwen-2.5-7b: [mistral-7b, llama-3-8b]
-    - llama-3-8b: [mistral-7b, qwen-2.5-7b]
+    # Tier 2 → Tier 3 (local down → free cloud)
+    - local-fast: [general-reasoning, fast-simple]
+
+    # Tier 3 fallbacks within free tier
+    - general-reasoning: [multilingual, fast-simple]
+    - multilingual: [general-reasoning]
+    - code: [general-reasoning]
+    - fast-simple: [local-fast, general-reasoning]
+
+    # Tier 3 → Tier 4 (free fails → paid frontier)
+    - general-reasoning: [frontier-reasoning]
+    - multilingual: [frontier-reasoning]
+    - code: [frontier-code]
+
+    # Tier 4 fallback between paid models
+    - frontier-reasoning: [frontier-vision]
+    - frontier-vision: [frontier-reasoning]
+    - frontier-code: [frontier-reasoning]
+
+  # ── LOGGING ──
+  alerting:
+    - langfuse
+
+langfuse_settings:
+  host: http://10.60.0.10:3000
+  public_key: ${LANGFUSE_PUBLIC_KEY}
+  secret_key: ${LANGFUSE_SECRET_KEY}

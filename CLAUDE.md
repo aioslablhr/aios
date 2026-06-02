@@ -32,13 +32,17 @@ Every decision must be production-quality, state-of-the-art, and scalable.
 
 ---
 
-## WHAT THIS PROJECT IS
+## WHAT THIS PROJECT IS — TWO LAYERS
 
-AIOS (AI Operating System) — a self-hosted hybrid AI platform that:
-1. Runs on a single physical server in Lahore
-2. Serves as template for client deployments
-3. Powers an AI agency selling AI Digital Employees to SMBs
-4. Scales to UAE and USA markets
+AIOS (AI Operating System) — a 2026-aligned reference architecture for SMB & Enterprise AI transformation:
+
+**Layer 1 — AI Infrastructure (the engine room)**
+Best-practice self-hosted AI stack: Docker, GPU, 8 network zones, Bifrost AI Gateway, Langfuse observability, Qdrant vector store, Asterisk voice pipeline, CrowdSec WAF, Traefik reverse proxy, 7-layer architecture. Production-grade, scalable, state-of-the-art.
+
+**Layer 2 — AI Transformation (the product)**
+SMB/Enterprise AI Digital Employees running on the infrastructure. 4 prototype use cases: Smart Surveillance, HR & Payroll, Sales CRM, AI Voice Receptionist. Each = a deployable solution replacing manual processes with AI automation.
+
+**Business:** Powers an AI agency in Lahore selling AI Digital Employees to SMBs. Target: Pakistan → UAE → USA markets. 60 clients, PKR 940K MRR by Month 12.
 
 ---
 
@@ -87,10 +91,9 @@ DEV PC — 10.0.0.13
 │   └── /internal/                   # Lab/internal workflows
 ├── /langfuse/
 │   └── /prompts/
-├── /clients/
-│   └── /[client-id]/
 ├── /scripts/
-│   ├── new-client.py
+│   ├── openclaw.py
+│   ├── hermes.sh
 │   ├── backup.py
 │   ├── health-check.py
 │   └── disaster-recovery.py
@@ -110,8 +113,7 @@ DEV PC — 10.0.0.13
 10.20.0.0/24  Application Zone n8n, Flowise, Keycloak, Vault
 10.30.0.0/24  Data Zone        Supabase, Qdrant, Redis, MinIO
                                 internal:true — NO internet access EVER
-10.40.0.0/24  AI Zone          Bifrost, Ollama(dev), LiteLLM(dev), vLLM
-                                Chatterbox AI (TTS, GPU inference)
+10.40.0.0/24  AI Zone          Bifrost, Ollama, LiteLLM(dev), Frigate
 10.50.0.0/24  Voice Zone       Asterisk, Dograh, MQTT
 10.60.0.0/24  Monitoring Zone  Langfuse, Prometheus, Grafana, Loki
 10.70.0.0/24  FOSS Zone        ERPNext, Odoo, Twenty CRM, Metabase, Calcom
@@ -137,13 +139,15 @@ WHY: Client knowledge bases are small (<50k tokens).
 ```
 Asterisk (SIP trunking) — telephony layer
 Dograh (voice agent orchestration) — replaces Retell AI/Vapi
-Chatterbox AI (TTS/voice cloning, local GPU) — replaces ElevenLabs
+  Dograh auto-selects TTS:
+    Chatterbox AI (TTS/voice cloning, local GPU) — primary — replaces ElevenLabs
+    Kokoro TTS (CPU fallback, lighter/faster) — fallback if GPU busy
 
 Voice pipeline:
   Caller → SIP Trunk → Asterisk → Dograh
     → STT: Whisper (local GPU) or Dograh built-in
     → LLM: Bifrost → OpenRouter
-    → TTS: Chatterbox (local GPU)
+    → TTS: Dograh auto-selects Chatterbox (GPU) or Kokoro (CPU)
   → Audio back → Asterisk → Caller
 ```
 ```
@@ -171,7 +175,8 @@ Traefik:    http://10.10.0.10:80 / 443 (public)
 Asterisk:   http://10.50.0.10 (SIP)
 Dograh API: http://10.50.0.30:8000  (voice agent orchestration)
 Dograh UI:  http://10.50.0.31:3010  (voice dashboard)
-Chatterbox: http://10.40.0.30:4123  (TTS/voice cloning, GPU)
+Chatterbox: http://10.40.0.30:4123  (TTS/voice cloning, primary GPU)
+Kokoro:     http://10.40.0.31:8880  (TTS, CPU fallback)
 MQTT:       http://10.50.0.20:1883
 Ollama:     http://10.40.0.20:11434
 Frigate:    http://10.40.0.50:5000
@@ -225,101 +230,53 @@ OLLAMA_URL=http://10.40.0.20:11434
 # vLLM: NOT DEPLOYED (Quadro M4000 has no VRAM for LLM inference)
 ```
 
-### Rule 5: All client resources via new-client.py only
-```bash
-# CORRECT
-python3 /aios/scripts/new-client.py --client-id clinic-abc --industry clinic
-
-# NEVER create Keycloak/Qdrant/Supabase/Bifrost resources manually
-```
-
-### Rule 6: Git before production
+### Rule 5: Git before production
 ```bash
 # ALWAYS commit before any production change
 git add . && git commit -m "description" && git push
 # GitOps Agent deploys automatically after push
 ```
 
-### Rule 7: n8n workflows — ALL client data as variables
-```json
-// WRONG — hardcoded client
-{"collection_id": "clinic-abc-knowledge"}
-
-// CORRECT — variable from Node 2
-{"collection_id": "{{$node.SetVariables.json.collection_id}}"}
-```
-
-### Rule 8: Always enforce Supabase RLS
-```sql
--- Every table must have this
-ALTER TABLE [table_name] ENABLE ROW LEVEL SECURITY;
-ALTER TABLE [table_name] FORCE ROW LEVEL SECURITY;
-CREATE POLICY tenant_isolation ON [table_name]
-  USING (schema_name = current_setting('app.tenant_id'));
-```
-
-### Rule 9: Always log every LLM call to Langfuse
+### Rule 6: Always log every LLM call to Langfuse
 ```
 Every call through Bifrost must be logged to Langfuse.
-This is how per-client billing is calculated.
-```
-
----
-
-## MULTI-TENANT ISOLATION — v2 (NOT IN MVP v1)
-
-MVP v1 runs direct use cases on the stack — no client isolation layer.
-Multi-tenant model is postponed to v2 when we onboard actual clients.
-
-```
-Future v2 isolation per client:
-  Keycloak:  One Organization per client (Keycloak 26 Organizations feature)
-  Qdrant:    One collection per client — named {client_id}-knowledge
-  Supabase:  One schema per client — named {client_id} with RLS enforced
-  Bifrost:   One virtual key per client — with monthly budget limit
-  n8n:       One main workflow per client — tagged with client_id
-  Langfuse:  One project per client — for cost tracking + prompts
-  Paperclip: One company per client — agents, budgets, org chart
+This is how we track cost and observability per use case.
 ```
 
 ---
 
 ## MVP v1 ARCHITECTURE — DIRECT USE-CASES (LOCKED May 26)
 
-### Decision: No capability abstraction layer
-Capabilities (reusable n8n sub-workflows) are REMOVED from MVP v1.
-Instead, build 4-5 real business use cases as standalone n8n workflows
-running directly on the AIOS stack. No test client layer.
+### Two Layers of AIOS
 
-### Why
-- MVP v1 is a prototype — we validate use cases, not abstractions
-- Capability layer adds complexity before we know what works
-- Real use cases on real stack = faster iteration, real feedback
-- Client isolation model can be added in v2 when we onboard actual clients
-
-### Structure
 ```
-/aios/n8n/workflows/
-├── 01-surveillance.json           # Smart AI Surveillance & Security
-│                                  #   Frigate NVR → GPU vision → n8n alerts → WhatsApp
-├── 02-hr-payroll.json             # Smart HR Attendance & Payroll
-│                                  #   Face recognition + GPS + auto salary + leave mgmt
-├── 03-sales-crm.json              # Smart Sales CRM & Customer Management
-│                                  #   Leads → WhatsApp CRM → pipeline → dashboard
-├── 04-voice-receptionist.json     # AI Voice Receptionist & Call Center Agent
-│                                  #   Asterisk → Dograh → STT → LLM → TTS → callback
-└── internal/                      # Lab/internal workflows
+LAYER 1 — AI INFRASTRUCTURE (the engine room)
+  7-layer Docker stack: Security → Data → Inference → Orchestration → Voice
+  8 network zones (DMZ, App, Data, AI, Voice, Mon, FOSS, Dev)
+  Bifrost AI Gateway (all LLM calls), Langfuse (observability + cost tracking)
+  Qdrant (vector store), PostgreSQL (relational), Redis (cache)
+  Asterisk → Dograh → Whisper → Bifrost → TTS (voice pipeline)
+  CrowdSec WAF + Traefik + Cloudflare (security)
+  Dashy, Grafana, Portainer (SysOps frontend)
+
+LAYER 2 — AI TRANSFORMATION (the product — runs ON Layer 1)
+  4 standalone n8n workflows — each an AI Digital Employee for a business function
+    → 01-surveillance:  AI vision + camera feeds → automated security
+    → 02-hr-payroll:    Face recognition + GPS → attendance + salary
+    → 03-sales-crm:     WhatsApp leads → pipeline → closing
+    → 04-voice-receptionist: SIP calls → AI conversation → booking
+  Each workflow = self-contained, all logic inline
+  Each use case = replaces a manual business process with AI automation
 ```
 
 ### Frontend Architecture — Two Separate Stacks
 
 ```
-SysOps Frontend (infrastructure — US only):
+SysOps Frontend (Layer 1 management — IT ops only):
   Dashy, Grafana, Portainer, Prometheus, CrowdSec, Langfuse
-  → AIOS operators manage containers, GPU, network, services
-  → NEVER expose client UIs here
+  → Manage containers, GPU, network, services, security
 
-Functional Frontend (business — per use case, for END CLIENTS):
+Functional Frontend (Layer 2 dashboards — per use case):
   Each use case has its own dashboard + control panel
   → Surveillance: camera grid, alerts timeline, search, visitor counts
   → HR: attendance reports, payroll sheets, leave approvals
@@ -329,17 +286,17 @@ Functional Frontend (business — per use case, for END CLIENTS):
   → NEVER mixed into Dashy or Grafana
 ```
 
-### Adding a New Use Case (Direct Workflow)
+### Adding a New Use Case (AI Transformation Workflow)
 
 ```
 1. Build the workflow in n8n — self-contained, all logic in one workflow
 2. Node 2 = Set Variables: model, prompt_key, collection_id, etc.
-3. HTTP POST node → OpenRouter for LLM calls
+3. HTTP POST → Bifrost → OpenRouter for LLM calls
 4. Log every call to Langfuse (observability + cost tracking)
 5. Read/write PostgreSQL + Qdrant directly from workflow
 6. Test end-to-end with real data
 7. Save to: /aios/n8n/workflows/[number]-[name].json
-8. Build functional frontend for end-client dashboard
+8. Build functional frontend dashboard
 9. git commit + push
 ```
 
@@ -349,7 +306,6 @@ Functional Frontend (business — per use case, for END CLIENTS):
 /aios/scripts/
 ├── openclaw.py             # AIOS Lab Assistant — CLI for Dev PC (running)
 ├── hermes.sh               # 24/7 autonomous ops agent (running)
-├── new-client.py           # Client onboarding automation (TODO)
 ├── backup.py               # Nightly encrypted backup (TODO)
 ├── health-check.py         # On-demand health verification (TODO)
 ├── disaster-recovery.py    # Full system restore (TODO)
@@ -449,18 +405,6 @@ git add . && git commit -m "your change" && git push
 # GitOps Agent detects and deploys automatically
 ```
 
-### Onboard new client
-```bash
-python3 /aios/scripts/new-client.py \
-  --client-id clinic-abc \
-  --industry clinic \
-  --language urdu \
-  --model qwen-2.5-7b \
-  --budget 50 \
-  --agent-name Sarah \
-  --whatsapp +923001234567
-```
-
 ### Run Ansible setup (new server)
 ```bash
 cd /aios/ansible
@@ -475,23 +419,30 @@ python3 /aios/scripts/health-check.py
 
 ---
 
-## BIFROST ROUTING REFERENCE
+## BIFROST ROUTING REFERENCE — 4-TIER TASK-BASED
 
 ```
-Task                          Model                          Reason
-────────────────────────────────────────────────────────────────────────
-Simple FAQ, classification    Mistral 7B (vLLM)              Fast + free
-Arabic/Urdu conversation      Qwen 2.5 7B (vLLM)            Best multilingual local
-General reasoning, HR tasks   Llama 3 8B (vLLM)             High quality, zero cost
-General reasoning (API)       openrouter-free               Routes to best free model
-Heavy reasoning, long ctx     gemma-4-31b / llama-70b       $0, free tier
-Complex code, structured      qwen-coder / gpt-oss-120b     $0, best coding free models
-Fast/simple Q&A               cobuddy / llama-3b / owl-alpha $0, fast + light
-Frontier reasoning (405B)     hermes-405b / nemotron-120b    $0, massive models
-Invoice/image reading         Not available (paid only)     Free tier has no vision models
-Any other need                openrouter-free               Routes to best available free model
-Local models down/busy        openrouter-free               Multi-tier auto-fallback
-70B+ reasoning                llama-70b / hermes-405b       $0 free tier — plenty of power
+Task                          Primary Route                Fallback Chain
+────────────────────────────────────────────────────────────────────────────────────────
+FAQ, classification           Tier 2 (Mistral 7B local)    → Tier 3 (gemma-4 free)
+Arabic/Urdu conversation      Tier 2 (Qwen 2.5 7B local)   → Tier 3 (qwen-2.5-72b free)
+General reasoning, CRM, HR    Tier 3 (gemma-4-31b free)    → Tier 3 (llama-70b) → hermes-405b
+Complex docs, legal, contracts Tier 4 (Claude 4 Sonnet     → Tier 4 (GPT-4o)
+                              via OpenRouter paid)
+Code generation               Tier 3 (qwen-coder free)     → Tier 3 (deepseek-v4 free)
+Vision (images, invoices)     Tier 2 (LLaVA 7B local GPU)  → Tier 4 (GPT-4o paid)
+STT (voice transcription)     Tier 2 (Whisper local GPU)   — no cloud fallback
+TTS (voice response)          Tier 2 (Chatterbox GPU →         — always local
+                              Kokoro CPU fallback)              Dograh auto-selects
+Embeddings (RAG)              Tier 2 (nomic-embed-text)    — always local
+Object detection              Tier 2 (Frigate GPU/YOLO)    — always local
+
+TIERS:
+  Tier 1 — Bifrost semantic cache (hit → return, 50ms, $0)
+  Tier 2 — Local GPU Ollama (fast Q&A, embeddings, vision, STT, TTS)
+  Tier 3 — OpenRouter free tier (primary — 25 free models up to 405B)
+  Tier 4 — OpenRouter paid tier (Claude 4 Sonnet, GPT-4o via OpenRouter)
+  NO direct API keys — ALL cloud LLM through OpenRouter gateway
 ```
 
 ---
@@ -515,6 +466,9 @@ Local models down/busy        openrouter-free               Multi-tier auto-fall
 - Phase 3: 60 clients, PKR 940K MRR by Month 12
 - This is production from Day 1 — not a prototype that gets rebuilt
 - The lab IS the product template — clients get same stack minus dev tools
+- AIOS = Infrastructure Layer (2026 best-practice) + AI Transformation Layer (use cases)
+- Infrastructure = Docker, GPU, 8 zones, Bifrost, Langfuse, Qdrant, Asterisk, Dograh, Chatterbox, Kokoro, CrowdSec, Traefik
+- Transformation = 4 AI Digital Employees (Surveillance, HR, CRM, Voice) running ON infrastructure
 
 ---
 
@@ -524,8 +478,7 @@ Local models down/busy        openrouter-free               Multi-tier auto-fall
 2. Check the Docker network zone before opening any port
 3. Check Langfuse before changing any prompt
 4. Check Bifrost before adding any LLM call
-5. Run new-client.py before creating any client resources manually
-6. Commit to Git before touching production
+5. Commit to Git before touching production
 
 *CLAUDE.md — AIOS Project Instructions*
 *Version: 4.0 · May 2026 · Lahore AI Lab*

@@ -1,23 +1,30 @@
 # AIOS — AI Operating System
-## Complete Project Reference for Claude Code
-### Lahore AI Lab · May 2026 · FINAL LOCKED
+## 2026 Reference Architecture for SMB & Enterprise AI Transformation
+### Lahore AI Lab · June 2026
 
 ---
 
-## 1. PROJECT OVERVIEW
+## 1. PROJECT OVERVIEW — TWO LAYERS
+
+### Layer 1: AI Infrastructure (the engine room)
+Best-practice self-hosted AI stack — 7 Docker layers, 8 network zones, GPU passthrough.
+Production-grade, scalable, state-of-the-art AI infrastructure.
+
+### Layer 2: AI Transformation (the product)
+SMB/Enterprise AI Digital Employees running ON the infrastructure.
+4 use cases replacing manual business processes with AI automation.
 
 ### What This Is
-AIOS (AI Operating System) is a production-grade, self-hosted, hybrid AI platform built in a physical lab in Lahore, Pakistan. It is designed to:
+AIOS (AI Operating System) is a 2026-aligned reference architecture that combines:
 
-1. **Serve as an AI R&D lab** — build, test, and prototype all AI use cases
-2. **Serve as a production template** — the exact same architecture is cloned and deployed for each SMB client
-3. **Power a commercial AI agency** — selling AI Digital Employees to SMBs across Pakistan, UAE, and USA
+1. **Infrastructure Layer** — Docker, GPU, Bifrost, Langfuse, Qdrant, Asterisk, Dograh, Chatterbox, CrowdSec, Traefik — best-practice self-hosted AI stack
+2. **Transformation Layer** — 4 AI Digital Employees (Surveillance, HR, CRM, Voice) running as n8n workflows on the infrastructure
 
 ### Business Context
 - **Founder:** Senior IT infrastructure specialist, 20+ years experience, documented government-scale AI transformation (38,000-school SED deployment)
-- **Business model:** Sell AI Digital Employees (voice agents, WhatsApp agents, workflow automation) to SMBs
+- **Business model:** Sell AI Digital Employees (Transformation Layer use cases) to SMBs, running on the AIOS Infrastructure Layer
 - **Target markets:** Pakistan (Lahore) → UAE (Dubai/Abu Dhabi) → USA/Canada (white-label)
-- **Revenue model:** PKR 35–75K setup fee + PKR 12–22K monthly recurring per client
+- **Revenue model:** PKR 35–75K setup fee + PKR 12–22K monthly recurring per use case per client
 - **Target:** 60 clients by Month 12, PKR 940K MRR
 
 ### Core Principle
@@ -171,17 +178,7 @@ Zone 6 - Monitoring:  10.60.0.0/24  — Langfuse (.10), Prometheus (.20), Grafan
 Zone 7 - Cross-machine: 10.70.0.0/24 — WireGuard tunnel: WS1 (.1) ↔ Inference Server (.2)
 ```
 
-### Multi-Tenant Client Isolation
-Each SMB client gets completely isolated:
-```
-Keycloak:   Separate tenant — users cannot see other clients
-Qdrant:     Separate collection — agent only searches their data
-Supabase:   Separate schema + row-level security
-Bifrost:    Separate virtual key with monthly budget limit
-n8n:        Separate workflow tagged to their tenant
-Langfuse:   Separate prompt project tagged to client
-Paperclip:  Separate company with full data isolation
-```
+
 
 ---
 
@@ -213,7 +210,7 @@ Cloudflare          Cloud           Edge DDoS, DNS, SSL, CDN
 OPNsense            WS1 KVM VM      Network firewall, IDS/IPS (Suricata), WireGuard, VLAN
 Traefik             WS1 Docker B    Reverse proxy, HTTPS termination, load balancing
 CrowdSec            WS1 Docker B    WAF, IP reputation, rate limiting, brute force
-Keycloak            WS1 Docker B    SSO, multi-tenant isolation, RBAC, OAuth2/OIDC
+Keycloak            WS1 Docker B    SSO, RBAC, OAuth2/OIDC
 HashiCorp Vault     WS1 Docker B    All API keys encrypted at rest, injected at runtime
 Docker networks     WS1             7-zone isolation, internal:true on data zone
 ```
@@ -678,62 +675,48 @@ Built once. Reused across all industries. Powers unlimited use cases.
 
 ## 7. USE CASES — TOP LAYER
 
-Each use case = 1 n8n workflow + 1 Qdrant collection + 1 Keycloak tenant +
-1 Bifrost virtual key + 1 Langfuse prompt + 1 Paperclip company agent.
-
-New client onboarding = 2–3 hours. Zero new infrastructure.
+Each use case = 1 n8n workflow running on the AIOS stack.
 
 ```
-#   Use Case                  Channel              LLM                  Replaces              App
-─────────────────────────────────────────────────────────────────────────────────────────────────────
-1   Clinic AI Receptionist    Voice + WhatsApp     Llama 70B + Qwen     Manual receptionist   ERPNext Hospital
-2   HR AI Assistant           WhatsApp + Web       Mistral 7B           HR admin routine      ERPNext HR
-3   Real Estate Lead Agent    WhatsApp + Voice     Claude 4 Sonnet      Manual follow-up      Twenty CRM + Calcom
-4   Retail Inventory AI       Web + WhatsApp       Mistral 7B + Frigate Manual stock mgmt     ERPNext POS
-5   Accounting AI             WhatsApp + Web       GPT-4o + LLaVA       Manual data entry     Paperless-ngx + GnuCash
-6   Pharmacy AI               WhatsApp + Voice     Llama 70B + Frigate  Manual ordering       ERPNext POS
-7   Hotel Concierge AI        Voice + WhatsApp     Claude 4 + ElevenLabs Front desk routine   ERPNext Hotel
-8   Call Centre AI            Voice (Asterisk)     Qwen 72B Urdu/Arabic Human agents          Issabel call centre
-9   Legal AI                  Web + Email          Claude 4 long ctx    Manual doc review     Paperless-ngx + Docuseal
-10  Academy AI                WhatsApp + Web       Mistral + Qwen       Admin staff           Frappe LMS + ERPNext Edu
-11  Security AI               Camera feeds         Frigate + LLaVA      Manual monitoring     Frigate pipeline
-12  Logistics AI              WhatsApp + API       Mistral 7B           Manual tracking       ERPNext + n8n
+#   Use Case                 Channel              LLM                  App Integration
+───────────────────────────────────────────────────────────────────────────────────────────
+1   Smart Surveillance       Camera + WhatsApp    Frigate + LLaVA       Frigate + MQTT
+2   Smart HR & Payroll       WhatsApp + Web       Mistral 7B            ERPNext HR
+3   Smart Sales CRM          WhatsApp + Voice     OpenRouter            Twenty CRM + Calcom
+4   AI Voice Receptionist    Voice (SIP)          Qwen 2.5              Asterisk + Dograh
 ```
 
 ---
 
 ## 8. DATA FLOWS
 
-### WhatsApp Agent — Complete Request Lifecycle
+### WhatsApp — Use Case Request Lifecycle
 ```
-Client sends WhatsApp message
+End user sends WhatsApp message
 → Meta webhook → Cloudflare edge → OPNsense firewall
 → Traefik reverse proxy → CrowdSec WAF check
-→ Keycloak auth (tenant validated)
-→ n8n workflow (client-specific, tagged to tenant)
+→ n8n workflow (use-case specific)
 → Bifrost guardrails (prompt injection scan)
-→ Qdrant semantic search (client knowledge base RAG)
-→ Langfuse (pulls versioned system prompt for this client)
+→ Qdrant semantic search (platform knowledge base)
+→ Langfuse (pulls versioned system prompt for this workflow)
 → Bifrost semantic cache check (cached? return immediately)
-→ Bifrost routes to vLLM (local) OR Claude API (cloud)
+→ Bifrost routes to OpenRouter (cloud models)
 → Langfuse logs: prompt + response + cost + latency + tokens + model
 → OpenTelemetry traces full request path
-→ n8n formats reply → WhatsApp API → client receives answer
+→ n8n formats reply → WhatsApp API → end user
 Total: under 3 seconds end-to-end
 ```
 
 ### Voice Call — Complete Lifecycle
 ```
 Caller dials number
-→ Issabel (KVM VM — GUI + dashboard + recordings)
-→ SIP trunk → Asterisk (WS1 Docker) — AI pipeline entry
-→ Retell AI / Vapi (conversation orchestration)
-→ Deepgram Nova 3 STT (Arabic/Urdu/English real-time)
-→ n8n webhook → same pipeline as WhatsApp above
-→ Bifrost → vLLM / Claude → response text
-→ ElevenLabs TTS (natural voice synthesis)
-→ Audio streamed back → Asterisk → Issabel → caller
-Call recorded in Asterisk. Full transcript logged in Langfuse.
+→ SIP trunk → Asterisk (voice zone) — call entry
+→ Dograh (voice agent orchestration — replaces Retell AI/Vapi)
+→ Whisper STT (local GPU)
+→ n8n webhook → Bifrost → OpenRouter → LLM response
+→ Chatterbox TTS (local GPU — replaces ElevenLabs)
+→ Audio streamed back → Asterisk → caller
+Full transcript logged in Langfuse.
 ```
 
 ### Visual AI — Camera Event Pipeline
@@ -787,43 +770,6 @@ NFS               Network storage       NAS mounted to both machines
 ```
 
 ---
-
-## 10. CLIENT DEPLOYMENT GUIDE
-
-### What Goes to Client vs What Stays in Lab
-
-#### REMOVED for client deployment (lab-only tools):
-```
-- Claude Code (your dev tool)
-- Hermes Agent (your DevOps agent)
-- OpenClaw (your personal assistant) — client gets their OWN fresh instance
-- Paperclip internal company — client gets their OWN company
-- LiteLLM dev instance
-- Ollama dev instance
-- ArgoCD (your CI/CD pipeline)
-- Flowise/Dify (optional — only if client wants to build agents)
-```
-
-#### KEPT for client deployment (everything else):
-All Tiers 1–10, FOSS apps relevant to their industry, Paperclip with their company, Metabase dashboards, all monitoring tools, Grafana client organisation.
-
-#### CONFIGURED for client:
-```
-Step  Action                                        Tool              Time
-─────────────────────────────────────────────────────────────────────────
-1     Create new tenant in Keycloak                 Keycloak admin    5 min
-2     Create Qdrant collection for client           Qdrant API        2 min
-3     Create Supabase schema + RLS policies         Supabase dash     5 min
-4     Create Bifrost virtual key + budget           Bifrost admin     2 min
-5     Create Paperclip company for client           Paperclip dash    5 min
-6     Upload client knowledge docs → Qdrant         n8n ingestion     30 min
-7     Configure agent system prompt in Langfuse     Langfuse UI       20 min
-8     Clone n8n workflow template → tag to client   n8n dashboard     30 min
-9     Connect WhatsApp number or voice SIP          WA API + Retell   15 min
-10    Test end-to-end → live demo → sign-off        Manual test       30 min
-─────────────────────────────────────────────────────────────────────────
-      Total: client fully live                                     2–3 hours
-```
 
 ---
 
@@ -898,7 +844,7 @@ WHAT CLAUDE CODE DOES:
     docker-compose-aios.yml changes
     docker-compose-apps.yml changes
     Ansible playbooks for server setup
-    Python scripts (new-client.py, backup.py)
+    Python scripts (backup.py, health-check.py)
     n8n workflow JSON templates
     GitHub Actions CI YAML
     Bifrost routing configs
@@ -908,7 +854,7 @@ WHAT CLAUDE CODE DOES:
   Executes on WS1:
     docker-compose up -d
     ansible-playbook setup-ws1.yml
-    python3 new-client.py --client-id clinic-abc
+    python3 health-check.py
     systemctl restart service
     Fixes errors as they appear — reads output, retries
 
@@ -1030,7 +976,7 @@ Workflow:
 ├── /clients/
 │   └── /[client-id]/                # Per-client configs + knowledge docs
 ├── /scripts/
-│   ├── new-client.py                # Client onboarding automation
+│   ├── health-check.py              # System health verification
 │   ├── backup.py                    # Nightly backup script
 │   ├── health-check.py              # System health verification
 │   └── disaster-recovery.py         # Full system restore script
@@ -1094,64 +1040,33 @@ GRAFANA_URL=http://10.60.0.30:3000
    All secrets live in HashiCorp Vault.
    Injected at container runtime via .env files pulled from Vault.
 
-3. ALWAYS tag n8n workflows with client_id variable.
-   Cross-client data leakage is a critical security failure.
-
-4. ALWAYS enforce Supabase RLS on every table.
-   Schema per client + Row Level Security = double isolation.
-   Never rely on application filtering alone.
-
-5. NEVER expose Inference Server (192.168.1.20) to internet.
+3. NEVER expose Inference Server (192.168.1.20) to internet.
    Internal only. WireGuard tunnel (10.70.0.2) only.
 
-6. ALWAYS log every LLM call to Langfuse.
-   This is how per-client billing is calculated.
+4. ALWAYS log every LLM call to Langfuse for cost tracking.
 
-7. Data Zone (10.30.0.0/24) has internal:true.
+5. Data Zone (10.30.0.0/24) has internal:true.
    Databases CANNOT reach internet. Do not change this ever.
 
-8. ALL new client resources created via new-client.py only.
-   Never create Keycloak/Qdrant/Supabase/Bifrost resources manually.
-   Manual = inconsistent = mess at scale.
-
-9. ALL capability sub-workflows must have zero client hardcoding.
-   All client-specific data passed as variables only.
-
-10. ALWAYS commit to Git before applying any change to production.
-    No direct edits on WS1 without committing first.
-    Git is the single source of truth.
+6. ALWAYS commit to Git before applying any change to production.
+   No direct edits on WS1 without committing first.
+   Git is the single source of truth.
 ```
 
 ---
 
-### Adding a New Capability Template
+### Adding a New Use Case
 
 ```
-1. Build prototype in Flowise or Dify (visual, fast)
-2. Export logic to n8n sub-workflow JSON
-3. Replace ALL client-specific values with variables
-4. Test with at least 2 different dummy client configs
-5. Validate in Langfuse — check prompt quality + cost
-6. Save to: /aios/n8n/workflow-templates/capabilities/cap-[name].json
-7. Write doc: /aios/docs/capabilities/cap-[name].md
-8. Update new-client.py to support this capability
-9. git commit + push → ArgoCD deploys to n8n
+1. Build the workflow in n8n
+2. HTTP POST → Bifrost → OpenRouter for inference
+3. Log to Langfuse for observability + cost tracking
+4. Test end-to-end with real data
+5. Run on the AIOS stack
+6. git commit + push
 ```
 
 ---
-
-### Adding a New Use Case Template
-
-```
-1. Identify which capabilities it chains
-2. Build main workflow in n8n — chain capability sub-workflows
-3. All client variables defined in Node 2 (Set Variables)
-4. Intent routing (IF/SWITCH) routes to correct capabilities
-5. Final nodes: Supabase log + Langfuse log
-6. Test with dummy client data end-to-end
-7. Save to: /aios/n8n/workflow-templates/use-case-templates/
-8. git commit + push
-```
 
 ### Environment Variables — Critical
 ```bash
@@ -1192,29 +1107,17 @@ LANGFUSE_KEY=<from Vault>
 ```
 1. NEVER call Claude API, GPT-4o, or any LLM directly.
    Always route through Bifrost (http://10.40.0.10:4000).
-   Bifrost handles cost tracking, caching, fallover, and client billing.
 
 2. NEVER hardcode API keys.
    All secrets are in HashiCorp Vault. Injected at container runtime.
 
-3. ALWAYS tag n8n workflows with client tenant ID.
-   Prevents cross-client data leakage.
-
-4. ALWAYS use Supabase Row Level Security.
-   Every client has their own schema. RLS is enforced.
-
-5. NEVER expose Inference Server (192.168.1.20) to internet.
+3. NEVER expose Inference Server (192.168.1.20) to internet.
    It is internal only. Access via WireGuard tunnel (10.70.0.2) only.
 
-6. ALWAYS log every LLM call to Langfuse.
-   This is how we track per-client costs for billing.
+4. ALWAYS log every LLM call to Langfuse for cost tracking.
 
-7. Data Zone (10.30.0.0/24) has internal:true in Docker.
+5. Data Zone (10.30.0.0/24) has internal:true in Docker.
    Databases cannot reach internet. Do not change this.
-
-8. Each new client needs entries in:
-   Keycloak + Qdrant + Supabase + Bifrost + Langfuse + Paperclip + n8n.
-   Use the new-client.py script to automate this.
 ```
 
 ### Adding a New Use Case (workflow)
@@ -1223,9 +1126,7 @@ LANGFUSE_KEY=<from Vault>
 2. Translate to n8n workflow (production)
 3. Test with Ollama dev instance on WS1 (zero cost)
 4. Validate with Langfuse (check prompt quality + cost)
-5. Save as template in /n8n/workflows/client-templates/
-6. Document in /docs/ with capability mapping
-7. Update new-client.py to include new use case option
+5. Run on the AIOS stack
 ```
 
 ---
@@ -1360,234 +1261,24 @@ Free tiers:           Cloudflare free, AWS free tier, Deepgram $200 credit,
 
 ---
 
-## 15. CAPABILITIES — TECHNICAL DEFINITION & IMPLEMENTATION
+## 15. USE-CASE DIRECT WORKFLOW MODEL
 
-### What a Capability Is — Technically
+MVP uses standalone self-contained n8n workflows — no capabilities layer.
 
-A capability is a **reusable n8n sub-workflow template** with variable inputs and no client-specific hardcoding. It does ONE specific job. It knows nothing about which client is calling it. All client-specific data is passed as variables from the main workflow.
-
-**Capability is NOT:**
-- A Docker container
-- A separate server or service
-- A Tier in the architecture
-- A technical component you install
-
-**Capability IS:**
-- An n8n sub-workflow JSON file stored in /workflow-templates/capabilities/
-- Called by main workflows using n8n "Execute Sub-Workflow" node
-- Reused across unlimited clients without modification
-- A building block — not a finished product
-
----
-
-### Three Core Concepts — Clearly Separated
-
+Each use case is a single n8n workflow with all logic inline:
 ```
-CAPABILITY  = Reusable sub-workflow template (the building block)
-              Does ONE job. Has variables. No client context.
-              Example: cap-appointment-booking.json
-
-MAIN WORKFLOW = Client-specific orchestrator (the manager)
-              Receives input. Routes. Chains capabilities together.
-              Has client variables filled in.
-              Example: clinic-abc-main.json
-
-AGENT       = The AI entity with personality, memory, and goal
-              Paperclip entry + Langfuse prompt + n8n workflow
-              Example: "Sarah — Clinic ABC Receptionist"
+n8n/workflows/
+├── 01-surveillance.json        # Frigate → GPU vision → n8n → WhatsApp
+├── 02-hr-payroll.json          # Face recognition + GPS + salary
+├── 03-sales-crm.json           # Leads → WhatsApp CRM → pipeline
+└── 04-voice-receptionist.json  # Asterisk → Dograh → STT → LLM → TTS
 ```
 
-**The analogy:**
-```
-Capability    = Specialist staff member (does one job perfectly)
-Main workflow = Manager (receives requests, delegates to specialists)
-Agent         = The persona/identity of that manager
-```
-
-**Key rule:**
-```
-Main workflows USE capabilities
-Capabilities do NOT know about main workflows
-Capabilities do NOT know about clients
-```
-
----
-
-### n8n Folder Structure — Complete
-
-```
-n8n/
-│
-├── /workflow-templates/
-│   │
-│   ├── /capabilities/              ← 20 CAPABILITY SUB-WORKFLOWS
-│   │   ├── cap-voice-conversation.json
-│   │   ├── cap-whatsapp-conversational.json
-│   │   ├── cap-appointment-booking.json
-│   │   ├── cap-lead-qualification.json
-│   │   ├── cap-faq-support.json
-│   │   ├── cap-document-processing.json
-│   │   ├── cap-inventory-management.json
-│   │   ├── cap-hr-selfservice.json
-│   │   ├── cap-automated-reporting.json
-│   │   ├── cap-visual-intelligence.json
-│   │   ├── cap-proactive-notifications.json
-│   │   ├── cap-system-integration.json
-│   │   ├── cap-multilingual.json
-│   │   ├── cap-payment-processing.json
-│   │   ├── cap-email-automation.json
-│   │   ├── cap-predictive-analytics.json
-│   │   ├── cap-attendance-access.json
-│   │   ├── cap-contract-esigning.json
-│   │   ├── cap-multichannel-routing.json
-│   │   └── cap-agent-escalation.json
-│   │
-│   └── /use-case-templates/        ← 12 MAIN WORKFLOW TEMPLATES
-│       ├── template-clinic-main.json
-│       ├── template-hr-main.json
-│       ├── template-realestate-main.json
-│       ├── template-retail-main.json
-│       ├── template-accounting-main.json
-│       ├── template-pharmacy-main.json
-│       ├── template-hotel-main.json
-│       ├── template-callcentre-main.json
-│       ├── template-legal-main.json
-│       ├── template-academy-main.json
-│       ├── template-security-main.json
-│       └── template-logistics-main.json
-│
-└── /clients/                       ← DEPLOYED CLIENT WORKFLOWS
-    ├── /clinic-abc/
-    │   └── clinic-abc-main.json    ← cloned from template-clinic-main.json
-    ├── /pharmacy-xyz/
-    │   └── pharmacy-xyz-main.json  ← cloned from template-pharmacy-main.json
-    └── /[client-id]/
-        └── [client-id]-main.json
-```
-
----
-
-### What Is Inside a Capability Sub-Workflow
-
-Every capability sub-workflow has this structure:
-
-```
-INPUT:  variables passed from main workflow
-        {
-          client_id:      "clinic-abc"
-          collection_id:  "clinic-abc-knowledge"
-          prompt_key:     "clinic-abc-receptionist-v1"
-          model:          "qwen-2.5-72b"
-          [capability-specific variables]
-        }
-
-NODES:  logic steps using Tier 3-8 tools
-        (Bifrost, Qdrant, Supabase, ERPNext, Calcom etc.)
-
-OUTPUT: result returned to main workflow
-        {
-          success: true/false
-          [capability-specific result data]
-        }
-```
-
-**KEY RULE: No client name, no client data hardcoded inside capability.**
-Everything comes in as a variable. This is what makes it reusable.
-
----
-
-### What Is Inside a Main Workflow
-
-Every main workflow (client-specific) has this structure:
-
-```
-[NODE 1] Trigger
-  Type: Webhook (WhatsApp) or SIP (Voice) or Cron (scheduled)
-
-[NODE 2] Set Client Variables
-  client_id      = "clinic-abc"           ← FILLED AT CLONE TIME
-  collection_id  = "clinic-abc-knowledge" ← FILLED AT CLONE TIME
-  prompt_key     = "clinic-abc-v1"        ← FILLED AT CLONE TIME
-  model          = "qwen-2.5-72b"         ← FILLED AT CLONE TIME
-  erp_url        = "http://..."           ← FILLED AT CLONE TIME
-
-[NODE 3-N] Execute Sub-Workflow (capability calls — chained)
-  Call: cap-multilingual         → detect language, translate
-  Call: cap-intent-detection     → understand what user wants
-  Call: cap-[relevant]           → do the actual work
-  Call: cap-proactive-notifications → send response to user
-
-[FINAL NODE] Log
-  Supabase: save conversation
-  Langfuse:  save LLM cost + tokens
-```
-
----
-
-### Chaining — How It Works in n8n
-
-Chaining = main workflow calls capability sub-workflows in sequence using **Execute Sub-Workflow** node. Output of one becomes input of next.
-
-```
-EXAMPLE: Clinic ABC — Patient books appointment via WhatsApp
-
-Patient sends: "Dr Ahmed se appointment chahiye kal 3 baje" (Urdu)
-
-[MAIN: clinic-abc-main]
-        ↓
-[Execute Sub-Workflow: cap-multilingual]
-  Input:  raw Urdu message
-  Output: {language:"urdu", translated:"I want appointment with Dr Ahmed tomorrow 3pm"}
-        ↓
-[Execute Sub-Workflow: cap-intent-detection]
-  Input:  translated message
-  Output: {intent:"appointment_booking", entities:{doctor:"Dr Ahmed", date:"tomorrow", time:"3pm"}}
-        ↓
-[IF/SWITCH — route by intent]
-  appointment_booking → Execute Sub-Workflow: cap-appointment-booking
-  faq                 → Execute Sub-Workflow: cap-faq-support
-  complaint           → Execute Sub-Workflow: cap-agent-escalation
-        ↓
-[Execute Sub-Workflow: cap-appointment-booking]
-  Input:  doctor + date + time + client variables
-  Does:   checks ERPNext availability
-          queries Qdrant for clinic rules
-          calls Bifrost → Qwen 72B
-          books in ERPNext
-          books in Google Calendar
-  Output: {booked:true, appointment_id:"APT-1234", confirmation_urdu:"آپ کی اپائنٹمنٹ..."}
-        ↓
-[Execute Sub-Workflow: cap-proactive-notifications]
-  Input:  confirmation message + patient phone + language
-  Does:   sends WhatsApp confirmation in Urdu
-  Output: {sent:true, message_id:"wamid.xxx"}
-        ↓
-[Supabase log + Langfuse log]
-  Saves: full conversation, appointment_id, cost, timestamp
-```
-
----
-
-### Full Technical Example — cap-appointment-booking.json
-
-```
-INPUT VARIABLES:
-  doctor_name, requested_date, requested_time, patient_phone
-  client_id, collection_id, calendar_id, erp_url
-  prompt_key, model
-
-NODE 1: Resolve date/time
-  "tomorrow 3pm" → "2024-01-15 15:00:00"
-
-NODE 2: Query ERPNext — check doctor schedule
-  GET {{erp_url}}/api/resource/Doctor/{{doctor_name}}/schedule
-  Returns: available slots, booked slots
-
-NODE 3: Query Qdrant RAG — check clinic rules
-  Search {{collection_id}} for "{{doctor_name}} rules fee"
-  Returns: "Dr Ahmed works Mon-Sat 9am-9pm. Fee PKR 1500."
-
-NODE 4: IF slot available?
+Each workflow:
+- Has its own Set Variables node (model, prompt key, collection ID)
+- Calls Bifrost → OpenRouter for LLM inference
+- Logs to Langfuse
+- Is built, tested, and deployed independently
   YES → Node 5
   NO  → Node 8 (suggest alternatives)
 
@@ -1613,183 +1304,10 @@ OUTPUT (NO):
 
 ---
 
-### How Adding a Module Works for New Client
-
-**Adding capability to existing client = 30–60 minutes:**
-
-```
-Step 1: Clone capability template in n8n         (2 min)
-Step 2: Fill client variables                    (10 min)
-        collection_id, prompt_key, model,
-        erp_url, calendar_id etc.
-Step 3: Add Execute Sub-Workflow node to         (5 min)
-        client's main workflow
-Step 4: Connect to existing chain                (5 min)
-Step 5: Test                                     (20 min)
-Total:  ~45 minutes
-```
-
-**Adding NEW client with existing templates = 1 hour total:**
-
-```
-Automated (new-client.py script):    10–12 minutes
-  Keycloak tenant created
-  Qdrant collection created
-  Supabase schema + RLS created
-  Bifrost virtual key + budget created
-  Paperclip company + agent created
-  Langfuse project created
-  n8n main workflow cloned from industry template
-  All variables filled automatically
-  Selected capabilities enabled
-  Unselected capabilities disabled
-
-Manual (human required):             45–50 minutes
-  Fill system prompt in Langfuse     (15-20 min)
-  Upload client knowledge docs       (20-30 min)
-  Run end-to-end test                (15 min)
-
-Total: ~1 hour vs 2-3 hours manual
-```
 
 ---
 
-## 16. NEW CLIENT ONBOARDING — FORM FIELDS
-
-When onboarding a new client via new-client.py script, these are the exact inputs required:
-
-```
-BASIC INFO
-──────────────────────────────────────────────
-client_id          = "clinic-abc"          # unique slug, no spaces, lowercase
-client_name        = "Clinic ABC"          # display name
-industry           = "clinic"              # dropdown: clinic/hr/realestate/retail/
-                                           # accounting/pharmacy/hotel/callcentre/
-                                           # legal/academy/security/logistics
-contact_name       = "Dr. Ahmed"
-contact_phone      = "+923001234567"
-contact_email      = "ahmed@clinic.com"
-
-LANGUAGE & REGION
-──────────────────────────────────────────────
-primary_language   = "urdu"               # urdu / arabic / english
-secondary_language = "english"
-region             = "pakistan"           # pakistan / uae / usa
-timezone           = "Asia/Karachi"
-
-AI CONFIGURATION
-──────────────────────────────────────────────
-preferred_model    = "qwen-2.5-72b"       # which LLM (Bifrost routes)
-monthly_budget     = "50"                 # USD - Bifrost spending limit
-agent_name         = "Sarah"              # AI agent persona name
-agent_personality  = "professional"       # professional / friendly / formal
-
-CAPABILITIES SELECTION (true/false)
-──────────────────────────────────────────────
-voice_conversation         = true
-whatsapp_conversational    = true
-appointment_booking        = true
-faq_support                = true
-lead_qualification         = false
-document_processing        = false
-inventory_management       = false
-hr_selfservice             = false
-proactive_notifications    = true
-visual_intelligence        = false
-payment_processing         = false
-email_automation           = false
-predictive_analytics       = false
-attendance_access          = false
-contract_esigning          = false
-multichannel_routing       = false
-agent_escalation           = true
-multilingual               = true        # auto-enabled if language != english
-
-CHANNEL CONFIGURATION
-──────────────────────────────────────────────
-whatsapp_number    = "+923001234567"
-voice_number       = "+92111234567"
-web_chat           = false
-email_inbound      = false
-
-INTEGRATIONS
-──────────────────────────────────────────────
-erp_type           = "erpnext"           # erpnext / odoo / none
-erp_url            = "http://..."
-erp_api_key        = "<key>"
-calendar_type      = "google"           # google / microsoft / calcom / none
-calendar_id        = "xxx@gmail.com"
-crm_type           = "twenty"           # twenty / suite / none
-payment_gateway    = "jazzcash"         # jazzcash / stripe / none
-
-AWS RESOURCES
-──────────────────────────────────────────────
-create_s3_backup   = true
-create_cloudfront  = true
-create_ses_domain  = false
-```
-
 ---
-
-### What new-client.py Creates Automatically vs Manually
-
-```
-AUTOMATED (zero human intervention):
-  ✅ Keycloak tenant
-  ✅ Qdrant collection named {client_id}-knowledge
-  ✅ Supabase schema + row-level security policies
-  ✅ Bifrost virtual key with monthly budget
-  ✅ Paperclip company + agent entry
-  ✅ Langfuse project (empty prompt template)
-  ✅ n8n main workflow cloned from industry template
-  ✅ All n8n variables filled from form fields
-  ✅ Selected capabilities enabled in workflow
-  ✅ Unselected capabilities disabled
-  ✅ SIP extension in Asterisk for voice number
-  ✅ WhatsApp webhook registered with Meta API
-  ✅ AWS S3 bucket (if selected)
-  ✅ AWS CloudFront distribution (if selected)
-
-MANUAL (human required — cannot be automated):
-  ❌ System prompt content in Langfuse
-     (needs real client info: doctor names, hours, prices)
-     TIME: 15-20 minutes
-
-  ❌ Knowledge base documents uploaded to Qdrant
-     (FAQs, SOPs, pricing, schedules from client)
-     TIME: 20-30 minutes
-
-  ❌ End-to-end test call + WhatsApp test
-     TIME: 15 minutes
-```
-
----
-
-### script output example
-
-```
-┌─────────────────────────────────────────────────┐
-│ AIOS NEW CLIENT ONBOARDED                       │
-│ ─────────────────────────────────────────────── │
-│ Client ID:    clinic-abc                        │
-│ Industry:     Clinic                            │
-│ Agent Name:   Sarah                             │
-│ Language:     Urdu + English                    │
-│ ─────────────────────────────────────────────── │
-│ Keycloak tenant:     clinic-abc           ✅    │
-│ Qdrant collection:   clinic-abc-knowledge ✅    │
-│ Supabase schema:     clinic_abc           ✅    │
-│ Bifrost key:         clinic-abc-key       ✅    │
-│ Budget limit:        $50/month            ✅    │
-│ Paperclip company:   Clinic ABC           ✅    │
-│ n8n workflow:        clinic-abc-main      ✅    │
-│ Capabilities:        5 enabled            ✅    │
-│ WhatsApp webhook:    registered           ✅    │
-│ Asterisk SIP:        +92111234567         ✅    │
-│ AWS S3:              clinic-abc-backup    ✅    │
-│ ─────────────────────────────────────────────── │
-│ MANUAL STEPS REMAINING (45 min):               │
-│ 1. Fill prompt → http://langfuse/clinic-abc    │
 │ 2. Upload docs → http://qdrant/clinic-abc      │
 │ 3. Test WhatsApp → +923001234567               │
 │ 4. Test voice   → +92111234567                 │
@@ -1802,94 +1320,48 @@ MANUAL (human required — cannot be automated):
 
 ---
 
-## 17. PHASE 1 LAB — EXACT DELIVERABLES
+## 17. PHASE 1 — EXACT DELIVERABLES
 
-### What Must Be Built in 45 Days
+### Week-by-Week Build Plan
 
 ```
-WEEK 1 (Days 1-7): Infrastructure setup
-  Both machines — Ubuntu 24.04 installed
-  KVM setup — OPNsense VM + Issabel VM running
-  Docker Layer A deployed (FOSS apps)
-  Docker Layer B deployed (AI core)
-  Inference Server — vLLM + Frigate running
-  WireGuard tunnel between machines
+WEEK 1: Infrastructure setup
+  Server configured — Docker, GPU, 8 networks
+  Docker Layer A (FOSS) + Layer B (AI core) deployed
   All services accessible via Dashy
+  All 13 public endpoints verified 200
 
-WEEK 2 (Days 8-14): Capability templates — batch 1
-  cap-voice-conversation.json
-  cap-whatsapp-conversational.json
-  cap-appointment-booking.json
-  cap-multilingual.json
-  cap-intent-detection.json
-  cap-faq-support.json
+WEEK 2: Use case — CRM (#3)
+  Build 03-sales-crm.json n8n workflow
+  Wire: webhook → OpenRouter → PostgreSQL → Langfuse
+  Test end-to-end via webhook
 
-WEEK 3 (Days 15-21): Capability templates — batch 2
-  cap-lead-qualification.json
-  cap-document-processing.json
-  cap-inventory-management.json
-  cap-hr-selfservice.json
-  cap-proactive-notifications.json
-  cap-agent-escalation.json
+WEEK 3: Use case — Voice (#4)
+  Wire Asterisk → Dograh → Chatterbox → OpenRouter
+  Test call pipeline end-to-end
+  Build 04-voice-receptionist.json n8n workflow
 
-WEEK 4 (Days 22-28): Remaining capabilities + first use case templates
-  cap-automated-reporting.json
-  cap-visual-intelligence.json
-  cap-payment-processing.json
-  cap-email-automation.json
-  cap-multilingual.json
-  cap-attendance-access.json
-  cap-contract-esigning.json
-  cap-multichannel-routing.json
-  cap-predictive-analytics.json
-  cap-system-integration.json
-  template-clinic-main.json      ← first use case template
-  template-hr-main.json
+WEEK 4: Use case — HR (#2)
+  Build 02-hr-payroll.json n8n workflow
+  Test GPU vision (face recognition via Ollama/LLaVA)
 
-WEEK 5-6 (Days 29-45): Remaining use case templates + first client
-  template-realestate-main.json
-  template-retail-main.json
-  template-accounting-main.json
-  template-pharmacy-main.json
-  template-hotel-main.json
-  template-callcentre-main.json
-  template-legal-main.json
-  template-academy-main.json
-  template-security-main.json
-  template-logistics-main.json
-  new-client.py script built + tested
-  First real client deployed end-to-end
-  All demos working and tested
+WEEK 5-6: Use case — Surveillance (#1)
+  Connect IP cameras → Frigate → GPU detection
+  Build 01-surveillance.json n8n workflow
+  Wire MQTT → n8n → WhatsApp alerts
+  Full integration test all 4 use cases
 ```
 
-### Definition of Done for Each Capability Template
-```
-✅ Sub-workflow created in n8n
-✅ All inputs are variables (zero hardcoding)
-✅ All external calls go through Bifrost
-✅ All data queries go through Qdrant (collection_id variable)
-✅ All prompts pulled from Langfuse (prompt_key variable)
-✅ Success + failure outputs defined
-✅ Langfuse logging added
-✅ Tested with at least 2 different client variable sets
-✅ Documented in /docs/capabilities/[name].md
-```
+### Definition of Done for Each Use Case
 
-### Definition of Done for Each Use Case Template
 ```
-✅ Main workflow created in n8n
-✅ All client variables defined and documented
-✅ Correct capabilities chained in correct order
-✅ Intent routing logic complete (IF/SWITCH nodes)
-✅ All capability calls pass correct variables
-✅ Logging to Supabase + Langfuse at end
-✅ Tested with dummy client data
-✅ new-client.py supports this industry type
-✅ Documented in /docs/use-cases/[name].md
+✅ n8n workflow in /aios/n8n/workflows/{number}-{name}.json
+✅ HTTP POST → Bifrost → OpenRouter for inference
+✅ All LLM calls logged to Langfuse
+✅ Tested end-to-end with real data
+✅ Functional frontend/dashboard built
 ```
 
 ---
 
-*Section 15-17 added: Capabilities technical definition, n8n folder structure,*
-*chaining explanation, new client form fields, Phase 1 deliverables.*
-*Added: May 2026*
+*Updated: June 2026 — AIOS PROJECT v2*

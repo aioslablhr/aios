@@ -1,5 +1,5 @@
 # AIOS — Standard Operating Procedures
-## The development rhythm — never skip these steps
+## Dual-Layer Development: Build infrastructure once, deploy use cases on top
 
 ---
 
@@ -140,24 +140,7 @@ docker ps | wc -l
 
 ---
 
-## 7. NEW CLIENT ONBOARDING (planned)
-When `new-client.py` is complete, it will automate:
-```
-python3 /aios/scripts/new-client.py \
-  --client-id <id> \
-  --industry <type> \
-  --language <lang> \
-  --model <model> \
-  --budget <usd> \
-  --agent-name <name> \
-  --whatsapp <number>
-```
-
-Until then: manual Keycloak org + Qdrant collection + Supabase schema + Bifrost key.
-
----
-
-## 8. DISASTER RECOVERY (planned)
+## 7. DISASTER RECOVERY (planned)
 When `disaster-recovery.py` is complete:
 ```
 python3 /aios/scripts/disaster-recovery.py --restore <backup-file>
@@ -172,7 +155,7 @@ docker compose -f docker-compose-aios.yml up -d
 
 ---
 
-## 9. DEVELOPMENT PATTERNS
+## 8. DEVELOPMENT PATTERNS
 
 ### Diagnose → Treat → Verify
 Always in this order. Never skip a step.

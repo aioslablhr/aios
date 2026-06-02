@@ -1,8 +1,8 @@
 # AIOS — End-to-End Deployment Plan
-## Sequential build steps: bare metal to fully operational AIOS
+## Dual-Layer: AI Infrastructure (engine room) + AI Transformation (use cases on top)
 ### Server: 10.0.0.100 (Quadro M4000, 31GB RAM, 953GB NVMe)
 ### Dev PC: 10.0.0.13 (Windows, Docker Desktop)
-### Order: Foundation → Core Infra → Dev Layer → AI → Orchestration → Monitoring → Voice/Visual → FOSS → Go-Live
+### Order: Foundation → Infrastructure Layer (Docker, AI core, Voice, Security) → Transformation Layer (4 use case workflows on top)
 
 ---
 
@@ -172,7 +172,7 @@ Container on 10.20.0.70 (app zone):
 ```
 9.5.1  Create /aios/scripts/ directory with:
        - openclaw.py          # AIOS Lab Assistant (Dev PC CLI)
-       - new-client.py         # Client onboarding (Vault + Keycloak + Qdrant + n8n)
+       - health-check.py       # System health verification
        - backup.py             # Nightly encrypted backups → S3/NAS
        - health-check.py       # On-demand system health report
        - disaster-recovery.py  # Full restore from backup
@@ -195,25 +195,26 @@ Container on 10.20.0.70 (app zone):
 
 ```
 Containers on 10.40.0.0/24 (AI zone):
-  Ollama    (10.40.0.20) — dev inference with GPU
-  LiteLLM   (10.40.0.30) — dev gateway
-  vLLM      (10.40.0.40) — production inference with GPU
-  Bifrost   (10.40.0.10) — production AI gateway
-  Langfuse  (10.60.0.10, mon zone) — observability
+  Ollama    (10.40.0.20) — local GPU: embeddings (nomic), vision (LLaVA), fast models (mistral, qwen, llama)
+  Bifrost   (10.40.0.10) — AI gateway: 4-tier routing (Cache → Local GPU → OpenRouter Free → OpenRouter Paid)
+  Chatterbox (10.40.0.30:4123) — TTS GPU (primary, Dograh auto-selects)
+  Kokoro    (10.40.0.31:8880) — TTS CPU (fallback, Dograh auto-selects)
+  Frigate   (10.40.0.50:5000) — NVR + YOLO object detection on GPU
+  Langfuse  (10.60.0.10, mon zone) — LLM observability + cost tracking
 
-10.1 Add GPU services to docker-compose-aios.yml
-10.2 docker compose up -d ollama
-10.3 ollama pull mistral:7b-q4
-10.4 ollama pull llama3:8b
-10.5 ollama pull qwen2.5:7b
-10.6 ollama pull llava:7b
-10.7 ollama pull nomic-embed-text
-10.8 docker compose up -d vllm    # Production inference with GPU
-10.9 docker compose up -d bifrost # Production gateway
+10.1 docker compose up -d ollama
+10.2 ollama pull mistral:7b
+10.3 ollama pull llama3.2:3b
+10.4 ollama pull qwen2.5:7b
+10.5 ollama pull llava:7b
+10.6 ollama pull nomic-embed-text
+10.7 docker compose up -d bifrost  # 4-tier AI gateway
+10.8 docker compose up -d chatterbox  # TTS GPU
+10.9 docker compose up -d kokoro  # TTS CPU fallback
 10.10 docker compose up -d langfuse
 ```
 
-✅ Done when: Ollama serves models, vLLM responds on :8000, Bifrost routes requests
+✅ Done when: Ollama serves models, Bifrost routes requests with 4-tier fallback
 
 ---
 
@@ -317,8 +318,8 @@ Separate stack: docker-compose-apps.yml on 10.70.0.0/24
 ```
 16.1 Configure Cloudflare DNS → Traefik (subdomains)
 16.2 Connect WhatsApp Business API → n8n webhook
-16.3 Connect Retell AI → Asterisk SIP
-16.4 Connect Deepgram + ElevenLabs → voice pipeline
+16.3 Configure Dograh → Asterisk voice pipeline (replaces Retell AI)
+16.4 Verify Whisper STT + TTS pipeline (Dograh auto-selects Chatterbox GPU / Kokoro CPU)
 16.5 Configure AWS S3 nightly encrypted backups
 ```
 
@@ -326,66 +327,54 @@ Separate stack: docker-compose-apps.yml on 10.70.0.0/24
 
 ---
 
-### STEP 17 — Build n8n Workflow Templates
+### STEP 17 — Build 4 Use Case Workflows
 
 ```
-17.1 Build 20 capability sub-workflows in n8n
-     (cap-voice-conversation, cap-whatsapp-conversational, etc.)
-17.2 Build 12 use case main workflow templates
-     (template-clinic-main, template-hr-main, etc.)
-17.3 Build new-client.py automation script
+17.1 Build 03-sales-crm.json — CRM workflow (n8n → OpenRouter → WhatsApp)
+17.2 Build 04-voice-receptionist.json — Voice pipeline (Asterisk → Dograh → TTS auto-select)
+17.3 Build 02-hr-payroll.json — HR workflow (face + GPS + payroll)
+17.4 Build 01-surveillance.json — Surveillance (Frigate → GPU → WhatsApp)
+17.5 Test all 4 end-to-end on the AIOS stack
+17.6 Build functional frontends (Metabase/Streamlit per use case)
 ```
 
-✅ Done when: All capabilities tested, new-client.py can onboard a client in 10 min
-
----
-
-### STEP 18 — First Client Go-Live
-
-```
-18.1 Run new-client.py for client
-18.2 Fill prompt in Langfuse (15 min)
-18.3 Upload knowledge docs → Qdrant (20 min)
-18.4 Test WhatsApp → Test Voice → Demo → Sign-off
-```
-
-✅ Done when: Paying client live on the platform
+✅ Done when: All 4 use cases running and tested on AIOS
 
 ---
 
 ### Progress Dashboard
 
 ```
-Phase          Steps                         Status        Notes
-──────────────────────────────────────────────────────────────────────────
-PHASE 0 Foundation
-  STEP 1   GPU Driver                          ✅
-  STEP 2   Docker Engine                       ✅
-PHASE 1 Core Infra
-  STEP 3   Networks + Dirs + .env              ✅
-  STEP 4   Data Layer (4 containers)           ✅
-  STEP 5   Security Layer (4 containers)       ✅           Vault needs init
-PHASE 2 Dev Layer
-  STEP 6   Git init + GitHub push              ✅
-  STEP 7   GitHub Actions + CI                 ✅
-  STEP 8   GitOps Agent                        ✅
-  STEP 9   Hermes Agent                        ✅
-  STEP 9.5 Dev Scripts + Docs Init             ✅
-PHASE 3 AI Core
-  STEP 10  AI Layer (GPU)                      ⬜
-  STEP 11  Orchestration                       ⬜
-PHASE 4 Monitor + Voice + Visual
-  STEP 12  Monitoring                          🟡           Dashy done (10.60.0.70)
-  STEP 13  Voice Layer                         ✅           Asterisk + 6 extensions + TFTP,
-  STEP 13  Voice Layer                         ✅             Cisco 7962 registers + calls OUT + calls IN,
-  STEP 13  Voice Layer                         ✅             TCP transport (SEP transportLayerProtocol=4)
-  STEP 14  Visual AI                           ⬜
-PHASE 5 FOSS + Go-Live
-  STEP 15  FOSS Apps                           ⬜
-  STEP 16  Integrations                        🟡           Cloudflare tunnel + DNS done
-  STEP 17  n8n Workflows                       ⬜
-  STEP 18  First Client                        ⬜
-──────────────────────────────────────────────────────────────────────────
-Total: 18 steps across 5 phases
+Layer            Phase         Steps                         Status        Notes
+─────────────────────────────────────────────────────────────────────────────────────
+INFRASTRUCTURE   PHASE 0 Foundation
+  LAYER            STEP 1   GPU Driver                          ✅
+                   STEP 2   Docker Engine                       ✅
+                 PHASE 1 Core Infra
+                   STEP 3   Networks + Dirs + .env              ✅
+                   STEP 4   Data Layer (4 containers)           ✅
+                   STEP 5   Security Layer (4 containers)       ✅           Vault needs init
+                 PHASE 2 Dev Layer
+                   STEP 6   Git init + GitHub push              ✅
+                   STEP 7   GitHub Actions + CI                 ✅
+                   STEP 8   GitOps Agent                        ✅
+                   STEP 9   Hermes Agent                        ✅
+                   STEP 9.5 Dev Scripts + Docs Init             ✅
+                 PHASE 3 AI Core
+                   STEP 10  AI Layer (GPU)                      ⬜
+                   STEP 11  Orchestration                       ⬜
+                 PHASE 4 Monitor + Voice + Visual
+                   STEP 12  Monitoring                          🟡           Dashy done
+                   STEP 13  Voice Layer                         ✅           Asterisk + phones
+                   STEP 14  Visual AI (Frigate)                 ⬜
+                 PHASE 5 Integrations
+                   STEP 15  FOSS Apps                           ⬜
+                   STEP 16  External Integrations               🟡           Cloudflare tunnel done
+─────────────────────────────────────────────────────────────────────────────────────
+TRANSFORMATION   PHASE 6 Use Cases (on top of infra)
+  LAYER            STEP 17  4 Use Case Workflows                ⬜           03-sales-crm, 04-voice,
+                                                                              02-hr-payroll, 01-surveillance
+─────────────────────────────────────────────────────────────────────────────────────
+Total: 17 steps across 6 phases (Infrastructure = 16 steps, Transformation = 1 step with 4 workflows)
 Legend: ✅ Complete  🟡 Partial  🔶 In Progress  ⬜ Not Started
 ```

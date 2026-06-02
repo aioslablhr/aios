@@ -92,7 +92,7 @@
 | Credential | Status |
 |-----------|--------|
 | Anthropic, OpenAI, Google | Not configured — commented in `.env` |
-| Deepgram, ElevenLabs, Retell | Not configured — future voice pipeline |
+| Deepgram, ElevenLabs, Retell | Not needed — replaced by Whisper/Dograh/Chatterbox local GPU |
 | WhatsApp token | Not configured — future notification channel |
 
 ---

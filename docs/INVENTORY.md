@@ -37,7 +37,8 @@
 |---------|-----------|-------|----|-------|--------|----------|
 | Bifrost (LiteLLM) | aios-bifrost | ghcr.io/berriai/litellm:main-latest | 10.40.0.10 | 4000 | healthy | ai.socialbeesai.com |
 | Ollama | aios-ollama | ollama/ollama:latest | 10.40.0.20 | 11434 | healthy | (internal — embeddings + vision) |
-| Chatterbox TTS | aios-chatterbox | travisvn/chatterbox-tts-api:latest | 10.40.0.30 | 4123 | running (starting) | (internal — GPU TTS) |
+| Chatterbox TTS | aios-chatterbox | travisvn/chatterbox-tts-api:latest | 10.40.0.30 | 4123 | running (starting) | (internal — GPU TTS primary, Dograh auto-selects) |
+| Kokoro TTS | aios-kokoro | ghcr.io/remsky/kokoro-fastapi:latest | 10.40.0.31 | 8880 | planned | (internal — CPU TTS fallback, Dograh auto-selects) |
 | Frigate NVR | aios-frigate | ghcr.io/blakeblackshear/frigate:stable | 10.40.0.50 | 5000 | healthy | frigate.socialbeesai.com |
 
 ### Voice Zone — 10.50.0.0/24
@@ -84,7 +85,7 @@
 | aios-dmz | 10.10.0.0/24 | no | Traefik, CrowdSec, Portainer (secondary) |
 | aios-app | 10.20.0.0/24 | no | n8n, n8n-db, n8n-workers, Keycloak, Flowise, MCP, GitOps, Hermes |
 | aios-data | 10.30.0.0/24 | **yes** | PostgreSQL, Qdrant, Redis, MinIO, Langfuse (secondary), Bifrost (secondary) |
-| aios-ai | 10.40.0.0/24 | no | Bifrost, Ollama, Chatterbox, Frigate |
+| aios-ai | 10.40.0.0/24 | no | Bifrost, Ollama, Chatterbox, Kokoro, Frigate |
 | aios-voice | 10.50.0.0/24 | no | Mosquitto, Dograh API, Dograh UI, Chatterbox (secondary) |
 | aios-mon | 10.60.0.0/24 | no | Langfuse, ClickHouse, Prometheus, Grafana, Loki, Portainer, cAdvisor, Node Exporter, Dashy |
 | aios-foss | 10.70.0.0/24 | no | (reserved for ERPNext, Odoo, Twenty CRM) |
@@ -224,14 +225,15 @@ LLM ROUTING (via Bifrost — 28 models)
 GPU (Quadro M4000 8GB — no LLM inference, only utilities)
   Ollama → nomic-embed-text (embeddings → Qdrant)
   Ollama → LLaVA (image/OCR for Frigate)
-  Chatterbox → TTS (voice cloning for Dograh)
+  Chatterbox → TTS GPU (primary voice cloning for Dograh)
+  Kokoro     → TTS CPU (fallback — Dograh auto-selects)
   Frigate → GPU-accelerated object detection
 
 VOICE PIPELINE
   Caller → SIP Trunk → Asterisk → Dograh
     → Whisper STT (CPU — not GPU)
     → LLM response (via n8n → Bifrost → OpenRouter)
-    → Chatterbox TTS (local GPU)
+    → Chatterbox/Kokoro TTS (Dograh auto-selects GPU or CPU)
   → Audio back → Asterisk → Caller
 
 SURVEILLANCE PIPELINE (pending camera setup)
