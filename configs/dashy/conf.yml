@@ -1,13 +1,8 @@
 ---
 pageInfo:
-  title: AIOS Lab
-  description: AI Operating System — All Services
-  navBarLinks:
-    - title: GitHub
-      path: https://github.com/aioslablhr/aios
-    - title: Credentials
-      path: https://socialbeesai.com
-  footer: AIOS v4.2 — Lahore AI Lab
+  title: AIOS Lab — Phase A
+  description: AI Operating System — Data Layer Deployed
+  footer: AIOS v4.2 — Phase A (Data Layer) ✅ | Lahore AI Lab
 
 appConfig:
   theme: colorful
@@ -17,232 +12,117 @@ appConfig:
 
 sections:
 
-  - name: 🧠 AI & LLM
-    icon: fas fa-robot
-    items:
-      - title: Bifrost (LiteLLM)
-        description: AI Gateway — routes all LLM calls. Key - sk-aios-master-admin-key-change-me
-        icon: fas fa-bolt
-        url: https://ai.socialbeesai.com
-        target: newtab
-      - title: Langfuse
-        description: LLM Observability & cost tracking
-        icon: fas fa-chart-line
-        url: https://langfuse.socialbeesai.com
-        target: newtab
-      - title: Ollama
-        description: Local LLM runner (embeddings + vision). API - 10.40.0.20:11434
-        icon: fas fa-microchip
-        url: http://10.40.0.20:11434
-        target: newtab
-      - title: OpenRouter
-        description: Cloud LLM router — 200+ models. Key - sk-or-v1-placeholder (NEEDS REAL KEY)
-        icon: fas fa-cloud
-        url: https://openrouter.ai
-        target: newtab
-      - title: Open WebUI
-        description: Chat UI (NOT DEPLOYED — run docker to enable)
-        icon: far fa-comment-dots
-        url: https://chat.socialbeesai.com
-        target: newtab
-
-  - name: ⚙️ Automation
-    icon: fas fa-cogs
-    items:
-      - title: n8n
-        description: Workflow automation
-        icon: fas fa-network-wired
-        url: https://n8n.socialbeesai.com
-        target: newtab
-      - title: Flowise
-        description: Visual LLM app builder — admin / admin
-        icon: fas fa-code-branch
-        url: https://app.socialbeesai.com/flowise
-        target: newtab
-      - title: MCP Server
-        description: Model Context Protocol — LLM tool access. mcp.socialbeesai.com
-        icon: fas fa-plug
-        url: https://mcp.socialbeesai.com
-        target: newtab
-      - title: Hermes
-        description: 24/7 Autonomous ops agent
-        icon: fas fa-robot
-        url: https://hermes.socialbeesai.com
-        target: newtab
-
-  - name: 🗄️ Data Layer
+  - name: 🗄️ Data Layer (Phase A — Deployed ✅)
     icon: fas fa-database
     items:
-      - title: MinIO Console
-        description: S3 storage — admin / minioadmin
-        icon: fas fa-hdd
-        url: https://data.socialbeesai.com/minio
-        target: newtab
-      - title: Qdrant Dashboard
-        description: Vector database — API key - aios_qdrant_2026
-        icon: fas fa-vector-square
-        url: https://qdrant.socialbeesai.com/dashboard
-        target: newtab
       - title: PostgreSQL
-        description: Primary database — aios / aios_secret_2026 @ 10.30.0.10:5432
+        description: '✅ Running — Relational DB + pgvector 0.8.0'
         icon: fas fa-database
         url: http://10.30.0.10:5432
         target: newtab
+      - title: Qdrant
+        description: '✅ Running — Vector store (RAG + mem0)'
+        icon: fas fa-vector-square
+        url: http://10.30.0.20:6333/dashboard
+        target: newtab
       - title: Redis
-        description: Cache & Queue — 10.30.0.30:6379
+        description: '✅ Running — Cache + Queue + Streams'
         icon: fas fa-memory
         url: redis://10.30.0.30:6379
         target: newtab
+      - title: MinIO
+        description: '✅ Running — S3 Storage (4 buckets)'
+        icon: fas fa-hdd
+        url: http://10.30.0.40:9001
+        target: newtab
       - title: ClickHouse
-        description: Langfuse trace storage
+        description: '✅ Running — Columnar analytics'
         icon: fas fa-chart-bar
-        url: https://clickhouse.socialbeesai.com
+        url: http://10.60.0.11:8123
         target: newtab
-
-  - name: 📊 Monitoring
-    icon: fas fa-heartbeat
-    items:
-      - title: Grafana
-        description: Metrics & dashboards — admin / grafana_admin_2026
-        icon: fas fa-chart-bar
-        url: https://monitor.socialbeesai.com/grafana
+      - title: mem0
+        description: '✅ Running — Agent memory layer (awaits Bifrost for embeddings)'
+        icon: fas fa-brain
+        url: http://10.20.0.50:8000/docs
         target: newtab
-      - title: Prometheus
-        description: Metrics backend
-        icon: fas fa-tachometer-alt
-        url: https://monitor.socialbeesai.com/prometheus
-        target: newtab
-      - title: Portainer
-        description: Docker management
-        icon: fab fa-docker
-        url: https://monitor.socialbeesai.com/portainer
-        target: newtab
-      - title: cAdvisor
-        description: Container resource monitoring
-        icon: fas fa-chart-pie
-        url: https://monitor.socialbeesai.com/cadvisor
-        target: newtab
-      - title: Loki
-        description: Log aggregation — 10.60.0.40:3100 (API only)
+      - title: docling
+        description: '✅ Running — Document parser (PDF, DOCX, HTML, TXT)'
         icon: fas fa-file-alt
-        url: http://10.60.0.40:3100
+        url: http://10.20.0.60:8000/docs
+        target: newtab
+      - title: Knowledge Ingest
+        description: '✅ Running — Daemon watching raw-uploads bucket'
+        icon: fas fa-upload
+        url: http://10.20.0.55:8000
         target: newtab
 
-  - name: 📹 Surveillance
-    icon: fas fa-video
-    items:
-      - title: Frigate NVR
-        description: AI object detection with GPU
-        icon: fas fa-eye
-        url: https://frigate.socialbeesai.com
-        target: newtab
-
-  - name: 📞 Voice & Telephony
+  - name: 📞 Voice Layer (Partial)
     icon: fas fa-phone-alt
     items:
-      - title: Dograh UI
-        description: Voice agent orchestration
-        icon: fas fa-robot
-        url: https://voice.socialbeesai.com
-        target: newtab
-      - title: Dograh API
-        description: Voice agent API — 10.50.0.30:8080 (internal)
-        icon: fas fa-code
-        url: http://10.50.0.30:8080
-        target: newtab
       - title: Asterisk
-        description: SIP PBX — 6 extensions, ARI API. Ext 100-104,9000
+        description: '✅ Running — SIP PBX (Cisco 7962G registered)'
         icon: fas fa-phone
         url: http://10.0.0.100:8088
         target: newtab
-      - title: Mosquitto MQTT
-        description: Event bus for Frigate + Dograh — 10.50.0.20:1883
-        icon: fas fa-comments
-        url: http://10.50.0.20:1883
-        target: newtab
-      - title: Chatterbox TTS
-        description: GPU text-to-speech — 10.40.0.30:4123 (API)
-        icon: fas fa-volume-up
-        url: http://10.40.0.30:4123
-        target: newtab
-
-  - name: 🔐 Identity & Security
-    icon: fas fa-shield-alt
-    items:
-      - title: Keycloak
-        description: SSO & Identity — admin / admin
-        icon: fas fa-id-card
-        url: https://keycloak.socialbeesai.com
-        target: newtab
-      - title: Vault UI
-        description: Secrets management
-        icon: fas fa-key
-        url: https://vault.socialbeesai.com
-        target: newtab
-      - title: CrowdSec
-        description: WAF — API key in .env. 10.10.0.11:8080
-        icon: fas fa-shield-virus
-        url: http://10.10.0.11:8080
-        target: newtab
-
-  - name: 🌐 Networking
-    icon: fas fa-globe
-    items:
-      - title: Traefik Dashboard
-        description: Reverse proxy & SSL
-        icon: fas fa-random
-        url: https://admin.socialbeesai.com
-        target: newtab
-      - title: DNSmasq-TFTP
-        description: Cisco phone provisioning (host net, port 69/udp)
+        status: ok
+      - title: DNSMasq-TFTP
+        description: '✅ Running — Phone provisioning'
         icon: fas fa-server
         url: http://10.0.0.100
         target: newtab
-      - title: WireGuard VPN
-        description: Remote access VPN (NOT DEPLOYED)
-        icon: fas fa-network-wired
-        url: https://vpn.socialbeesai.com
-        target: newtab
-      - title: Cloudflare Tunnel
-        description: SSL/TLS termination — tunnel ID in .env
-        icon: fas fa-cloud
-        url: https://dash.cloudflare.com
-        target: newtab
-
-  - name: 🛠️ Infrastructure
-    icon: fas fa-server
-    items:
-      - title: GitOps Agent
-        description: Auto-deploy from GitHub (10.20.0.100, polls every 30s)
-        icon: fab fa-github
-        url: https://github.com/aioslablhr/aios
-        target: newtab
-      - title: node-exporter
-        description: Host metrics exporter — 10.60.0.60:9100
-        icon: fas fa-microchip
-        url: http://10.60.0.60:9100
-        target: newtab
-      - title: n8n Workers
-        description: 2 stateless workers (10.20.0.12, 10.20.0.13)
-        icon: fas fa-tasks
-        url: http://10.20.0.12
-        target: newtab
       - title: Dashy
-        description: This dashboard
+        description: '✅ This dashboard'
         icon: fas fa-home
-        url: https://socialbeesai.com
+        url: http://10.60.0.70:8080
         target: newtab
 
-  - name: 📱 Endpoints
-    icon: fas fa-plug
+  - name: ⏳ Future Phases (Not Yet Deployed)
+    icon: fas fa-clock
+    displayData:
+      collapsed: true
     items:
-      - title: Cisco 7962G
-        description: IP Phone — Ext 9000, MAC 00:27:0D:C0:1C:92
-        icon: fas fa-phone
-        url: http://10.0.0.12
+      - title: Bifrost / Ollama (Phase B)
+        description: '⏳ AI Gateway + Local LLM — next phase'
+        icon: fas fa-microchip
+        url: http://10.40.0.10:4000
         target: newtab
-      - title: IP Cameras
-        description: RTSP feeds for Frigate (TODO - configure)
-        icon: fas fa-video
-        url: http://10.0.0.100
+      - title: Langfuse (Phase C)
+        description: '⏳ LLM Observability — after Bifrost'
+        icon: fas fa-chart-line
+        url: http://10.60.0.10:3000
+        target: newtab
+      - title: Traefik / CrowdSec (Phase C)
+        description: '⏳ Reverse proxy + WAF'
+        icon: fas fa-shield-alt
+        url: http://10.10.0.10
+        target: newtab
+      - title: n8n + Workers (Phase C)
+        description: '⏳ Orchestration — 3 containers'
+        icon: fas fa-network-wired
+        url: http://10.20.0.10:5678
+        target: newtab
+      - title: Grafana / Prometheus (Phase C)
+        description: '⏳ Monitoring stack'
+        icon: fas fa-chart-bar
+        url: http://10.60.0.30:3000
+        target: newtab
+      - title: Dograh (Phase D)
+        description: '⏳ Voice orchestration'
+        icon: fas fa-robot
+        url: http://10.50.0.30:8000
+        target: newtab
+      - title: Frigate (Phase D)
+        description: '⏳ AI Vision — GPU object detection'
+        icon: fas fa-eye
+        url: http://10.40.0.50:5000
+        target: newtab
+      - title: Chatterbox / Kokoro (Phase D)
+        description: '⏳ TTS — GPU + CPU fallback'
+        icon: fas fa-volume-up
+        url: http://10.40.0.30:4123
+        target: newtab
+      - title: Portainer (Phase C)
+        description: '⏳ Docker management'
+        icon: fab fa-docker
+        url: http://10.60.0.50:9000
         target: newtab

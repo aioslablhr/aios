@@ -175,6 +175,101 @@ services:
     restart: unless-stopped
 
   # ---
+  # DATA LAYER CONTINUED --- Agent Memory (mem0)
+  # ---
+
+  mem0:
+    build:
+      context: /aios/configs/mem0
+      dockerfile: Dockerfile.mem0
+    image: aios-mem0:latest
+    container_name: aios-mem0
+    hostname: mem0
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.50
+      aios-data:
+    environment:
+      QDRANT_HOST: 10.30.0.20
+      QDRANT_PORT: 6333
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
+      EMBEDDING_BASE_URL: http://10.40.0.10:4000/v1
+      EMBEDDING_MODEL: nomic-embed-text
+      EMBEDDING_API_KEY: sk-aios-mem0
+      LLM_BASE_URL: http://10.40.0.10:4000/v1
+      LLM_MODEL: gemma-4-31b
+      LLM_API_KEY: sk-aios-mem0
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; exit(0 if urllib.request.urlopen('http://localhost:8000/health').status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ---
+  # DATA LAYER CONTINUED --- Document Parser (docling)
+  # ---
+
+  docling:
+    build:
+      context: /aios/configs/docling
+      dockerfile: Dockerfile.docling
+    image: aios-docling:latest
+    container_name: aios-docling
+    hostname: docling
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.60
+      aios-data:
+    environment:
+      MINIO_ENDPOINT: 10.30.0.40:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; exit(0 if urllib.request.urlopen('http://localhost:8000/health').status in (200, 503) else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ---
+  # DATA LAYER CONTINUED --- Knowledge Ingestion Pipeline
+  # ---
+
+  knowledge-ingest:
+    build:
+      context: /aios/knowledge
+      dockerfile: Dockerfile.knowledge
+    image: aios-knowledge:latest
+    container_name: aios-knowledge-ingest
+    hostname: knowledge-ingest
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.55
+      aios-data:
+    volumes:
+      - /aios/knowledge/wiki:/app/wiki
+    environment:
+      MINIO_ENDPOINT: 10.30.0.40:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      INPUT_BUCKET: raw-uploads
+      DOCLING_URL: http://10.20.0.60:8000/v1
+      QDRANT_HOST: 10.30.0.20
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
+      EMBEDDING_URL: http://10.40.0.10:4000/v1/embeddings
+      EMBEDDING_MODEL: nomic-embed-text
+      EMBEDDING_API_KEY: sk-aios-bifrost
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      docling:
+        condition: service_started
+    restart: unless-stopped
+
+  # ---
   # MONITORING LAYER --- 10.60.0.0/24 (AI Observability)
   # ---
 
@@ -247,11 +342,16 @@ services:
         ipv4_address: 10.60.0.70
     volumes:
       - /aios/configs/dashy/conf.yml:/app/user-data/conf.yml:ro
+    ports:
+      - "127.0.0.1:8082:8080"
+    environment:
+      PORT: 8080
     healthcheck:
-      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/80 && echo -e 'GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | head -1 | grep -q 200"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
+      test: ["CMD", "wget", "--spider", "http://127.0.0.1:8080"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
     restart: unless-stopped
 
   prometheus:

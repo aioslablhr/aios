@@ -1,0 +1,44 @@
+# AIOS Knowledge Layer Configuration
+
+# Embedding service (Bifrost → Ollama)
+embedding:
+  provider: openai
+  base_url: http://10.40.0.10:4000/v1
+  model: nomic-embed-text
+  api_key: sk-aios-bifrost
+
+# LLM for compilation (Bifrost → OpenRouter)
+llm:
+  provider: openai
+  base_url: http://10.40.0.10:4000/v1
+  model: gemma-4-31b
+  api_key: sk-aios-bifrost
+
+# Vector store (Qdrant)
+qdrant:
+  host: 10.30.0.20
+  port: 6333
+  api_key: aios_qdrant_2026
+  collection: knowledge_chunks
+
+# Memory (mem0)
+mem0:
+  url: http://10.20.0.50:8000/v1
+
+# Document parser (docling)
+docling:
+  url: http://10.20.0.60:8000/v1
+
+# MinIO (file storage)
+minio:
+  endpoint: http://10.30.0.40:9000
+  access_key: admin
+  secret_key: minioadmin
+  input_bucket: raw-uploads
+  processed_bucket: processed-text
+
+# Scheduled tasks
+schedule:
+  daily_compilation: "0 0 * * *"  # midnight
+  memory_consolidation: "0 */4 * * *"  # every 4 hours
+  stale_prune_days: 30
