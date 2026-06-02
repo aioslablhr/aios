@@ -71,9 +71,9 @@ sections:
         url: http://10.0.0.100
         target: newtab
       - title: Dashy
-        description: '✅ This dashboard — access at http://10.0.0.100:8082'
+        description: '✅ This dashboard'
         icon: fas fa-home
-        url: http://10.0.0.100:8082
+        url: https://socialbeesai.com
         target: newtab
 
   - name: ⏳ Future Phases (Not Yet Deployed)
