@@ -1,8 +1,8 @@
 ---
 pageInfo:
-  title: AIOS Lab — Phase A
-  description: AI Operating System — Data Layer Deployed
-  footer: AIOS v4.2 — Phase A (Data Layer) ✅ | Lahore AI Lab
+  title: AIOS AI Control Panel = Full AI Business Platform version 1.0
+  description: 'Data Layer: all infrastructure services operational'
+  footer: AIOS v1.0 — Data Layer | Lahore AI Lab
 
 appConfig:
   theme: colorful
@@ -52,72 +52,4 @@ sections:
         icon: fas fa-upload
         url: ''
 
-  - name: Voice Layer (Partial)
-    icon: fas fa-phone-alt
-    items:
-      - title: Asterisk
-        description: 'SIP PBX (Cisco 7962G registered)'
-        icon: fas fa-phone
-        url: http://10.0.0.100:8088
-        target: newtab
-      - title: DNSMasq-TFTP
-        description: 'Phone provisioning'
-        icon: fas fa-server
-        url: http://10.0.0.100
-        target: newtab
-      - title: Dashy
-        description: 'This dashboard'
-        icon: fas fa-home
-        url: https://socialbeesai.com
-        target: newtab
 
-  - name: Future Phases (Not Yet Deployed)
-    icon: fas fa-clock
-    displayData:
-      collapsed: true
-    items:
-      - title: Bifrost / Ollama (Phase B)
-        description: '⏳ AI Gateway + Local LLM — next phase'
-        icon: fas fa-microchip
-        url: http://10.40.0.10:4000
-        target: newtab
-      - title: Langfuse (Phase C)
-        description: '⏳ LLM Observability — after Bifrost'
-        icon: fas fa-chart-line
-        url: http://10.60.0.10:3000
-        target: newtab
-      - title: Traefik / CrowdSec (Phase C)
-        description: '⏳ Reverse proxy + WAF'
-        icon: fas fa-shield-alt
-        url: http://10.10.0.10
-        target: newtab
-      - title: n8n + Workers (Phase C)
-        description: '⏳ Orchestration — 3 containers'
-        icon: fas fa-network-wired
-        url: http://10.20.0.10:5678
-        target: newtab
-      - title: Grafana / Prometheus (Phase C)
-        description: '⏳ Monitoring stack'
-        icon: fas fa-chart-bar
-        url: http://10.60.0.30:3000
-        target: newtab
-      - title: Dograh (Phase D)
-        description: '⏳ Voice orchestration'
-        icon: fas fa-robot
-        url: http://10.50.0.30:8000
-        target: newtab
-      - title: Frigate (Phase D)
-        description: '⏳ AI Vision — GPU object detection'
-        icon: fas fa-eye
-        url: http://10.40.0.50:5000
-        target: newtab
-      - title: Chatterbox / Kokoro (Phase D)
-        description: '⏳ TTS — GPU + CPU fallback'
-        icon: fas fa-volume-up
-        url: http://10.40.0.30:4123
-        target: newtab
-      - title: Portainer (Phase C)
-        description: '⏳ Docker management'
-        icon: fab fa-docker
-        url: http://10.60.0.50:9000
-        target: newtab
