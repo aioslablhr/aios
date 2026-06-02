@@ -1,5 +1,5 @@
 general_settings:
-  master_key: ${BIFROST_MASTER_KEY:-sk-aios-master}
+  master_key: ${BIFROST_ADMIN_KEY:-sk-aios-master}
 
 litellm_settings:
   drop_params: true
