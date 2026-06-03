@@ -25,7 +25,8 @@ node_modules/
 *.swo
 
 # Docker
-docker-compose-apps.yml
+# docker-compose-apps.yml — TRACKED (secrets in .env, not in compose)
+# Previously gitignored — un-tracked to enable GitOps deployment
 
 # Temp scripts
 tmp/

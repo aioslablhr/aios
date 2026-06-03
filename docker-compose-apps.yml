@@ -1,0 +1,150 @@
+# AIOS — FOSS Application Layer (Layer 2 Business Apps)
+# Network: FOSS Zone — 10.70.0.0/24
+# Public URLs: *.socialbeesai.com via Traefik
+
+networks:
+  aios-foss:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.70.0.0/24
+          gateway: 10.70.0.1
+    name: aios-foss
+  aios-dmz:
+    external: true
+
+volumes:
+  nextcloud-data:
+    name: aios-nextcloud-data
+  nextcloud-db:
+    name: aios-nextcloud-db
+  odoo-data:
+    name: aios-odoo-data
+  odoo-db:
+    name: aios-odoo-db
+  metabase-data:
+    name: aios-metabase-data
+
+services:
+  # ── Nextcloud (File Sync + Collaboration) ──
+  nextcloud-db:
+    image: postgres:16-alpine
+    container_name: aios-nextcloud-db
+    hostname: nextcloud-db
+    networks: [aios-foss]
+    volumes:
+      - nextcloud-db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
+    restart: unless-stopped
+
+  nextcloud-redis:
+    image: redis:7-alpine
+    container_name: aios-nextcloud-redis
+    hostname: nextcloud-redis
+    networks: [aios-foss]
+    restart: unless-stopped
+
+  nextcloud:
+    image: nextcloud:30-apache
+    container_name: aios-nextcloud
+    hostname: nextcloud
+    networks:
+      aios-foss:
+        ipv4_address: 10.70.0.30
+      aios-dmz:
+    ports:
+      - "127.0.0.1:8030:80"
+    volumes:
+      - nextcloud-data:/var/www/html
+    environment:
+      POSTGRES_HOST: nextcloud-db
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
+      REDIS_HOST: nextcloud-redis
+      NEXTCLOUD_ADMIN_USER: admin
+      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD}
+      OVERWRITEPROTOCOL: https
+      OVERWRITECLIURL: https://nextcloud.socialbeesai.com
+      TRUSTED_DOMAINS: nextcloud.socialbeesai.com
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nextcloud.rule=Host(`nextcloud.socialbeesai.com`)"
+      - "traefik.http.routers.nextcloud.tls.certresolver=letsencrypt"
+      - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
+      - "traefik.http.routers.nextcloud.entrypoints=websecure"
+      - "traefik.docker.network=aios-dmz"
+    depends_on:
+      - nextcloud-db
+      - nextcloud-redis
+    restart: unless-stopped
+
+  # ── Odoo (ERP) ──
+  odoo-db:
+    image: postgres:16-alpine
+    container_name: aios-odoo-db
+    hostname: odoo-db
+    networks: [aios-foss]
+    volumes:
+      - odoo-db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: odoo
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: ${ODOO_DB_PASSWORD}
+    restart: unless-stopped
+
+  odoo:
+    image: odoo:18
+    container_name: aios-odoo
+    hostname: odoo
+    networks:
+      aios-foss:
+        ipv4_address: 10.70.0.20
+      aios-dmz:
+    ports:
+      - "127.0.0.1:8069:8069"
+    volumes:
+      - odoo-data:/var/lib/odoo
+    environment:
+      HOST: odoo-db
+      USER: odoo
+      PASSWORD: ${ODOO_DB_PASSWORD}
+      DB_NAME: odoo
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.odoo.rule=Host(`odoo.socialbeesai.com`)"
+      - "traefik.http.routers.odoo.tls.certresolver=letsencrypt"
+      - "traefik.http.services.odoo.loadbalancer.server.port=8069"
+      - "traefik.http.routers.odoo.entrypoints=websecure"
+      - "traefik.docker.network=aios-dmz"
+    depends_on:
+      - odoo-db
+    restart: unless-stopped
+
+  # ── Metabase (Analytics / Dashboards) ──
+  metabase:
+    image: metabase/metabase:v0.52.4
+    container_name: aios-metabase
+    hostname: metabase
+    networks:
+      aios-foss:
+        ipv4_address: 10.70.0.40
+      aios-dmz:
+    ports:
+      - "127.0.0.1:8040:3000"
+    volumes:
+      - metabase-data:/metabase.db
+    environment:
+      MB_DB_TYPE: h2
+      MB_SITE_URL: https://metabase.socialbeesai.com
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.metabase.rule=Host(`metabase.socialbeesai.com`)"
+      - "traefik.http.routers.metabase.tls.certresolver=letsencrypt"
+      - "traefik.http.services.metabase.loadbalancer.server.port=3000"
+      - "traefik.http.routers.metabase.entrypoints=websecure"
+      - "traefik.docker.network=aios-dmz"
+    restart: unless-stopped

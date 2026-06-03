@@ -1,6 +1,5 @@
 # AIOS — Traefik Dynamic Configuration
-# Public: landing page only. FOSS apps when deployed.
-# Internal services via WireGuard VPN / LAN IPs.
+# Public: landing page + FOSS apps (deployed). Internal via LAN/WireGuard.
 
 http:
   middlewares:
@@ -25,6 +24,7 @@ http:
         customFrameOptionsValue: "SAMEORIGIN"
 
   routers:
+    # Landing page — socialbeesai.com
     landing:
       rule: "Host(`socialbeesai.com`) || Host(`www.socialbeesai.com`)"
       service: landing
@@ -36,8 +36,26 @@ http:
         - crowdsec-bouncer
         - secure-headers
 
+    # Open WebUI — chat.socialbeesai.com
+    foss-open-webui:
+      rule: "Host(`chat.socialbeesai.com`)"
+      service: foss-open-webui
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+
   services:
+    # Landing page — points to Dashy
     landing:
       loadBalancer:
         servers:
           - url: "http://10.60.0.70:8080"
+
+    # Open WebUI — public chat interface
+    foss-open-webui:
+      loadBalancer:
+        servers:
+          - url: "http://10.70.0.200:8080"

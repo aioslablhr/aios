@@ -38,6 +38,8 @@ volumes:
   chatterbox-data:
   chatterbox-voices:
   chatterbox-output:
+  open-webui-data:
+  xtts-cache:
 
 services:
   # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
@@ -305,6 +307,38 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  # Knowledge Compiler — LLM Wiki pipeline, runs every 4 hours
+  knowledge-compile:
+    image: aios-knowledge:latest
+    container_name: aios-knowledge-compile
+    hostname: knowledge-compile
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.56
+      aios-data:
+    volumes:
+      - /aios/knowledge/wiki:/app/wiki
+    environment:
+      QDRANT_HOST: 10.30.0.20
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
+      MEM0_URL: http://10.20.0.50:8000/v1
+      LLM_BASE_URL: http://10.40.0.10:4000/v1
+      LLM_MODEL: gemma-4-31b
+      LLM_API_KEY: sk-aios-bifrost
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo '[Knowledge-Compile] Starting LLM Wiki compiler...'
+        while true; do
+          python3 compile-wiki.py --force
+          echo '[Knowledge-Compile] Sleeping 4 hours...'
+          sleep 14400
+        done
+      "
+    restart: unless-stopped
+
   # ---
   # MONITORING LAYER --- 10.60.0.0/24 (AI Observability)
   # ---
@@ -563,6 +597,7 @@ services:
       aios-ai:
     volumes:
       - ollama-data:/root/.ollama
+      - /aios/configs/ollama/modelfiles:/modelfiles:ro
     depends_on:
       ollama:
         condition: service_healthy
@@ -572,10 +607,8 @@ services:
       sh -c "
         echo 'Pulling nomic-embed-text...' &&
         ollama pull nomic-embed-text &&
-        echo 'Pulling qwen2.5:7b-instruct-q4_K_M...' &&
-        ollama pull qwen2.5:7b-instruct-q4_K_M &&
-        echo 'Pulling llama3.2:3b-instruct-q4_K_M...' &&
-        ollama pull llama3.2:3b-instruct-q4_K_M &&
+        echo 'Creating Qalb-1.0-8B-Instruct from Modelfile...' &&
+        ollama create qalb-1.0-8b -f /modelfiles/Qalb &&
         echo 'Pulling llava:7b-q4_K_M...' &&
         ollama pull llava:7b-q4_K_M &&
         echo 'Done.'
@@ -1165,5 +1198,58 @@ services:
       PORT: 4123
       USE_MULTILINGUAL_MODEL: "true"
       EXAGGERATION: 0.5
+    restart: unless-stopped
+
+  # ---
+  # AI LAYER CONTINUED --- XTTS-v2-Urdu-FT (GPU)
+  # ---
+
+  xtts-urdu:
+    build:
+      context: /aios/configs/xtts
+      dockerfile: Dockerfile.xtts
+    image: aios-xtts-urdu:latest
+    container_name: aios-xtts-urdu
+    hostname: xtts-urdu
+    networks:
+      aios-ai:
+        ipv4_address: 10.40.0.32
+      aios-voice:
+    ports:
+      - "127.0.0.1:8020:8020"
+    volumes:
+      - xtts-cache:/app/model_cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      XTTS_MODEL_REPO: arbml/xtts-v2-urdu-ft
+    restart: unless-stopped
+
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+  # FOSS LAYER +�G�Gǥ 10.70.0.0/24 (Public client-facing apps)
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+
+  # Open WebUI — Public chat interface (chat.socialbeesai.com)
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: aios-open-webui
+    hostname: open-webui
+    networks:
+      aios-foss:
+        ipv4_address: 10.70.0.200
+    ports:
+      - "3011:8080"
+    volumes:
+      - open-webui-data:/app/backend/data
+    environment:
+      OLLAMA_BASE_URL: http://10.40.0.10:4000
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
+      WEBUI_NAME: AIOS Chat
+      ENABLE_SIGNUP: "false"
     restart: unless-stopped
 
