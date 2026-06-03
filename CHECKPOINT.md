@@ -1,6 +1,6 @@
 # AIOS — Build Checkpoint
 ## Dual-Layer Status: AIOS Infrastructure Layer = COMPLETE (35 containers, 13 endpoints). AI Transformation Layer = BUILDING (4 use cases).
-## Last Updated: Jun 1, 2026 — v4.4 — Full stack restart + A-Z audit, 35/36 containers running, 13/13 endpoints 200
+## Last Updated: Jun 3, 2026 — v4.5 — Single-server LOCKED. Qalb primary local LLM. Public routes stripped to 1. WireGuard VPN added.
 
 ---
 
@@ -38,7 +38,7 @@ All 7 architectural layers deployed and verified:
 - Flowise + MCP deployed, OpenRouter/MCP tiles added to Dashy
 - Credentials reference at `docs/ref/credentials.md`
 
-**Super-Tuning (May 26 — Round 4 — THIS SESSION):**
+**Super-Tuning (May 26 — Round 4):**
 - **Traefik crash-loop fixed**: `api.entryPoint: websecure` unsupported in Traefik 3.7.1 — removed. Metrics port moved from 8080→8082 to avoid conflict with internal `traefik` entry point.
 - **Dynamic config fixed**: Services were mixed into `http.routers` instead of `http.services` — 8 duplicate router keys caused YAML parse failure, all routes dead.
 - **MCP server fixed**: Was listening on `127.0.0.1` — changed to `uvicorn.run(host="0.0.0.0")`.
@@ -49,31 +49,49 @@ All 7 architectural layers deployed and verified:
 - **Dograh BACKEND_URL fixed**: Was `http://10.50.0.30:8000` (Docker internal IP) → browser couldn't reach → changed to `https://voice.socialbeesai.com`.
 - **Dograh API route fixed**: Traefik route `PathPrefix(/api)` was stealing `/api/config/auth` from UI's Next.js API routes → narrowed to `PathPrefix(/api/v1)` only.
 
-### ✅ Public Endpoints — ALL 13 VERIFIED Working (May 26)
+**Architecture Lock (Jun 3):**
+- **Single-server locked**: No KVM, no second machine, no OPNsense.
+- **Qalb-1.0-8B-Instruct**: Primary local Urdu LLM on Ollama GPU. + nomic-embed-text = ~5.8GB permanently loaded.
+- **XTTS-v2-Urdu-FT**: Primary Urdu TTS (GPU, on-demand). Dograh auto-selects.
+- **WireGuard VPN added**: `lscr.io/linuxserver/wireguard` on host network. Peer config auto-generated for Dev PC.
+- **Public routes stripped**: From 16 routes to 1 (`socialbeesai.com` → Dashy). All internal services via LAN IP or WireGuard.
+- **Service URLs updated**: n8n, Keycloak, Grafana, Dograh, Prometheus changed from public URLs to local IPs.
+- **Dograh API port**: Changed from `127.0.0.1:8085` to `0.0.0.0:8085` for LAN access.
+
+### ✅ Public Endpoints — NOW 1 ACTIVE (Jun 3 — rest local-only)
 
 | URL | Code | Service |
 |---|---|---|
-| `https://socialbeesai.com` | 200 | Dashy sysops hub |
-| `https://admin.socialbeesai.com` | 200 | Traefik Dashboard |
-| `https://n8n.socialbeesai.com` | 200 | n8n workflow automation |
-| `https://ai.socialbeesai.com` | 200 | Bifrost (LiteLLM AI Gateway) |
-| `https://langfuse.socialbeesai.com` | 200 | Langfuse (LLM Observability) |
-| `https://keycloak.socialbeesai.com` | 200 | Keycloak Admin Console |
-| `https://vault.socialbeesai.com` | 200 | Vault UI (secrets mgmt) |
-| `https://voice.socialbeesai.com` | 200 | Dograh UI (voice orchestration) |
-| `https://data.socialbeesai.com/minio` | 200 | MinIO Console (S3 storage) |
-| `https://monitor.socialbeesai.com/grafana` | 200 | Grafana dashboards |
-| `https://app.socialbeesai.com/flowise` | 200 | Flowise (AI workflow builder) |
-| `https://clickhouse.socialbeesai.com` | 200 | ClickHouse web UI |
-| `https://frigate.socialbeesai.com` | 200 | Frigate NVR (AI surveillance) |
+| `https://socialbeesai.com` | 200 | Dashy sysops hub (public) |
 
-**13/13 public endpoints returning 200, Traefik stable ✅**
-**Add MCP SSE + Portainer + Qdrant in follow-up**
+**All other services moved to local-only — access via LAN IP or WireGuard VPN:**
+
+| Service | Local URL | WireGuard (Docker IP) |
+|---|---|---|
+| n8n | `http://10.0.0.100:5678` | `http://10.20.0.10:5678` |
+| Bifrost (LLM Gateway) | `http://10.0.0.100:4000` | `http://10.40.0.10:4000` |
+| Langfuse | `http://10.0.0.100:3000` | `http://10.60.0.10:3000` |
+| Keycloak Admin | `http://10.0.0.100:8080` | `http://10.20.0.40:8080` |
+| Vault UI | `http://10.0.0.100:8200` | `http://10.0.0.100:8200` |
+| Dograh UI | `http://10.0.0.100:3010` | `http://10.50.0.31:3010` |
+| Dograh API | `http://10.0.0.100:8085` | `http://10.50.0.30:8000` |
+| MinIO Console | `http://10.0.0.100:9001` | `http://10.30.0.40:9001` |
+| Grafana | `http://10.0.0.100:3000` | `http://10.60.0.30:3000` |
+| Frigate NVR | `http://10.0.0.100:5000` | `http://10.40.0.50:5000` |
+| Flowise | `http://10.0.0.100:3001` | `http://10.20.0.20:3000` |
+| MCP Server | `http://10.0.0.100:8100` | `http://10.20.0.30:8000` |
+| Qdrant | `http://10.0.0.100:6333` | `http://10.30.0.20:6333` |
+| ClickHouse | `http://10.0.0.100:8123` | `http://10.60.0.11:8123` |
+| Traefik Dashboard | `http://10.0.0.100:8082` | `http://10.10.0.10:8080` |
+| Portainer | `http://10.0.0.100:9000` | `http://10.60.0.50:9000` |
+| Prometheus | `http://10.0.0.100:9090` | `http://10.60.0.20:9090` |
 
 ---
 
 ### ❌ MINOR ISSUES (non-blocking for use cases)
 
+- **n8n webhooks**: No public URL for Meta WhatsApp webhooks. Need to create public webhook endpoint when CRM workflow is built.
+- **WireGuard**: Auto-generated peer config needs to be retrieved from server after first container run. TP-Link NAT needs UDP 51820 forwarded for remote VPN access. LAN-only for now.
 - **Portainer** 404 on first visit — needs browser admin account setup session
 - **Qdrant** dashboard 404 — path `PathPrefix(/dashboard)` may not match actual Qdrant UI path
 - **MCP SSE** returns 421 through Traefik — SSE-specific proxy config needed or note that clients connect directly
@@ -84,13 +102,23 @@ All 7 architectural layers deployed and verified:
 
 ---
 
-### ✅ ARCHITECTURE DECISIONS — v4.3 (LOCKED May 26)
+### ✅ ARCHITECTURE DECISIONS — v4.5 (LOCKED Jun 3)
 
-- **Traefik 3.7.1 compatibility**: `api.entryPoint` field removed (unsupported in v3.7). Internal `traefik` entry point on :8080 conflicts with `metrics` entry point — use separate ports.
-- **Dograh OSS via GHCR**: Docker Hub `dograhai/*` images are cloud builds requiring Stack Auth. OSS images at `ghcr.io/dograh-hq/*`.
-- **Dograh auth flow**: UI Next.js API route `/api/config/auth` (not backend API) must return `{"provider":"local"}`. Traefik must NOT route `/api/config/*` to backend.
-- **Dashy port 8080**: Dashy v4.1.8 listens on port 8080 (not 80). Health check needs `sh` not `bash`.
-- **Vault host networking**: `network_mode: host` — route to `10.0.0.100:8200` until migrated.
+- **Single-server locked**: No KVM, no second machine, no OPNsense. Docker zones + CrowdSec + Cloudflare = equivalent security.
+- **Qalb-1.0-8B-Instruct**: Primary local Urdu LLM on Ollama GPU. Replaces mistral-7b/qwen-2.5-7b. + nomic-embed-text = ~5.8GB permanently loaded.
+- **XTTS-v2-Urdu-FT**: Primary Urdu TTS (GPU, on-demand). Dograh auto-selects for Urdu calls.
+- **Local-first hierarchy**: Qalb (Urdu) + Kokoro/Chatterbox (English TTS) + Whisper (STT) + YOLO (detection) all local. Cloud = fallback only.
+- **Public/Local split**: Only `socialbeesai.com` (Dashy) + future FOSS apps public. All internal services via LAN IPs or WireGuard VPN.
+  - `socialbeesai.com` → Dashy (public)
+  - `*.socialbeesai.com` FOSS apps (Odoo, Twenty CRM, etc.) when deployed
+  - Everything else: `10.0.0.100:PORT` on LAN or Docker internal IP via WireGuard
+- **WireGuard VPN added**: `lscr.io/linuxserver/wireguard` on host network. Peer config auto-generated for Dev PC. Full `10.0.0.0/8` access.
+- **n8n local-only**: `N8N_HOST=10.0.0.100:5678`, `WEBHOOK_URL=http://10.0.0.100:5678/`. Webhook endpoints for WhatsApp TBD when CRM workflow built.
+- **Traefik routes stripped**: From 16 routes down to 1 (landing page). All internal routes removed.
+- **Traefik 3.7.1 compatibility**: `api.entryPoint` field removed (unsupported in v3.7).
+- **Dograh OSS via GHCR**: Docker Hub `dograhai/*` images are cloud builds. OSS at `ghcr.io/dograh-hq/*`.
+- **Dashy port 8080**: Dashy v4.1.8 listens on port 8080. Health check needs `sh` not `bash`.
+- **Vault host networking**: `network_mode: host` — accessible at `10.0.0.100:8200`.
 
 ---
 
@@ -163,13 +191,15 @@ Functional Frontend (per use-case business UI):
 
 **Rule: Dashy is sysops-only.** No functional UIs live there. Each use case gets its own dedicated frontend.
 
-#### This session (Jun 1): Stack was fully down (0 containers) → full restart, comprehensive A-Z audit, Hermes fix
+#### Previous session (Jun 1): Stack was fully down (0 containers) → full restart, comprehensive A-Z audit, Hermes fix
+
+#### This session (Jun 3): v4.5 — Single-server architecture LOCKED. Public routes stripped to 1 (only Dashy). WireGuard VPN added. All internal services moved to local IPs: n8n, Keycloak, Grafana, Dograh, Prometheus updated. n8n webhook path TBD when WhatsApp workflow built.
 
 ### ⬅ NEXT SESSION — Resume Here
 
-**Current stack state (verified Jun 1): 35/36 containers running, all 13 public endpoints responding ✅**
+**Current stack state (changes made locally, need deploy): 36 containers (added WireGuard), 1 public endpoint. Services accessible via LAN IP or WireGuard.**
 
-**AIOS Infrastructure Layer — COMPLETE (35 containers, 7+1 zones, ALL verified ✅):**
+**AIOS Infrastructure Layer — COMPLETE (36 containers, 7+1 zones):**
 1. ✅ **33 containers running** — all services healthy
 2. ✅ **8 network zones** — DMZ, App, Data, AI, Voice, Mon, FOSS, Host
 3. ✅ **All orphan containers added** to docker-compose-aios.yml
@@ -189,6 +219,11 @@ Functional Frontend (per use-case business UI):
 17. ✅ **4 use cases locked** — Surveillance, HR Payroll, Sales CRM, Voice Receptionist
 18. ✅ **Frontend separation** — SysOps (Dashy/Grafana) vs Functional (per use case)
 19. ✅ **Git pushed** — GitOps deploys automatically
+20. ✅ **Single-server architecture locked** — no KVM, no second machine
+21. ✅ **Qalb-1.0-8B-Instruct selected** as primary local Urdu LLM
+22. ✅ **Public routes stripped** — 16 routes → 1 (Dashy only)
+23. ✅ **WireGuard VPN added** — `lscr.io/linuxserver/wireguard`, host network
+24. ✅ **Internal URLs updated** — n8n, Keycloak, Grafana, Dograh, Prometheus to local IPs
 
 **Minor issues still open (from A-Z audit Jun 1):**
 - Qdrant unhealthy (telemetry blocked by data zone internal:true — harmless, service works)

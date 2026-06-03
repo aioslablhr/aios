@@ -1,17 +1,49 @@
 # AIOS — AI Operating System
-## 2026 Reference Architecture for SMB & Enterprise AI Transformation
-### Lahore AI Lab · June 2026
+## 2026 Reference Architecture — Single-Server Production Stack
+### Lahore AI Lab · June 2026 · ARCHITECTURE LOCKED
 
 ---
 
-## 1. PROJECT OVERVIEW — TWO LAYERS
+## 1. ARCHITECTURE DECISION — LOCKED
+
+### Physical Lab — LOCKED
+```
+1 Workstation Server (10.0.0.100) — all infrastructure runs here
+  ├── 2 IP cameras → Frigate + YOLO (local GPU, primary)
+  ├── 1 Cisco 7962G (Ext 9000) — SIP phone
+  ├── N softphones (MicroSIP/Zoiper) — Ext 100-104+
+  └── All Docker containers, all AI services
+```
+
+**No second machine. No KVM. No OPNsense. No Issabel VM.** Docker zones + CrowdSec + Cloudflare provide equivalent security. Single-server architecture is the locked decision.
+
+### External Services — FALLBACKS ONLY (wired in, optional)
+| Service | Role | When Used |
+|---|---|---|
+| **OpenRouter** | Cloud LLM inference | When local GPU busy or task beyond Qalb |
+| **ElevenLabs** | Urdu TTS cloud boost | When XTTS-v2-Urdu-FT quality insufficient |
+| **Deepgram** | Urdu STT cloud boost | When Whisper accuracy insufficient |
+| **Twilio** | SMS alerts | Outbound SMS channel |
+| **Meta WhatsApp API** | WhatsApp messaging | Primary messaging channel |
+| **Cloudflare** | DNS, SSL, DDoS | Always — edge security |
+
+### Why This Architecture
+- Single server = zero network complexity, maximum reliability
+- All local inference = zero per-call cost for primary services
+- Cloud fallbacks = quality boost when needed, not required for operation
+- Docker network zones = same security as physical VMs without the overhead
+- SMB market doesn't need HA — they need affordable, working AI today
+
+---
+
+## 2. PROJECT OVERVIEW — TWO LAYERS
 
 ### Layer 1: AI Infrastructure (the engine room)
 AIOS is a **2026-aligned best-practice self-hosted AI stack** — production-grade, scalable, state-of-the-art:
 - 7-layer Docker architecture: Security → Data → Inference → Orchestration → Voice
 - 8 isolated network zones (DMZ, App, Data, AI, Voice, Mon, FOSS, Dev)
 - Bifrost AI Gateway | Langfuse observability | Qdrant vector store
-- Asterisk → Dograh → Whisper → Bifrost → TTS (Dograh auto-selects Chatterbox/Kokoro)
+- Asterisk → Dograh → Whisper → Bifrost → TTS (local primary, cloud fallback)
 - CrowdSec WAF + Traefik + Cloudflare (defense in depth)
 - All infrastructure runs on a single server (NVIDIA Quadro M4000)
 
@@ -34,32 +66,59 @@ The AIOS Infrastructure Layer is the reference architecture. The AI Transformati
 
 ---
 
-## 2. PHYSICAL INFRASTRUCTURE
+## 2. PHYSICAL INFRASTRUCTURE — LOCKED
 
-### Machine 1 — Server (aios)
+### Machine 1 — Server (aios) — THE ONLY MACHINE
 ```
-Hostname: aios
-OS:       Ubuntu 22.04.5 LTS — bare metal + Docker Engine
-IP:       10.0.0.100 (LAN)
-Public:   NO — internet via Huawei ONT → Cloudflare tunnel, port 443 only
-GPU:      NVIDIA Quadro M4000 — 8GB VRAM, 1664 CUDA cores (Maxwell)
-          nvidia-driver-470.256.02 + nvidia-container-toolkit ✅
-RAM:      31GB DDR4
-Storage:  953.9GB NVMe (850GB free LVM)
-Docker:   Docker Engine 29.5.1 + Docker Compose v5.1.3
+Hostname:   aios
+OS:         Ubuntu 22.04.5 LTS — bare metal + Docker Engine
+IP:         10.0.0.100 (LAN)
+Public:     NO — internet via TP-Link NAT → Cloudflare tunnel, port 443 only
+GPU:        NVIDIA Quadro M4000 — 8GB VRAM, 1664 CUDA cores (Maxwell)
+            nvidia-driver-470.256.02 + nvidia-container-toolkit ✅
+RAM:        31GB DDR4
+Storage:    953.9GB NVMe (LVM extended 100→500GB)
+Docker:     Docker Engine 29.5.1 + Docker Compose v5.1.3
 ```
 
-**AIOS Infrastructure Layer — 7 architectural layers:**
+### Machine 2 — Dev PC (10.0.0.13 — Windows 11)
+```
+Role:       Development only — VS Code, Claude Code, Git, Python 3, Bruno
+CPU:        Intel Xeon E-2276G (6C/12T) | RAM: 15.8GB
+Docker:     Docker Desktop v29.4.3 — WSL2 backend (local prototyping only)
+NOT a server. NO production services run here.
+```
+
+**No second server. No KVM VMs. No OPNsense. No Issabel. This is locked.**
+
+### GPU VRAM Budget — Quadro M4000 (8GB) — LOCKED
+```
+Model                          VRAM    Type             Priority
+────────────────────────────────────────────────────────────────────────
+nomic-embed-text               ~0.3GB  Embeddings       ALWAYS loaded
+Qalb-1.0-8B-Instruct (Q4)      ~5.5GB  Urdu LLM         PRIMARY — always loaded
+XTTS-v2-Urdu-FT                ~2GB    Urdu TTS          On-demand, swaps with Chatterbox
+LLaVA 7B (Q4)                  ~4.5GB  Vision            On-demand, swaps with Qalb
+Chatterbox TTS (GPU)           ~1.5GB  English TTS       On-demand, swaps with XTTS
+Whisper STT                    ~1GB    Transcription     CPU fallback always available
+Kokoro TTS                     0 (CPU) English TTS       CPU — always available
+Frigate YOLO                   ~1-2GB  Object detection  Dedicated GPU share
+```
+
+**VRAM strategy:** Qalb + nomic-embed-text fit permanently (~5.8GB). Other models load/unload on demand via Ollama. Ollama manages model swapping automatically.
+
+### AIOS Infrastructure Layer — 7 Architectural Layers
 
 #### Layer 0 — Networking & Security
 ```
-Cloudflare → Traefik → CrowdSec → Keycloak → Vault → WireGuard
+Cloudflare → TP-Link NAT → Traefik → CrowdSec → Keycloak → Vault
 7 Docker zones (DMZ, App, Data, AI, Voice, Mon, FOSS)
+No OPNsense needed — Docker zones + CrowdSec + Cloudflare = equivalent security
 ```
 
 #### Layer 1 — Data
 ```
-PostgreSQL, Qdrant, Redis, MinIO, ClickHouse, Langfuse
+PostgreSQL (pgvector), Qdrant, Redis, MinIO, ClickHouse, Langfuse
 ```
 
 #### Layer 1b — Knowledge (LLM Wiki pattern)
@@ -68,46 +127,46 @@ Obsidian vault (raw .md) → LLM compiles → wiki/ folder → agent queries
 Qdrant RAG fallback for overflow/volatile data
 ```
 
-#### Layer 2 — Inference (4-Tier Routing)
+#### Layer 2 — Inference (Local First, Cloud Fallback)
 ```
-Tier 1 — Bifrost semantic cache (repeated queries → 50ms, $0)
-Tier 2 — Local GPU: Ollama (Whisper STT, nomic-embed, LLaVA vision)
-                    Frigate (YOLO object detection on GPU)
-                    Chatterbox (TTS on GPU)
-Tier 3 — OpenRouter free tier: llama-70b, gemma-4-31b, hermes-405b,
-         qwen-2.5-72b, deepseek-v4, qwen-coder (primary — $0)
-Tier 4 — OpenRouter paid tier: Claude 4 Sonnet, GPT-4o
-         (complex docs, legal, high-stakes via OpenRouter, not direct API)
+LOCAL (primary — $0):
+  Qalb-1.0-8B-Instruct   Urdu conversation, cultural voice (Ollama GPU)
+  nomic-embed-text       Embeddings for RAG
+  LLaVA 7B               Vision — invoices, camera snapshots
+  Whisper STT            Speech-to-text (CPU)
+  XTTS-v2-Urdu-FT        Urdu TTS (GPU, on-demand)
+  Chatterbox TTS         English TTS (GPU, on-demand)
+  Kokoro TTS             English TTS (CPU, always available)
+  Frigate YOLO           Object detection on camera feeds
+
+CLOUD (fallback — when local can't handle):
+  OpenRouter free        General reasoning, complex tasks ($0)
+  OpenRouter paid        Claude Sonnet 4, GPT-4o (frontier)
+  ElevenLabs             Urdu TTS quality boost
+  Deepgram               Urdu STT accuracy boost
 ```
 
 #### Layer 3 — Orchestration
 ```
-n8n + 2 workers, Flowise, Paperclip, Hermes
+n8n + 2 workers, Flowise, wassim249 LangGraph agents (hr/finance/legal/sales/ops)
 ```
 
 #### Layer 4 — MCP & Tools
 ```
-Standardized MCP servers: Supabase, Qdrant, WhatsApp, Filesystem
+Central MCP Server — tools defined once, used by all agents
 ```
 
 #### Layer 5 — Voice
 ```
-Asterisk → Dograh → Whisper STT → n8n → OpenRouter → TTS (Dograh auto-selects Chatterbox/Kokoro)
-```
-
-#### Layer C — Dev PC (Windows 11 — 10.0.0.13)
-```
-Role:     Development, Docker Desktop for local prototyping
-CPU:      Intel Xeon E-2276G (6C/12T) | RAM: 15.8GB
-Docker:   Docker Desktop v29.4.3 — WSL2 backend
-Tools:    Claude Code, Git, Python 3, VS Code, Bruno
+Asterisk → Dograh → Whisper STT → Bifrost → LLM
+→ TTS: XTTS-v2-Urdu-FT (Urdu primary) / Chatterbox (English primary)
+       / Kokoro (CPU fallback) — Dograh auto-selects
 ```
 
 #### Layer D — Lab Intelligence
 ```
 Claude Code Desktop  — AI coding assistant (primary dev tool)
-opencode            — AI coding assistant (local fallback)
-Hermes Agent        — Autonomous 24/7 server ops (Docker B)
+Hermes Agent        — Autonomous 24/7 server ops (Docker)
 OpenClaw            — Personal assistant via WhatsApp/Telegram
 ```
 
@@ -147,19 +206,6 @@ USE CASE 4 — AI Voice Receptionist
 
 Each use case is a self-contained n8n workflow at `/aios/n8n/workflows/` calling Bifrost for inference, logging to Langfuse for observability, and storing data in PostgreSQL + Qdrant.
 
-### GPU Allocation — Quadro M4000 (8GB VRAM)
-```
-Process                 VRAM     Role
-────────────────────────────────────────────
-Whisper (STT)           ~1GB     Voice call transcription (Dograh)
-Chatterbox AI (TTS)     ~1.5GB   Voice cloning + text-to-speech (primary GPU)
-Kokoro TTS              0 (CPU)  Lighter TTS — fallback when GPU busy
-nomic-embed-text        <500MB   Document embeddings → Qdrant
-LLaVA 7B (Ollama)       ~5GB     Visual — reads images, invoices
-Frigate (YOLO)          ~1-2GB   Object detection — cameras, people, vehicles
-```
-NOTE: No LLM inference on GPU. OpenRouter free tier is faster and higher quality than any 4-bit quantized 7B model on this card. GPU reserved for embeddings, STT, TTS, vision, and object detection. Frigate uses YOLO models (yolov7 default) natively on GPU — not a separate layer.
-
 ### Resource Allocation
 ```
 Layer A (FOSS):      6GB RAM   | 2 vCPU | 200GB NVMe
@@ -183,19 +229,20 @@ Internet (100Mbps Fiber)
 ### 3.2 Security Stack (5 layers — traffic passes all in sequence)
 ```
 Layer 1 — Cloudflare Edge
-  DDoS protection, SSL certificates, CDN, DNS
+  DDoS protection, SSL certificates, DNS for socialbeesai.com
 
-Layer 2 — Huawei ONT (port 443 only via Cloudflare tunnel)
+Layer 2 — TP-Link NAT (port 443 only → Traefik)
   NAT, minimum surface area
 
 Layer 3 — Traefik (DMZ — 10.10.0.10)
-  Reverse proxy, HTTPS termination, container routing, load balancing
+  Reverse proxy, HTTPS termination. Public: only Dashy + FOSS apps.
+  All internal services: LAN IP:port or WireGuard VPN only.
 
 Layer 4 — CrowdSec (DMZ — 10.10.0.11)
   WAF, IP reputation, rate limiting, brute force detection
 
 Layer 5 — Keycloak (App zone — 10.20.0.40)
-   SSO, RBAC, OAuth2/OIDC
+   SSO, RBAC, OAuth2/OIDC. Local-only — access via LAN/WireGuard.
 ```
 
 ### 3.3 Docker Network Zones (7 isolated)
@@ -480,14 +527,15 @@ Vault       10.20.0.50     App          Secrets management — ALL API keys
 Service     IP              Role
 ────────────────────────────────────────────────────
 Bifrost     10.40.0.10      AI Gateway — 4-tier routing (LiteLLM)
-Ollama      10.40.0.20      Local GPU — embeddings (nomic), vision (LLaVA), fast models (mistral/qwen/llama)
+Ollama      10.40.0.20      Local GPU — Urdu LLM (Qalb-1.0-8B-Instruct), embeddings (nomic-embed-text), vision (LLaVA 7B)
 Chatterbox  10.40.0.30:4123 TTS/voice cloning — GPU (replaces ElevenLabs)
 Frigate     10.40.0.50:5000 NVR + YOLO object detection — GPU
 ```
-GPU reserved for: embeddings, vision, STT, TTS (Chatterbox GPU), object detection (Frigate YOLO).
-Kokoro TTS always on CPU — fallback if GPU busy. Dograh auto-selects between them.
-No LLM inference on GPU — 8GB VRAM too small for production-quality LLM.
-ALL text LLM goes through Bifrost: Tier 3 (OpenRouter free) primary, Tier 4 (OpenRouter paid) frontier.
+GPU loaded permanently: Qalb-1.0-8B-Instruct + nomic-embed-text (~5.8GB).
+Other models swap on demand via Ollama: XTTS-v2-Urdu-FT, LLaVA 7B, Chatterbox.
+CPU always available: Whisper STT, Kokoro TTS.
+Frigate YOLO shares GPU for object detection.
+ALL text LLM goes through Bifrost: Tier 2 (Qalb local) primary for Urdu, Tier 3 (OpenRouter free) primary for English/general, Tier 4 (OpenRouter paid) for frontier.
 
 ### 5.4 Orchestration (10.20.0.0/24)
 ```
@@ -531,23 +579,24 @@ go2rtc      10.20.0.91     App     RTSP stream management
 ```
 Visual pipeline: IP Camera RTSP → go2rtc → Frigate → YOLO → LLaVA description → MQTT → n8n → action
 
-### 5.7 FOSS Business Apps (10.70.0.0/24)
+### 5.7 FOSS Business Apps (10.70.0.0/24) — PUBLIC WHEN DEPLOYED
 ```
-App               IP              Role
-────────────────────────────────────────────────────────
-ERPNext           10.70.0.10      Full ERP — hospital, hotel, manufacturing, HR
-Odoo              10.70.0.20      Full ERP — accounting, inventory, CRM
-Twenty CRM        10.70.0.30      Open-source Salesforce alternative
-Metabase          10.70.0.40      PRIMARY client dashboards — business KPIs
-Calcom            10.70.0.50      Appointment scheduling
-SuiteCRM          10.70.0.60      Enterprise CRM — campaigns, cases
-Paperless-ngx     10.70.0.70      Document management — OCR, archiving
-Docuseal          10.70.0.80      E-signing — contracts
-Planka            10.70.0.90      Project management (Trello-like)
-Rocket.Chat       10.70.0.100     Team communication
-Frappe LMS        10.70.0.110     Learning management
-GnuCash           10.70.0.120     Lightweight accounting
+App               IP              Role                         Public URL (future)
+─────────────────────────────────────────────────────────────────────────────────────
+ERPNext           10.70.0.10      Full ERP — hospital, hotel    erpnext.socialbeesai.com
+Odoo              10.70.0.20      Full ERP — accounting, CRM    odoo.socialbeesai.com
+Twenty CRM        10.70.0.30      Open-source Salesforce alt    twenty.socialbeesai.com
+Metabase          10.70.0.40      Business KPI dashboards       metabase.socialbeesai.com
+Calcom            10.70.0.50      Appointment scheduling        calcom.socialbeesai.com
+SuiteCRM          10.70.0.60      Enterprise CRM                suitecrm.socialbeesai.com
+Paperless-ngx     10.70.0.70      Document management           paperless.socialbeesai.com
+Docuseal          10.70.0.80      E-signing contracts           docuseal.socialbeesai.com
+Planka            10.70.0.90      Project management            planka.socialbeesai.com
+Rocket.Chat       10.70.0.100     Team communication            chat.socialbeesai.com
+Frappe LMS        10.70.0.110     Learning management           lms.socialbeesai.com
+GnuCash           10.70.0.120     Lightweight accounting        (local-only)
 ```
+FOSS apps get public `*.socialbeesai.com` URLs when deployed. All infrastructure/backend services are local-only via LAN IP or WireGuard.
 
 ### 5.8 Monitoring & CI/CD (10.60.0.0/24)
 ```
@@ -631,13 +680,14 @@ TIER 1 — SEMANTIC CACHE (50ms, $0)
 
 TIER 2 — LOCAL GPU (200ms-2s, $0)
   Ollama on Quadro M4000 (10.40.0.20:11434)
-    → mistral-7b + qwen-2.5-7b + llama-3.2-3b  (fast FAQ, classification)
-    → nomic-embed-text                             (embeddings)
-    → LLaVA 7B                                     (vision)
+    → Qalb-1.0-8B-Instruct     (Urdu LLM — PRIMARY local conversation model)
+    → nomic-embed-text         (embeddings — ALWAYS loaded)
+    → LLaVA 7B                 (vision — on-demand)
   Frigate YOLO on GPU                              (object detection)
-  Whisper STT via Dograh (GPU)                     (transcription)
-  Chatterbox TTS (GPU)                             (primary voice synthesis — Dograh auto-selects)
-  Kokoro TTS (CPU)                                 (fallback voice synthesis — Dograh auto-selects)
+  Whisper STT on CPU                               (transcription — always available)
+  XTTS-v2-Urdu-FT (GPU)                           (Urdu TTS — Dograh auto-selects for Urdu calls)
+  Chatterbox TTS (GPU)                             (English TTS — Dograh auto-selects for English calls)
+  Kokoro TTS (CPU)                                 (CPU fallback TTS — Dograh auto-selects)
 
 TIER 3 — OPENROUTER FREE (2-8s, $0)
   Primary text LLM — 90%+ of all calls
@@ -658,18 +708,19 @@ TIER 4 — OPENROUTER PAID (3-10s, ~$0.50/1M tokens)
 ```
 Task                          Primary Route                Fallback Chain
 ────────────────────────────────────────────────────────────────────────────────────────
-FAQ, classification           Tier 2 (mistral-7b local)    → Tier 3 (gemma-4 free)
-Arabic/Urdu conversation      Tier 2 (qwen-2.5-7b local)   → Tier 3 (qwen-2.5-72b free)
-General reasoning, CRM, HR    Tier 3 (gemma-4-31b free)    → Tier 3 (llama-70b) → hermes-405b
-Complex docs, legal, contracts Tier 4 (Claude 4 Sonnet     → Tier 4 (GPT-4o)
+Urdu conversation             Tier 2 (Qalb-1.0-8B local)  → Tier 3 (qwen-2.5-72b → gemma-4)
+FAQ, classification           Tier 2 (Qalb-1.0-8B local)  → Tier 3 (gemma-4 free)
+General reasoning, CRM, HR    Tier 3 (gemma-4-31b free)   → Tier 3 (llama-70b → hermes-405b)
+Complex docs, legal, contracts Tier 4 (Claude 4 Sonnet    → Tier 4 (GPT-4o)
                               via OpenRouter paid)
-Code generation               Tier 3 (qwen-coder free)     → Tier 3 (deepseek-v4 free)
-Vision (images, invoices)     Tier 2 (LLaVA 7B local GPU)  → Tier 4 (GPT-4o paid)
-STT (voice transcription)     Tier 2 (Whisper local GPU)   — no cloud fallback
-TTS (voice response)          Tier 2 (Chatterbox GPU →         — always local
-                              Kokoro CPU fallback)              Dograh auto-selects
-Embeddings (RAG)              Tier 2 (nomic-embed-text)    — always local
-Object detection              Tier 2 (Frigate GPU/YOLO)    — always local
+Code generation               Tier 3 (qwen-coder free)    → Tier 3 (deepseek-v4 free)
+Vision (images, invoices)     Tier 2 (LLaVA 7B local GPU) → Tier 4 (GPT-4o paid)
+STT (voice transcription)     CPU (Whisper always on)     — Deepgram cloud fallback
+TTS (voice response)          Tier 2 (XTTS Urdu /          — always local
+                              Chatterbox English /               Dograh auto-selects
+                              Kokoro CPU fallback)
+Embeddings (RAG)              Tier 2 (nomic-embed-text)   — always local
+Object detection              Tier 2 (Frigate GPU/YOLO)   — always local
 ```
 
 ### 6.4 Cross-Tier Failure Handling
@@ -687,11 +738,11 @@ All tiers failed        → n8n returns graceful error to end user
 ```
 Model Group            Models (ordered by preference)
 ────────────────────────────────────────────────────────────────────────
-local-fast             mistral-7b → qwen-2.5-7b → llama-3.2-3b
+local-urdu             Qalb-1.0-8B-Instruct (Ollama GPU) — PRIMARY
 general-reasoning      gemma-4-31b → llama-70b → hermes-405b → nemotron-120b
 multilingual           qwen-2.5-72b → gemma-4-31b
 code                   qwen-coder → deepseek-v4 → gpt-oss-120b
-fast-simple            cobuddy → llama-3b → liquid-instruct
+fast-simple            Qalb-1.0-8B (local) → gemma-4 → llama-3b
 frontier-reasoning     Claude 4 Sonnet (OpenRouter paid) → GPT-4o (OpenRouter paid)
 frontier-vision        GPT-4o-vision (OpenRouter paid) → Claude 4 Sonnet (OpenRouter paid)
 frontier-code          Claude 4 Sonnet (OpenRouter paid) → GPT-4o (OpenRouter paid)
@@ -772,27 +823,29 @@ Each workflow at `/aios/n8n/workflows/{number}-{name}.json`, calling Bifrost for
 ### WhatsApp — Use Case Request Lifecycle
 ```
 End user sends WhatsApp message
-→ Meta webhook → Cloudflare → Huawei ONT → Traefik → CrowdSec
+→ Meta webhook → Cloudflare → TP-Link NAT → Traefik → CrowdSec
+→ n8n webhook endpoint (public path, not full dashboard)
 → n8n workflow (use-case specific — Sales CRM, HR, etc.)
-→ Bifrost 4-tier routing:
+→ Bifrost 4-tier routing (via internal IP 10.40.0.10:4000):
     Tier 1 — Semantic cache check (cached? return immediately, 50ms, $0)
-    Tier 2 — Local GPU (fast FAQ, classification via Ollama) — $0
+    Tier 2 — Local GPU (Qalb-1.0-8B Urdu LLM on Ollama) — $0
     Tier 3 — OpenRouter free tier (gemma-4, llama-70b, hermes-405b) — $0
     Tier 4 — OpenRouter paid tier (Claude 4 Sonnet, GPT-4o) — if free fails
 → Langfuse logs: prompt + response + cost + latency + tokens + model
 → n8n formats reply → WhatsApp API → end user receives answer
 Total: under 3 seconds end-to-end
 ```
+Note: n8n webhook public path TBD — needed when WhatsApp workflow is built.
 
 ### Voice Call — Complete Lifecycle
 ```
 Caller dials → SIP trunk → Asterisk (Voice zone — 10.50.0.10)
-→ Dograh (voice agent orchestration — replaces Retell AI/Vapi)
-  → Whisper STT (GPU via Ollama or Dograh built-in)
+→ Dograh (local — 10.50.0.30:8000, access via LAN/WireGuard)
+  → Whisper STT (CPU — always available)
   → n8n use case workflow
-  → Bifrost 4-tier routing → OpenRouter → LLM response
-  → TTS: Dograh auto-selects Chatterbox (GPU, high quality)
-                               or Kokoro (CPU, lighter/faster)
+  → Bifrost 4-tier routing → Qalb local / OpenRouter → LLM response
+  → TTS: Dograh auto-selects XTTS-v2-Urdu-FT (Urdu, GPU)
+         / Chatterbox (English, GPU) / Kokoro (CPU fallback)
 → Audio back → Asterisk → caller
 Call recorded. Full transcript logged in Langfuse.
 ```
@@ -901,18 +954,35 @@ Phase 2B    US & Canada         Month 12-18   White-label with local agencies
 
 ## 12. QUICK REFERENCE
 
-### Service Ports
+### Service Ports (All local-only unless marked PUBLIC)
 ```
-Bifrost:    http://10.40.0.10:4000
-n8n:        http://10.20.0.10:5678   Qdrant:     http://10.30.0.20:6333
-Supabase:   http://10.30.0.10:8000   Redis:      redis://10.30.0.30:6379
-MinIO:      http://10.30.0.40:9000   Langfuse:   http://10.60.0.10:3000
-Grafana:    http://10.60.0.30:3000   Portainer:  http://10.60.0.50:9000
-Dashy:      http://10.60.0.70:80     Prometheus: http://10.60.0.20:9090
-Keycloak:   http://10.20.0.40:8080   Vault:      http://10.20.0.50:8200
-Traefik:    http://10.10.0.10:80/443 Asterisk:   SIP 10.50.0.10
-MQTT:       http://10.50.0.20:1883   Ollama:     http://10.40.0.20:11434
+Service           LAN (10.0.0.100)      Docker IP            Public
+─────────────────────────────────────────────────────────────────────────
+Dashy             8082                   10.60.0.70:8080      socialbeesai.com
+n8n               5678                   10.20.0.10:5678      —
+Bifrost           4000                   10.40.0.10:4000      —
+Langfuse          3000                   10.60.0.10:3000      —
+Keycloak          8080                   10.20.0.40:8080      —
+Vault             8200                   10.0.0.100:8200      —
+Dograh UI         3010                   10.50.0.31:3010      —
+Dograh API        8085                   10.50.0.30:8000      —
+Frigate           5000                   10.40.0.50:5000      —
+MinIO API         9000                   10.30.0.40:9000      —
+MinIO Console     9001                   10.30.0.40:9001      —
+Grafana           3000                   10.60.0.30:3000      —
+Portainer         9000                   10.60.0.50:9000      —
+Qdrant            6333                   10.30.0.20:6333      —
+ClickHouse        8123                   10.60.0.11:8123      —
+Flowise           3001                   10.20.0.20:3000      —
+MCP               8100                   10.20.0.30:8000      —
+Prometheus        9090                   10.60.0.20:9090      —
+Ollama            11434 (localhost only) 10.40.0.20:11434     —
+PostgreSQL        5432 (localhost only)  10.30.0.10:5432      —
+MQTT              1883                   10.50.0.20:1883      —
+Asterisk          SIP (host)             10.50.0.10           —
+WireGuard         51820/udp              host                 — (VPN)
 ```
+FOSS apps (Odoo, Twenty CRM, etc.) get public URLs when deployed. All infra = local-only.
 
 ### By Machine
 ```
@@ -941,8 +1011,10 @@ External:                Stripe, JazzCash, AWS (S3/CloudFront/SES), Cloudflare, 
 ```
 Task                          Model                          Reason
 ────────────────────────────────────────────────────────────────────────
-Simple FAQ, classification    Mistral 7B (Ollama local)      Fast, $0
-Arabic/Urdu conversation      Qwen 2.5 7B (Ollama local)     Best multilingual
+Urdu conversation             Qalb-1.0-8B (Ollama local)     Cultural Urdu voice, $0
+Urdu TTS                      XTTS-v2-Urdu-FT (local GPU)    Fine-tuned Urdu voice, $0
+English TTS                   Chatterbox (GPU) / Kokoro (CPU) Dograh auto-selects
+STT                           Whisper (CPU)                  Always available, $0
 General reasoning, CRM, HR    Gemma 4 (OpenRouter free)      Primary — 90%+ calls
 Complex docs, legal, long ctx Claude 4 Sonnet (OpenRouter paid) Frontier
 Code generation               Qwen Coder (OpenRouter free)   Best free coder
@@ -951,7 +1023,7 @@ Any other model               OpenRouter free tier           25 models up to 405
 Cache hits                    Bifrost semantic cache (Redis) Zero cost
 Local down                    OpenRouter free (auto-fallback) Slower but works
 Free tier down                OpenRouter paid (Claude/GPT-4o) Frontier fallback
-All cloud down                Local models only              Degraded — cache still serves
+All cloud down                Qalb local only                Degraded — cache still serves
 ```
 
 ---
