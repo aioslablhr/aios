@@ -1,9 +1,9 @@
 # AIOS — Session Checkpoint
 
-**Version:** 4.10
+**Version:** 4.11
 **Date:** June 6, 2026
 **Branch:** main
-**Last commit:** 0f3c0e1 (to be updated after push)
+**Last commit:** 8e5744f (pushed)
 
 ---
 
@@ -84,14 +84,68 @@ aios-traefik, aios-postgres, aios-redis, aios-qdrant, aios-minio, aios-clickhous
 
 ---
 
+## Voice Pipeline Architecture
+
+```
+Caller → SIP Trunk → Asterisk → AGI (ai-agent.agi)
+  → Record WAV → POST to n8n webhook (/webhook/ai-agent)
+    → Whisper STT (Ollama/Bifrost)
+    → Qalb LLM (via Bifrost → Ollama)
+    → TTS Router (Urdu→XTTS, English→Chatterbox, fallback→Kokoro)
+  → Return WAV → Play to Caller
+  → Loop for conversation
+```
+
+- **Asterisk Ext 102**: AI Agent — triggers `ai-agent.agi` AGI script
+- **Asterisk Ext 9000**: Cisco 7962G phone (registered, test calls)
+- **Asterisk Ext 101**: Softphone on 10.0.0.11 (active)
+- **Dograh** (10.50.0.30:8000): Full voice agent orchestration with ARI+WebSocket integration. API prefix `/api/v1`, telephony routes at `/api/v1/telephony/initiate` and WebSocket at `/ws/ari`. Requires n8n workflow for full pipeline.
+- **n8n webhook**: `/webhook/ai-agent` on n8n (10.20.0.10:5678) — **not created yet**, needs workflow
+
+## How to Test the Pipeline
+
+### Level 1 — Component Tests (no phone, immediate)
+```bash
+# Test Urdu TTS
+curl http://10.40.0.32:8020/v1/tts -d '{"text":"السلام علیکم","language":"ur"}' -o /tmp/xtts-test.wav
+
+# Test TTS Router (auto Urdu detection)
+curl http://10.40.0.33:8030/v1/audio/speech \
+  -d '{"input":"السلام علیکم، آپ کیسے ہیں؟"}' -o /tmp/router-test.wav
+
+# Test Qalb LLM (Urdu)
+curl http://10.40.0.10:4000/v1/chat/completions \
+  -H "Authorization: Bearer ${BIFROST_ADMIN_KEY}" \
+  -d '{"model":"ollama/qalb:8b-q4","messages":[{"role":"user","content":"آپ کیسے ہیں؟"}]}'
+
+# Test all 3 TTS backends via health check
+curl http://10.40.0.33:8030/health
+```
+
+### Level 2 — Phone Call Test
+- Pick up Cisco 7962G (Ext 9000) → call 101 → talks to softphone on 10.0.0.11 (basic SIP test)
+- Pick up Cisco → call 103/104 → tests other registered phones
+- Requires active n8n `ai-agent` webhook for Ext 102 (AI Agent) to work
+
+### Level 3 — Full AI Voice Conversation
+1. Create n8n workflow: Receive WAV → Whisper STT → Bifrost/Qalb LLM → TTS Router → Return WAV
+2. Save as webhook `/webhook/ai-agent`
+3. Call Ext 102 from any phone → full Urdu voice conversation with Qalb
+
+### Level 4 — Dograh Integration
+- Configure Dograh with Asterisk ARI provider
+- Use Dograh REST API or UI (10.50.0.31:3010) for outbound campaigns and advanced voice flows
+
 ## Key Architectural Decisions
 
 1. **GPU limitation**: Quadro M4000 (Maxwell CC 5.0) maxes at NVIDIA driver 470, CUDA 11.4. No CUDA 12.x support. Ollama bundles its own CUDA 12.x and works anyway. Other containers (XTTS, Chatterbox) need explicit handling.
 2. **Qalb GGUF**: 8B model at Q4_K_M (4.92GB) fits in 8GB VRAM alongside other models. FP16 (16GB) is too large.
 3. **XTTS CPU-only**: Using CPU PyTorch because CUDA 12.x not available. TTS inference is fast enough on modern CPU.
 4. **TTS pipeline**: Urdu → XTTS, English → Chatterbox (GPU), fallback → Kokoro (CPU), routed by TTS Router (10.40.0.33:8030).
+5. **Voice pipeline**: Asterisk AGI → n8n webhook → Whisper/Qalb/TTS → response WAV. Dograh provides advanced orchestration (ARI, WebSocket, outbound campaigns) as alternative path.
 
 ---
+8e5744f  v4.10: XTTS-v2-Urdu-FT fixed (suhaibrashid17 repo, tokenizer fix, CPU mode), garbled chars cleaned
 2544163  feat: TTS router, Dograh speaches TTS config, mem0 v2
 dd8b9c2  v4.6: XTTS-v2-Urdu-FT, wiki compiler, FOSS compose, mem0 v2
 f7565f2  v4.5: single-server arch locked, WireGuard VPN, Qalb, Open WebUI
