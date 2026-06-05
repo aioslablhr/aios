@@ -1,7 +1,7 @@
 FROM python:3.11-slim
 
 LABEL maintainer="AIOS Lab"
-LABEL description="XTTS-v2-Urdu-FT — Urdu TTS service (GPU)"
+LABEL description="XTTS-v2-Urdu-FT — Urdu TTS service (CPU)"
 
 WORKDIR /app
 
@@ -11,8 +11,10 @@ RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends \
     espeak-ng \
     && rm -rf /var/lib/apt/lists/*
 
+RUN pip install --default-timeout=600 --no-cache-dir torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --default-timeout=600 --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
 
 COPY server.py .
 

@@ -1,91 +1,98 @@
 # AIOS — Session Checkpoint
 
-**Version:** 4.6
-**Date:** June 3, 2026
+**Version:** 4.10
+**Date:** June 6, 2026
 **Branch:** main
-**Last commit:** f7565f2 — deploy Qalb, Open WebUI, strip public routes
+**Last commit:** 0f3c0e1 (to be updated after push)
 
 ---
 
-## Current State
+## Container Status (Server)
 
-### Infrastructure (Layer 1)
-- Single-server architecture locked (no KVM, no OPNsense) — Docker + CrowdSec + Cloudflare = security equivalent
-- 7 Docker network zones: DMZ (10.10), App (10.20), Data (10.30), AI (10.40), Voice (10.50), Mon (10.60), FOSS (10.70)
-- WireGuard VPN deployed (lscr.io/linuxserver/wireguard) — LAN access via Dev PC
-- Public: socialbeesai.com → Dashy, chat.socialbeesai.com → Open WebUI — everything else via LAN IP or WireGuard
-- Bifrost (LiteLLM) as sole LLM gateway — all calls go through it
-- Langfuse for observability, Prometheus + Grafana for infra metrics
-- Qdrant vector store, PostgreSQL + Redis, MinIO S3
-- CrowdSec WAF + Traefik + Cloudflare (DNS/SSL/DDoS)
-- **36 active containers** (29 Layer A + 7 Layer B)
+### Running (42 — all services healthy or starting)
+aios-traefik, aios-postgres, aios-redis, aios-qdrant, aios-minio, aios-clickhouse, aios-ollama, aios-bifrost, aios-langfuse, aios-docling, aios-mem0, aios-asterisk, aios-dnsmasq-tftp, aios-knowledge-ingest, aios-knowledge-compile, aios-dograh-api, aios-dograh-ui, aios-tts-router, aios-chatterbox, aios-kokoro, aios-xtts-urdu, aios-n8n, aios-n8n-worker-1, aios-n8n-worker-2, aios-n8n-db, aios-flowise, aios-keycloak, aios-mcp, aios-vault, aios-vault-unseal, aios-grafana, aios-portainer, aios-dashy, aios-prometheus, aios-cadvisor, aios-node-exporter, aios-loki, aios-crowdsec, aios-frigate, aios-mosquitto, aios-gitops
 
-### AI Models (Local-First Hierarchy)
-| Model | Task | VRAM | Zone |
-|-------|------|------|------|
-| Qalb-1.0-8B | Urdu LLM (primary) | ~5.5GB | AI (Ollama) |
-| nomic-embed-text | Embeddings | ~0.3GB | AI (Ollama) |
-| LLaVA 7B | Vision | ~4.5GB | AI (swaps w/ Qalb) |
-| Chatterbox | English TTS (GPU) | ~1.5GB | AI (on-demand) |
-| Kokoro | TTS (CPU fallback) | CPU | AI (on-demand) |
-| XTTS-v2-Urdu-FT | Urdu TTS | ~2GB | AI (on-demand, new) |
-| Whisper | STT | GPU | Voice (Frigate) |
-| YOLO | Object detection | GPU | Voice (Frigate) |
+### Known Issues
+- Chatterbox: runs with model loaded on CUDA but Docker healthcheck marks unhealthy
+- Keycloak: running but unhealthy
+- Hermes: restarting with exit 126
+- MinIO: listed as unhealthy in old CHECKPOINT (verify)
 
-### Voice Pipeline
-- Asterisk + PJSIP (SIP trunking) → Dograh (orchestration) → Whisper (STT) → Bifrost (LLM) → Chatterbox/Kokoro (TTS)
-- Dograh auto-selects TTS: Chatterbox (GPU primary) → Kokoro (CPU fallback)
-- XTTS-v2-Urdu-FT added as Urdu TTS option (AI Zone, 10.40.0.32:8020)
-- Cisco 7962G phone (ext 9000) fully working — TCP, registerWithProxy
-
-### Memory & Knowledge
-- mem0 with Qdrant backend — v2 API with multi-user isolation, session management, batch operations
-- LLM Wiki compiler (compile-wiki.py) runs every 4 hours via knowledge-compile container (10.20.0.56)
-- Knowledge ingestion (ingest-file.py) watches MinIO raw-uploads bucket
-
-### FOSS Apps (Layer 2)
-- **Nextcloud** (10.70.0.30) — file sync + collaboration, public: nextcloud.socialbeesai.com
-- **Odoo** (10.70.0.20) — ERP, public: odoo.socialbeesai.com
-- **Metabase** (10.70.0.40) — analytics/dashboards, public: metabase.socialbeesai.com
-- Open WebUI (10.70.0.200) — client-facing AI chat, public: chat.socialbeesai.com
-- All via docker-compose-apps.yml with Traefik auto-routing
+### Written but NOT started
+- Nextcloud (10.70.0.30), Odoo (10.70.0.20), Metabase (10.70.0.40) — docker-compose-apps.yml exists, never started
+- Open WebUI (10.70.0.200) — compose entry exists, not started
 
 ---
 
-## Architecture Decisions Locked
-1. Single server (10.0.0.100, Quadro M4000 8GB) — no second machine
-2. 7 Docker zones — Data Zone is `internal:true`
-3. Local-first hierarchy — cloud is fallback only
-4. All LLM calls through Bifrost (LiteLLM) — never direct API
-5. Git = source of truth; GitOps auto-deploys from GitHub
-6. No public infra ports — only Dashy + Open WebUI + FOSS apps
-7. WireGuard VPN for admin access to all internal services
-8. Nextcloud replaces Twenty CRM for file sync + collaboration
-9. XTTS-v2-Urdu-FT as primary Urdu TTS (Coqui, GPU, on-demand)
+## What's Done This Session (June 5-6)
+
+### 1. Kokoro TTS — Deployed ✅
+- Image: `ghcr.io/remsky/kokoro-fastapi-cpu:latest` (5.41GB)
+- Container `aios-kokoro` running at 10.40.0.31:8880
+- CPU-only inference, English TTS fallback
+
+### 2. Chatterbox TTS — Started ✅
+- Container `aios-chatterbox` running at 10.40.0.30:4123, model loaded on CUDA
+- Healthcheck returns unhealthy (endpoint missing) but service works
+
+### 3. Qalb-1.0-8B Urdu LLM — Pulled ✅
+- GGUF Q4_K_M quant (4.92GB from `mradermacher/Qalb-1.0-8B-Instruct-GGUF`)
+- Ollama model created as `qalb:8b-q4` with proper template + params
+- Inference tested: correctly answered "The capital of Pakistan is Islamabad."
+- Modelfile updated from `arbml/Qalb-1.0-8B-Instruct` to `hf.co/mradermacher/Qalb-1.0-8B-Instruct-GGUF:Q4_K_M`
+
+### 4. Ollama — Upgraded ✅
+- Version: 0.24.0 → 0.30.5 (fresh image pull)
+- Now supports `hf.co/...` model references for GGUF files
+
+### 5. XTTS-v2-Urdu-FT — Built, Deployed & Verified ✅
+- Docker image `aios-xtts-urdu:latest` built successfully (CPU PyTorch)
+- Container `aios-xtts-urdu` running at 10.40.0.32:8020
+- CUDA disabled (`CUDA_VISIBLE_DEVICES=""`) — Quadro M4000 driver 470 can't run CUDA 12.x
+- Switched model source: `arbml/xtts-v2-urdu-ft` (404) → `suhaibrashid17/XTTS-v2-Urdu-FT` (public, MIT)
+- Fixed tokenizer incompatibility: `Tokenizer.from_file()` crashes with `tokenizers>=0.19` → replaced with manual BPE loading from tokenizer.json (vocab + merges as tuples)
+- Added default speaker generation from random noise for API inference without `speaker_wav`
+- All 3 TTS services verified: XTTS (200 OK, 191KB WAV), Kokoro (200), Chatterbox (200)
+- TTS Router (10.40.0.33:8030) routes Urdu→XTTS, English→Chatterbox, fallback→Kokoro
+
+### 6. Dashy Dashboard — Redesigned ✅
+- 10 sections: System, AI Zone, DMZ, Application Zone, Data Zone, Monitoring Zone, Voice Zone, Extensions, FOSS Zone, AIOS Info
+- 48 items with descriptions
+- All running services mapped with correct IPs and ports
+
+### 7. 41 Containers Mapped ✅
+- Discovered all running containers (old CHECKPOINT claimed 18, actual 41)
+- Many were orphan containers running without compose tracking
+
+### 8. docker-compose-aios.yml Cleanup ✅
+- Fixed all garbled characters in section headers and vault-unseal script (double-encoded UTF-8 artifacts)
+- Replaced corrupted ASCII art box-drawing with clean `# ===` style separators
+- Corrected XTTS section: GPU reservation removed, model repo updated to `suhaibrashid17/XTTS-v2-Urdu-FT`
 
 ---
 
-## Known Issues
-1. **n8n webhooks blocked**: Meta WhatsApp callbacks need a public URL — deferred until CRM workflow is built
-2. **Qalb Modelfile conversion**: First-run conversion from HuggingFace safetensors to GGUF may take 5-15 min on Quadro M4000
-3. **XTTS not yet deployed as container**: Server code, Dockerfile, and compose service written, but container not yet started (needs first `docker compose up`)
-4. **FOSS apps not yet deployed**: Compose file written but containers not started
-5. **No use case workflows**: n8n/workflows/ empty — 4 planned (Surveillance, HR/Payroll, CRM, Voice)
+## Pending (Not Started / Not Working)
+
+| Item | Priority | Status |
+|------|----------|--------|
+| FOSS apps start (Nextcloud, Odoo, Metabase) | Medium | ❌ `docker compose -f docker-compose-apps.yml up -d` never run |
+| Open WebUI start | Medium | ❌ Compose entry exists, not started |
+| Chatterbox healthcheck fix | Low | ❌ Container works, healthcheck endpoint missing |
+| WireGuard peer config retrieval | Low | ❌ Config auto-generated but never retrieved |
+| Nightly backup cron | Low | ❌ Script exists (`backup.py`) but no cron job |
+| First n8n workflow (AI employee) | Deferred | ❌ Blocked on infra completion |
 
 ---
 
-## Next Steps
-1. `docker compose up` XTTS-v2-Urdu-FT and FOSS apps (Nextcloud, Odoo, Metabase)
-2. WireGuard peer config retrieval + client setup on Dev PC
-3. Industry stack standardization (clinic, real estate, retail, restaurant, hotel, education)
-4. n8n workflow build (CRM/Sales first — WhatsApp → pipeline → closing)
-5. Each use case gets a dedicated functional frontend dashboard
-6. Backup strategy: automated nightly encrypted backups via MinIO + S3
+## Key Architectural Decisions
+
+1. **GPU limitation**: Quadro M4000 (Maxwell CC 5.0) maxes at NVIDIA driver 470, CUDA 11.4. No CUDA 12.x support. Ollama bundles its own CUDA 12.x and works anyway. Other containers (XTTS, Chatterbox) need explicit handling.
+2. **Qalb GGUF**: 8B model at Q4_K_M (4.92GB) fits in 8GB VRAM alongside other models. FP16 (16GB) is too large.
+3. **XTTS CPU-only**: Using CPU PyTorch because CUDA 12.x not available. TTS inference is fast enough on modern CPU.
+4. **TTS pipeline**: Urdu → XTTS, English → Chatterbox (GPU), fallback → Kokoro (CPU), routed by TTS Router (10.40.0.33:8030).
 
 ---
-
-## Resource Inventory
-See `docs/INVENTORY.md` for complete service/port/credential/volume/dependency registry.
-
-## Full Architecture Document
-See `docs/PROJECT.md` (v4.0, 16 sections).
+2544163  feat: TTS router, Dograh speaches TTS config, mem0 v2
+dd8b9c2  v4.6: XTTS-v2-Urdu-FT, wiki compiler, FOSS compose, mem0 v2
+f7565f2  v4.5: single-server arch locked, WireGuard VPN, Qalb, Open WebUI
+```

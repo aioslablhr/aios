@@ -1,55 +1,268 @@
 ---
 pageInfo:
   title: AIOS AI Control Panel
-  description: 'Enterprise AI Platform v1.0'
-  footer: AIOS
+  description: 'Enterprise AI Platform v1.0 — 41 containers · 8 zones · Lahore AI Lab'
+  footer: AIOS v4.7 | 41 containers running | ai@10.0.0.100
 
 appConfig:
   theme: colorful
   layout: auto
   iconSize: medium
   language: en
+  navBar:
+    title: AIOS
 
 sections:
+
+  - name: Security & DMZ
+    icon: fas fa-shield-alt
+    items:
+      - title: Traefik
+        description: 'Reverse proxy · HTTPS · Let''s Encrypt SSL'
+        icon: fas fa-exchange-alt
+        url: http://10.0.0.100:8082
+        target: newtab
+      - title: CrowdSec
+        description: 'WAF · IP reputation · Rate limiting'
+        icon: fas fa-user-shield
+        url: ''
+      - title: Keycloak
+        description: 'SSO · OAuth2/OIDC · Identity management'
+        icon: fas fa-id-card
+        url: http://10.0.0.100:8080
+        target: newtab
+      - title: Vault
+        description: 'Secrets management · Encrypted at rest'
+        icon: fas fa-key
+        url: http://10.0.0.100:8200
+        target: newtab
 
   - name: Data Layer
     icon: fas fa-database
     items:
       - title: PostgreSQL
-        description: 'Relational DB + pgvector 0.8.0'
+        description: 'Relational DB + pgvector 0.8.0 — all operational data'
         icon: fas fa-database
         url: ''
       - title: Qdrant
-        description: 'Vector store (RAG + mem0)'
+        description: 'Vector store · RAG · mem0 memory · Semantic search'
         icon: fas fa-vector-square
         url: http://10.0.0.100:6333/dashboard
         target: newtab
       - title: Redis
-        description: 'Cache + Queue + Streams'
+        description: 'Cache · n8n queue · Session store · Streams'
         icon: fas fa-memory
         url: ''
       - title: MinIO
-        description: 'S3 Storage (4 buckets)'
+        description: 'S3-compatible storage · Client docs · Recordings'
         icon: fas fa-hdd
         url: http://10.0.0.100:9001
         target: newtab
       - title: ClickHouse
-        description: 'Columnar analytics'
+        description: 'Columnar analytics · Langfuse event store'
         icon: fas fa-chart-bar
         url: ''
       - title: mem0
-        description: 'Agent memory layer - API docs'
+        description: 'Agent memory layer — multi-user sessions'
         icon: fas fa-brain
         url: http://10.0.0.100:8000/docs
         target: newtab
+
+  - name: AI / Inference Layer
+    icon: fas fa-microchip
+    items:
+      - title: Bifrost (LiteLLM)
+        description: 'AI Gateway — 4-tier routing · 28 models · Langfuse logging'
+        icon: fas fa-random
+        url: http://10.0.0.100:4000
+        target: newtab
+      - title: Ollama
+        description: 'Local GPU inference · nomic-embed · LLaVA · Qalb-1.0'
+        icon: fas fa-brain
+        url: ''
+      - title: Frigate NVR
+        description: 'GPU object detection · YOLO · Camera management'
+        icon: fas fa-video
+        url: http://10.0.0.100:5000
+        target: newtab
+      - title: TTS Router
+        description: 'Language-aware routing: Urdu→XTTS, English→Chatterbox, fallback→Kokoro'
+        icon: fas fa-volume-up
+        url: ''
+
+  - name: Voice Layer
+    icon: fas fa-phone
+    items:
+      - title: Asterisk PBX
+        description: 'SIP trunking · 6 extensions (100-104, 9000) · IVR'
+        icon: fas fa-phone
+        url: ''
+      - title: Dograh API
+        description: 'Voice agent orchestration — replaces Retell AI'
+        icon: fas fa-robot
+        url: http://10.0.0.100:8085/docs
+        target: newtab
+      - title: Dograh UI
+        description: 'Voice dashboard · Call logs · Agent config'
+        icon: fas fa-tachometer-alt
+        url: http://10.0.0.100:3010
+        target: newtab
+      - title: Mosquitto MQTT
+        description: 'Event bus · Frigate alerts · Inter-service messaging'
+        icon: fas fa-comments
+        url: ''
+
+  - name: Orchestration Layer
+    icon: fas fa-cogs
+    items:
+      - title: n8n
+        description: 'Workflow orchestration · 2 workers · Redis queue mode'
+        icon: fas fa-code-branch
+        url: http://10.0.0.100:5678
+        target: newtab
+      - title: Flowise
+        description: 'Visual no-code agent builder · RAG flows'
+        icon: fas fa-project-diagram
+        url: http://10.0.0.100:3001
+        target: newtab
+      - title: MCP Server
+        description: 'Model Context Protocol — unified tool access for all agents'
+        icon: fas fa-toolbox
+        url: http://10.0.0.100:8100
+        target: newtab
+      - title: GitOps Agent
+        description: 'CD · polls GitHub every 30s · auto-deploys to Docker'
+        icon: fas fa-sync-alt
+        url: ''
+
+  - name: Knowledge & Documents
+    icon: fas fa-book
+    items:
       - title: docling
-        description: 'Document parser API - Swagger docs'
+        description: 'Document parser — PDFs, invoices, contracts → Markdown'
         icon: fas fa-file-alt
         url: http://10.0.0.100:8001/docs
         target: newtab
       - title: Knowledge Ingest
-        description: 'Daemon watching raw-uploads bucket'
+        description: 'Daemon — watches MinIO raw-uploads → chunks → Qdrant'
         icon: fas fa-upload
         url: ''
+      - title: Knowledge Compile
+        description: 'LLM Wiki compiler — runs every 4 hours'
+        icon: fas fa-sync
+        url: ''
 
+  - name: Monitoring & Observability
+    icon: fas fa-chart-line
+    items:
+      - title: Langfuse
+        description: 'LLM observability · Cost tracking · Prompt registry'
+        icon: fas fa-eye
+        url: http://10.0.0.100:3000
+        target: newtab
+      - title: Grafana
+        description: 'Visualization · Infra + LLM + Business dashboards'
+        icon: fas fa-chart-pie
+        url: http://10.0.0.100:3000
+        target: newtab
+      - title: Prometheus
+        description: 'Metrics · CPU/RAM/GPU/Disk · All containers'
+        icon: fas fa-chart-bar
+        url: http://10.0.0.100:9090
+        target: newtab
+      - title: Loki
+        description: 'Log aggregation — all 41 container logs'
+        icon: fas fa-clipboard-list
+        url: ''
+      - title: Portainer
+        description: 'Docker management UI — containers · volumes · networks'
+        icon: fas fa-ship
+        url: http://10.0.0.100:9000
+        target: newtab
+      - title: cAdvisor
+        description: 'Container resource metrics · real-time'
+        icon: fas fa-tachometer-alt
+        url: ''
+      - title: Node Exporter
+        description: 'Host metrics · CPU · RAM · Disk · Network'
+        icon: fas fa-server
+        url: ''
+      - title: Dashy
+        description: 'Central nav · You are here'
+        icon: fas fa-home
+        url: http://10.0.0.100:8082
+        target: newtab
+      - title: Hermes Agent
+        description: '24/7 autonomous ops · Auto-restart · Alerts'
+        icon: fas fa-robot
+        url: ''
 
+  - name: Voice Extensions
+    icon: fas fa-address-book
+    items:
+      - title: 'Ext 100 — Softphone'
+        description: 'Unavailable'
+        icon: fas fa-circle
+        url: ''
+      - title: 'Ext 101 — Softphone'
+        description: 'Registered (10.0.0.11)'
+        icon: fas fa-check-circle
+        color: green
+        url: ''
+      - title: 'Ext 102 — Softphone'
+        description: 'Unavailable'
+        icon: fas fa-circle
+        url: ''
+      - title: 'Ext 103 — Softphone'
+        description: 'Unavailable'
+        icon: fas fa-circle
+        url: ''
+      - title: 'Ext 104 — Softphone'
+        description: 'Unavailable'
+        icon: fas fa-circle
+        url: ''
+      - title: 'Ext 9000 — Cisco 7962G'
+        description: 'Registered · TCP · 10.0.0.12'
+        icon: fas fa-check-circle
+        color: green
+        url: ''
+
+  - name: FOSS Applications (Not Started)
+    icon: fas fa-cubes
+    items:
+      - title: Nextcloud
+        description: 'File sync + Collaboration — nextcloud.socialbeesai.com'
+        icon: fas fa-cloud
+        url: ''
+      - title: Odoo
+        description: 'ERP — odoo.socialbeesai.com'
+        icon: fas fa-cubes
+        url: ''
+      - title: Metabase
+        description: 'Analytics · Dashboards — metabase.socialbeesai.com'
+        icon: fas fa-chart-line
+        url: ''
+      - title: Open WebUI
+        description: 'Chat interface — chat.socialbeesai.com'
+        icon: fas fa-comment-dots
+        url: ''
+
+  - name: System Info
+    icon: fas fa-info-circle
+    items:
+      - title: Server
+        description: '10.0.0.100 · Ubuntu 22.04 · 31GB RAM · 953GB NVMe'
+        icon: fas fa-server
+        url: ''
+      - title: GPU
+        description: 'Quadro M4000 · 8GB VRAM · 1664 CUDA cores'
+        icon: fas fa-microchip
+        url: ''
+      - title: Containers
+        description: '41 running · 6 zones · All healthy'
+        icon: fas fa-cube
+        url: ''
+      - title: Dev PC
+        description: '10.0.0.13 · Windows 11 · Xeon E-2276G'
+        icon: fas fa-laptop
+        url: ''

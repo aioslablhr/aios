@@ -1,4 +1,4 @@
-FROM arbml/Qalb-1.0-8B-Instruct
+FROM hf.co/mradermacher/Qalb-1.0-8B-Instruct-GGUF:Q4_K_M
 
 TEMPLATE """<|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
