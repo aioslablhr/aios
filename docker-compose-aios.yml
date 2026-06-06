@@ -546,10 +546,13 @@ services:
         condition: service_healthy
     environment:
       CONFIG_FILE_PATH: /app/config.yaml
+      DATABASE_URL: postgresql://aios:${POSTGRES_PASSWORD}@10.30.0.10:5432/aios?sslmode=disable
       LITELLM_MASTER_KEY: ${BIFROST_ADMIN_KEY}
       BIFROST_ADMIN_KEY: ${BIFROST_ADMIN_KEY}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; exit(0 if urllib.request.urlopen('http://localhost:4000/health/liveliness').status == 200 else 1)"]
       interval: 15s
@@ -671,7 +674,6 @@ services:
       KC_HOSTNAME_PORT: 8080
       KC_PROXY: edge
       KC_HTTP_ENABLED: "true"
-      KC_PROXY: edge
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://10.30.0.10:5432/keycloak
       KC_DB_USERNAME: aios
@@ -1226,6 +1228,25 @@ services:
     restart: unless-stopped
 
   # ---
+  # AI LAYER CONTINUED --- Kokoro TTS (CPU fallback)
+  # ---
+
+  kokoro:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:latest
+    container_name: aios-kokoro
+    hostname: kokoro
+    networks:
+      aios-ai:
+        ipv4_address: 10.40.0.31
+      aios-voice:
+    ports:
+      - "127.0.0.1:8880:8880"
+    environment:
+      USE_GPU: "false"
+      PORT: 8880
+    restart: unless-stopped
+
+  # ---
   # AI LAYER CONTINUED --- TTS Router (Language-aware routing)
   # ---
 
@@ -1266,7 +1287,7 @@ services:
       - open-webui-data:/app/backend/data
     environment:
       OLLAMA_BASE_URL: http://10.40.0.10:4000
-      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY:-change-me-in-env}
       WEBUI_NAME: AIOS Chat
       ENABLE_SIGNUP: "false"
     restart: unless-stopped

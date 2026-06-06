@@ -1,5 +1,7 @@
 general_settings:
-  master_key: ${BIFROST_ADMIN_KEY:-sk-aios-master}
+  master_key: os.environ/BIFROST_ADMIN_KEY
+  store_model_in_db: false
+  allow_requests_on_db_unavailable: false
 
 litellm_settings:
   drop_params: true
@@ -71,107 +73,107 @@ model_list:
   - model_name: general-reasoning
     litellm_params:
       model: openrouter/google/gemma-4-31b-it:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: general-reasoning
     litellm_params:
       model: openrouter/meta-llama/llama-3.3-70b-instruct:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: general-reasoning
     litellm_params:
       model: openrouter/meta-llama/llama-4-maverick-17b-128e-instruct:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: general-reasoning
     litellm_params:
       model: openrouter/nousresearch/hermes-3-llama-3.1-405b:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: general-reasoning
     litellm_params:
       model: openrouter/nvidia/nemotron-4-ultra-112b:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: general-reasoning
     litellm_params:
       model: openrouter/nvidia/nemotron-3-super-120b-a12b:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: general-reasoning
     litellm_params:
       model: openrouter/cognitivecomputations/dolphin3-8b-llama3.1:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
 
   # MULTILINGUAL (Urdu, Arabic, regional languages)
   - model_name: multilingual
     litellm_params:
       model: openrouter/qwen/qwen3-next-80b-a3b-instruct:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: multilingual
     litellm_params:
       model: openrouter/google/gemma-4-31b-it:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: multilingual
     litellm_params:
       model: openrouter/qwen/qwen2.5-72b-instruct:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: multilingual
     litellm_params:
       model: openrouter/qwen/qwen2.5-32b-instruct:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: multilingual
     litellm_params:
       model: openrouter/nousresearch/hermes-3-llama-3.1-405b:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
 
   # CODE GENERATION
   - model_name: code
     litellm_params:
       model: openrouter/qwen/qwen3-coder:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: code
     litellm_params:
       model: openrouter/deepseek/deepseek-v4-flash:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: code
     litellm_params:
       model: openrouter/anthropic/claude-sonnet-4
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: code
     litellm_params:
       model: openrouter/openai/gpt-4o
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
 
   # FAST / CLASSIFICATION (small, cheap, fast)
   - model_name: fast-simple
     litellm_params:
       model: openrouter/meta-llama/llama-3.2-3b-instruct:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: fast-simple
     litellm_params:
       model: openrouter/meta-llama/llama-3.1-8b-instruct:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: fast-simple
     litellm_params:
       model: openrouter/mistralai/mistral-7b-instruct-v0.3:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: fast-simple
     litellm_params:
       model: openrouter/liquid/lfm-2.5-1.2b-instruct:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
 
   # VISION (image understanding: invoices, photos, documents)
   - model_name: vision
     litellm_params:
       model: openrouter/openai/gpt-4o-vision
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: vision
     litellm_params:
       model: openrouter/anthropic/claude-sonnet-4
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: vision
     litellm_params:
       model: openrouter/google/gemma-4-31b-it:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: vision
     litellm_params:
       model: openrouter/qwen/qwen3-next-80b-a3b-instruct:free
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
 
   # ════════════════════════════════════════════════════════════════
   # TIER 4: OPENROUTER PAID (10% — frontier models)
@@ -183,35 +185,35 @@ model_list:
   - model_name: frontier-reasoning
     litellm_params:
       model: openrouter/anthropic/claude-sonnet-4
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: frontier-reasoning
     litellm_params:
       model: openrouter/openai/gpt-4o
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: frontier-reasoning
     litellm_params:
       model: openrouter/anthropic/claude-3.5-haiku-20241022
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
 
   # Frontier vision
   - model_name: frontier-vision
     litellm_params:
       model: openrouter/openai/gpt-4o-vision
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: frontier-vision
     litellm_params:
       model: openrouter/anthropic/claude-sonnet-4
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
 
   # Frontier code generation
   - model_name: frontier-code
     litellm_params:
       model: openrouter/anthropic/claude-sonnet-4
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
   - model_name: frontier-code
     litellm_params:
       model: openrouter/openai/gpt-4o
-      api_key: ${OPENROUTER_API_KEY}
+      api_key: os.environ/OPENROUTER_API_KEY
 
 router_settings:
   routing_strategy: usage-based-routing
@@ -256,5 +258,5 @@ budet_duration: 30d
 
 langfuse_settings:
   host: http://10.60.0.10:3000
-  public_key: ${LANGFUSE_PUBLIC_KEY}
-  secret_key: ${LANGFUSE_SECRET_KEY}
+  public_key: os.environ/LANGFUSE_PUBLIC_KEY
+  secret_key: os.environ/LANGFUSE_SECRET_KEY
