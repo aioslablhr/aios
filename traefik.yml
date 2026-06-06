@@ -1,0 +1,67 @@
+# AIOS — Traefik Static Configuration
+# Edge Router — DMZ Zone (10.10.0.10)
+
+api:
+  dashboard: true
+  debug: false
+
+ping: true
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+  metrics:
+    address: ":8080"
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: aios-dmz
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+certificatesResolvers:
+  cloudflare:
+    acme:
+      email: admin@socialbeesai.com
+      storage: /etc/traefik/acme.json
+      dnsChallenge:
+        provider: cloudflare
+        propagation:
+          delayBeforeChecks: 30
+        resolvers:
+          - "1.1.1.1:53"
+          - "8.8.8.8:53"
+
+# Default timeout for backend connections
+serversTransport:
+  forwardingTimeouts:
+    dialTimeout: 5s
+    idleConnTimeout: 10s
+    responseHeaderTimeout: 10s
+
+experimental:
+  plugins:
+    bouncer:
+      moduleName: github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+      version: v1.4.1
+
+log:
+  level: INFO
+
+accessLog: {}
+
+metrics:
+  prometheus:
+    entryPoint: metrics
+    addEntryPointsLabels: true
+    addServicesLabels: true

@@ -1,0 +1,55 @@
+---
+pageInfo:
+  title: AIOS AI Control Panel
+  description: 'Enterprise AI Platform v1.0'
+  footer: AIOS
+
+appConfig:
+  theme: colorful
+  layout: auto
+  iconSize: medium
+  language: en
+
+sections:
+
+  - name: Data Layer
+    icon: fas fa-database
+    items:
+      - title: PostgreSQL
+        description: 'Relational DB + pgvector 0.8.0'
+        icon: fas fa-database
+        url: ''
+      - title: Qdrant
+        description: 'Vector store (RAG + mem0)'
+        icon: fas fa-vector-square
+        url: http://10.0.0.100:6333/dashboard
+        target: newtab
+      - title: Redis
+        description: 'Cache + Queue + Streams'
+        icon: fas fa-memory
+        url: ''
+      - title: MinIO
+        description: 'S3 Storage (4 buckets)'
+        icon: fas fa-hdd
+        url: http://10.0.0.100:9001
+        target: newtab
+      - title: ClickHouse
+        description: 'Columnar analytics'
+        icon: fas fa-chart-bar
+        url: ''
+      - title: mem0
+        description: 'Agent memory layer - API docs'
+        icon: fas fa-brain
+        url: http://10.0.0.100:8000/docs
+        target: newtab
+      - title: docling
+        description: 'Document parser API - Swagger docs'
+        icon: fas fa-file-alt
+        url: http://10.0.0.100:8001/docs
+        target: newtab
+      - title: Knowledge Ingest
+        description: 'Daemon watching raw-uploads bucket'
+        icon: fas fa-upload
+        url: ''
+
+

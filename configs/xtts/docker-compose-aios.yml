@@ -1,0 +1,1295 @@
+# AIOS +�G�Gǥ AI Core Stack (Layer B)
+# 7 Docker network zones +�G�Gǥ never deviate from this structure
+
+networks:
+  aios-dmz:
+    external: true
+  aios-app:
+    external: true
+  aios-data:
+    external: true
+    internal: true
+  aios-ai:
+    external: true
+  aios-voice:
+    external: true
+  aios-mon:
+    external: true
+  aios-foss:
+    external: true
+
+volumes:
+  postgres-data:
+  qdrant-data:
+  minio-data:
+  crowdsec-data:
+  vault-data:
+  asterisk-data:
+  asterisk-log:
+  mosquitto-data:
+  mosquitto-log:
+  clickhouse-data:
+  ollama-data:
+  n8n-data:
+  n8n-db:
+  prometheus-data:
+  portainer-data:
+  frigate-data:
+  chatterbox-data:
+  chatterbox-voices:
+  chatterbox-output:
+  open-webui-data:
+  xtts-cache:
+
+services:
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+  # DMZ LAYER +�G�Gǥ 10.10.0.0/24 (Added orphan containers)
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+
+  traefik:
+    image: traefik:latest
+    container_name: aios-traefik
+    hostname: traefik
+    networks:
+      aios-dmz:
+        ipv4_address: 10.10.0.10
+      aios-app:  # needs to reach n8n, keycloak, vault
+      aios-mon:  # needs to reach grafana, dashy
+      aios-data: # needs to reach minio, supabase
+      aios-ai:   # needs to reach bifrost, ollama, frigate
+      aios-voice: # needs to reach dograh, mosquitto
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /aios/configs/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - /aios/configs/traefik/dynamic:/etc/traefik/dynamic:ro
+      - /aios/configs/traefik/acme.json:/etc/traefik/acme.json
+    environment:
+      - CF_API_EMAIL=${CLOUDFLARE_EMAIL}
+      - CF_DNS_API_TOKEN=${CLOUDFLARE_API_KEY}
+    restart: unless-stopped
+
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: aios-crowdsec
+    hostname: crowdsec
+    networks:
+      aios-dmz:
+        ipv4_address: 10.10.0.11
+    volumes:
+      - crowdsec-data:/var/lib/crowdsec/data
+      - /aios/configs/crowdsec:/etc/crowdsec
+    environment:
+      COLLECTIONS: "crowdsecurity/traefik crowdsecurity/linux"
+      GID: ${CROWD_SEC_GID:-1000}
+    restart: unless-stopped
+
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+  # DATA LAYER +�G�Gǥ 10.30.0.0/24
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+
+  postgres:
+    image: pgvector/pgvector:0.8.0-pg16
+    container_name: aios-postgres
+    hostname: postgres
+    networks:
+      aios-data:
+        ipv4_address: 10.30.0.10
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: aios
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: aios
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aios -d aios"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: aios-qdrant
+    hostname: qdrant
+    networks:
+      aios-data:
+        ipv4_address: 10.30.0.20
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY}
+      QDRANT__SERVICE__GRPC_PORT: 6334
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/6333 && echo -e 'GET /healthz HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | head -1 | grep -q 200"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: aios-redis
+    hostname: redis
+    networks:
+      aios-data:
+        ipv4_address: 10.30.0.30
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ---
+  # DATA LAYER CONTINUED --- Missing orphans
+  # ---
+
+  minio:
+    image: minio/minio:latest
+    container_name: aios-minio
+    hostname: minio
+    networks:
+      aios-data:
+        ipv4_address: 10.30.0.40
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ---
+  # DATA LAYER CONTINUED --- LAN Proxy for browser access
+  # ---
+
+  # MinIO Console proxy — access at http://10.0.0.100:9001
+  data-minio-proxy:
+    image: alpine/socat:latest
+    container_name: aios-data-minio-proxy
+    hostname: data-minio-proxy
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.80
+      aios-data:
+    ports:
+      - "9001:9001"
+    command: TCP-LISTEN:9001,fork,reuseaddr TCP:10.30.0.40:9001
+    restart: unless-stopped
+
+  # Qdrant Dashboard proxy — access at http://10.0.0.100:6333
+  data-qdrant-proxy:
+    image: alpine/socat:latest
+    container_name: aios-data-qdrant-proxy
+    hostname: data-qdrant-proxy
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.81
+      aios-data:
+    ports:
+      - "6333:6333"
+    command: TCP-LISTEN:6333,fork,reuseaddr TCP:10.30.0.20:6333
+    restart: unless-stopped
+
+  # ---
+  # DATA LAYER CONTINUED --- Agent Memory (mem0)
+  # ---
+
+  mem0:
+    build:
+      context: /aios/configs/mem0
+      dockerfile: Dockerfile.mem0
+    image: aios-mem0:latest
+    container_name: aios-mem0
+    hostname: mem0
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.50
+      aios-data:
+    ports:
+      - "8000:8000"
+    environment:
+      QDRANT_HOST: 10.30.0.20
+      QDRANT_PORT: 6333
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
+      EMBEDDING_BASE_URL: http://10.40.0.10:4000/v1
+      EMBEDDING_MODEL: nomic-embed-text
+      EMBEDDING_API_KEY: sk-aios-mem0
+      LLM_BASE_URL: http://10.40.0.10:4000/v1
+      LLM_MODEL: gemma-4-31b
+      LLM_API_KEY: sk-aios-mem0
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; exit(0 if urllib.request.urlopen('http://localhost:8000/health').status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ---
+  # DATA LAYER CONTINUED --- Document Parser (docling)
+  # ---
+
+  docling:
+    build:
+      context: /aios/configs/docling
+      dockerfile: Dockerfile.docling
+    image: aios-docling:latest
+    container_name: aios-docling
+    hostname: docling
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.60
+      aios-data:
+    ports:
+      - "8001:8000"
+    environment:
+      MINIO_ENDPOINT: 10.30.0.40:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; exit(0 if urllib.request.urlopen('http://localhost:8000/health').status in (200, 503) else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ---
+  # DATA LAYER CONTINUED --- Knowledge Ingestion Pipeline
+  # ---
+
+  knowledge-ingest:
+    build:
+      context: /aios/knowledge
+      dockerfile: Dockerfile.knowledge
+    image: aios-knowledge:latest
+    container_name: aios-knowledge-ingest
+    hostname: knowledge-ingest
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.55
+      aios-data:
+    volumes:
+      - /aios/knowledge/wiki:/app/wiki
+    environment:
+      MINIO_ENDPOINT: 10.30.0.40:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      INPUT_BUCKET: raw-uploads
+      DOCLING_URL: http://10.20.0.60:8000/v1
+      QDRANT_HOST: 10.30.0.20
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
+      EMBEDDING_URL: http://10.40.0.10:4000/v1/embeddings
+      EMBEDDING_MODEL: nomic-embed-text
+      EMBEDDING_API_KEY: sk-aios-bifrost
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      docling:
+        condition: service_started
+    restart: unless-stopped
+
+  # Knowledge Compiler — LLM Wiki pipeline, runs every 4 hours
+  knowledge-compile:
+    image: aios-knowledge:latest
+    container_name: aios-knowledge-compile
+    hostname: knowledge-compile
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.56
+      aios-data:
+    volumes:
+      - /aios/knowledge/wiki:/app/wiki
+    environment:
+      QDRANT_HOST: 10.30.0.20
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
+      MEM0_URL: http://10.20.0.50:8000/v1
+      LLM_BASE_URL: http://10.40.0.10:4000/v1
+      LLM_MODEL: gemma-4-31b
+      LLM_API_KEY: sk-aios-bifrost
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo '[Knowledge-Compile] Starting LLM Wiki compiler...'
+        while true; do
+          python3 compile-wiki.py --force
+          echo '[Knowledge-Compile] Sleeping 4 hours...'
+          sleep 14400
+        done
+      "
+    restart: unless-stopped
+
+  # ---
+  # MONITORING LAYER --- 10.60.0.0/24 (AI Observability)
+  # ---
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: aios-clickhouse
+    hostname: clickhouse
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.11
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - /aios/configs/clickhouse/cluster.xml:/etc/clickhouse-server/config.d/cluster.xml:ro
+      - /aios/configs/clickhouse/keeper.xml:/etc/clickhouse-server/config.d/keeper.xml:ro
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'SELECT 1' >&3 && cat <&3 | head -1 | grep -q 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  langfuse:
+    image: langfuse/langfuse:latest
+    container_name: aios-langfuse
+    hostname: langfuse
+    networks:
+      aios-data:
+        ipv4_address: 10.30.0.50
+      aios-mon:
+        ipv4_address: 10.60.0.10
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://aios:${POSTGRES_PASSWORD}@10.30.0.10:5432/langfuse?sslmode=disable
+      CLICKHOUSE_URL: http://default:clickhouse@10.60.0.11:8123
+      CLICKHOUSE_MIGRATION_URL: clickhouse://default:clickhouse@10.60.0.11:9000
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse-events
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://10.30.0.40:9000
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET}
+      SALT: ${LANGFUSE_SALT}
+      HOSTNAME: 0.0.0.0
+      NEXTAUTH_URL: http://10.60.0.10:3000
+      TELEMETRY_ENABLED: "false"
+      LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
+    restart: unless-stopped
+
+  dashy:
+    image: lissy93/dashy:latest
+    container_name: aios-dashy
+    hostname: dashy
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.70
+    volumes:
+      - /aios/configs/dashy/conf.yml:/app/user-data/conf.yml:ro
+    ports:
+      - "8082:8080"
+    environment:
+      PORT: 8080
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://127.0.0.1:8080"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: aios-prometheus
+    hostname: prometheus
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.20
+    volumes:
+      - prometheus-data:/prometheus
+      - /aios/configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.listen-address=:9090'
+      - '--web.external-url=http://10.0.0.100:9090'
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:latest
+    container_name: aios-loki
+    hostname: loki
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.40
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: aios-grafana
+    hostname: grafana
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.30
+      aios-data:
+    volumes:
+      - /aios/configs/grafana/provisioning:/etc/grafana/provisioning:ro
+      - /aios/configs/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/sysops.json
+      GF_SERVER_ROOT_URL: http://10.0.0.100:3000
+      GF_SERVER_SERVE_FROM_SUB_PATH: true
+    restart: unless-stopped
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: aios-portainer
+    hostname: portainer
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.50
+      aios-dmz:
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer-data:/data
+    command: --http-enabled
+    restart: unless-stopped
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: aios-cadvisor
+    hostname: cadvisor
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.60
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: aios-node-exporter
+    hostname: node-exporter
+    networks:
+      aios-mon:
+        ipv4_address: 10.60.0.61
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+    restart: unless-stopped
+
+  # ---
+  # AI LAYER --- 10.40.0.0/24 (Inference + Gateway)
+  # ---
+
+  bifrost:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: aios-bifrost
+    hostname: bifrost
+    networks:
+      aios-ai:
+        ipv4_address: 10.40.0.10
+      aios-data:
+    ports:
+      - "4000:4000"
+    volumes:
+      - /aios/configs/bifrost/config.yaml:/app/config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      CONFIG_FILE_PATH: /app/config.yaml
+      LITELLM_MASTER_KEY: ${BIFROST_ADMIN_KEY}
+      BIFROST_ADMIN_KEY: ${BIFROST_ADMIN_KEY}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; exit(0 if urllib.request.urlopen('http://localhost:4000/health/liveliness').status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: aios-ollama
+    hostname: ollama
+    networks:
+      aios-ai:
+        ipv4_address: 10.40.0.20
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      OLLAMA_KEEP_ALIVE: 300s
+      OLLAMA_NUM_PARALLEL: 1
+      OLLAMA_MAX_LOADED_MODELS: 1
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  # Pre-pull models at startup (runs once, exits)
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: aios-ollama-pull
+    entrypoint: [""]
+    networks:
+      aios-ai:
+    volumes:
+      - ollama-data:/root/.ollama
+      - /aios/configs/ollama/modelfiles:/modelfiles:ro
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://10.40.0.20:11434
+    command: >
+      sh -c "
+        echo 'Pulling nomic-embed-text...' &&
+        ollama pull nomic-embed-text &&
+        echo 'Creating Qalb-1.0-8B-Instruct from Modelfile...' &&
+        ollama create qalb-1.0-8b -f /modelfiles/Qalb &&
+        echo 'Pulling llava:7b-q4_K_M...' &&
+        ollama pull llava:7b-q4_K_M &&
+        echo 'Done.'
+      "
+    restart: "no"
+
+
+
+
+
+  # ---
+  # VISION LAYER --- Frigate NVR (10.40.0.x)
+  # ---
+
+  frigate:
+    image: ghcr.io/blakeblackshear/frigate:stable
+    container_name: aios-frigate
+    hostname: frigate
+    networks:
+      aios-ai:
+        ipv4_address: 10.40.0.50
+    ports:
+      - "5000:5000"
+    volumes:
+      - /aios/configs/frigate/config.yml:/config/config.yml:ro
+      - /etc/localtime:/etc/localtime:ro
+      - frigate-data:/media/frigate
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      FRIGATE_RTSP_PASSWORD: ${FRIGATE_RTSP_PASSWORD}
+    cap_add:
+      - CAP_PERFMON
+    restart: unless-stopped
+
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+  # SECURITY LAYER +�G�Gǥ 10.20.0.0/24
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    container_name: aios-keycloak
+    hostname: keycloak
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.40
+      aios-data:
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KC_HOSTNAME: 10.20.0.40
+      KC_HOSTNAME_PORT: 8080
+      KC_PROXY: edge
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://10.30.0.10:5432/keycloak
+      KC_DB_USERNAME: aios
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HEALTH_ENABLED: "true"
+    command: start-dev
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | head -1 | grep -q 200"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  vault:
+    image: hashicorp/vault:latest
+    container_name: aios-vault
+    hostname: vault
+    network_mode: host
+    user: root
+    volumes:
+      - /aios/data/vault:/vault/file
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_ADDR: http://127.0.0.1:8200
+      VAULT_API_ADDR: http://10.0.0.100:8200
+      VAULT_CLUSTER_ADDR: https://10.0.0.100:8201
+      VAULT_DEV_LISTEN_ADDRESS: ""
+      VAULT_LOCAL_CONFIG: |
+        storage "raft" {
+          path = "/vault/file"
+          node_id = "aios-vault-1"
+        }
+        listener "tcp" {
+          address = "0.0.0.0:8200"
+          tls_disable = true
+        }
+        disable_mlock = true
+        ui = true
+    command: server
+    healthcheck:
+      test: ["CMD-SHELL", "vault status >/dev/null 2>&1 || test $? -eq 2"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  vault-unseal:
+    image: hashicorp/vault:latest
+    container_name: aios-vault-unseal
+    network_mode: host
+    depends_on:
+      vault:
+        condition: service_healthy
+    volumes:
+      - /aios/.vault-keys:/vault/config/.vault-keys:ro
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_ADDR: http://127.0.0.1:8200
+    entrypoint: ""
+    command: >
+      sh -c "
+        for i in $$(seq 1 10); do
+          STATUS=$$(/bin/vault status -format=json 2>/dev/null)
+          SEALED=$$(echo \"$$STATUS\" | grep '\"sealed\"' | awk '{print $$2}' | tr -d ' ,')
+          INIT=$$(echo \"$$STATUS\" | grep '\"initialized\"' | awk '{print $$2}' | tr -d ' ,')
+          if [ \"$$INIT\" = 'true' ] && [ \"$$SEALED\" = 'true' ]; then
+            echo '[Vault-Unseal] Sealed � unsealing...'
+            grep '^  Key' /vault/config/.vault-keys | head -3 | awk '{print $$NF}' | while read key; do
+              /bin/vault operator unseal \"$$key\" >/dev/null
+            done
+            echo '[Vault-Unseal] Done � vault is unsealed'
+            break
+          elif [ \"$$INIT\" = 'true' ] && [ \"$$SEALED\" = 'false' ]; then
+            echo '[Vault-Unseal] Already unsealed'
+            break
+          fi
+          echo '[Vault-Unseal] Waiting for vault...'
+          sleep 3
+        done
+        while true; do sleep 3600; done
+      "
+    restart: unless-stopped
+
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+  # MCP LAYER +�G�Gǥ Model Context Protocol Server (10.20.0.0/24)
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+
+  mcp:
+    build:
+      context: /aios/configs/mcp
+      dockerfile: Dockerfile.mcp
+    image: aios-mcp:latest
+    container_name: aios-mcp
+    hostname: mcp
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.30
+    ports:
+      - "127.0.0.1:8100:8000"
+    environment:
+      BIFROST_URL: http://10.40.0.10:4000
+      BIFROST_ADMIN_KEY: ${BIFROST_ADMIN_KEY}
+      QDRANT_URL: http://10.30.0.20:6333
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
+    restart: unless-stopped
+
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+  # FOSS LAYER +�G�Gǥ 10.20.0.0/24 (App Zone � Flowise)
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+
+  flowise:
+    image: flowiseai/flowise:latest
+    container_name: aios-flowise
+    hostname: flowise
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.20
+      aios-data:
+    ports:
+      - "127.0.0.1:3001:3000"
+    volumes:
+      - /aios/configs/flowise:/root/.flowise
+    environment:
+      PORT: 3000
+      DATABASE_PATH: /root/.flowise
+      SECRETKEY_PATH: /root/.flowise
+      LOG_PATH: /root/.flowise/logs
+      APIKEY_PATH: /root/.flowise
+      FLOWISE_USERNAME: admin
+      FLOWISE_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    restart: unless-stopped
+
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+  # DEV LAYER +�G�Gǥ GitOps Agent
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+
+  gitops:
+    image: alpine:latest
+    container_name: aios-gitops
+    hostname: gitops
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.100
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /aios:/aios
+      - ~/.ssh:/root/.ssh
+    environment:
+      GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=accept-new"
+    command: >
+      sh -c "
+        apk add --no-cache git docker-cli openssh >/dev/null 2>&1 &&
+        git config --global --add safe.directory /aios &&
+        echo '[GitOps] Watching github.com:aioslablhr/aios.git every 30s' &&
+        while true; do
+          cd /aios &&
+          REMOTE_SHA=$$(timeout 10 git ls-remote origin HEAD 2>&1) &&
+          LOCAL_SHA=$$(git rev-parse HEAD 2>&1) &&
+          if echo \"$$REMOTE_SHA\" | grep -q '^[a-f0-9]\{40\}' && \
+             [ \"$$REMOTE_SHA\" != \"$$LOCAL_SHA\" ]; then
+            echo '[GitOps] Change detected, pulling...' &&
+            if timeout 10 git pull --ff-only origin main; then
+              docker compose -f /aios/docker-compose-aios.yml up -d &&
+              echo '[GitOps] Deployed commit: '$$(git rev-parse --short HEAD)
+            else
+              echo '[GitOps] Pull failed, will retry in 30s'
+            fi
+          fi &&
+          sleep 30
+        done
+      "
+    restart: unless-stopped
+
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+  # DEV LAYER +�G�Gǥ Hermes Agent (24/7 Autonomous Ops)
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+
+  hermes:
+    image: alpine:latest
+    container_name: aios-hermes
+    hostname: hermes
+    pid: host
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.70
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /aios/scripts:/scripts:ro
+    command: >
+      sh -c "
+        apk add --no-cache docker-cli jq util-linux >/dev/null 2>&1 &&
+        exec /scripts/hermes.sh
+      "
+    restart: unless-stopped
+
+  # WireGuard VPN — admin access to all local-only services
+  wireguard:
+    image: lscr.io/linuxserver/wireguard:latest
+    container_name: aios-wireguard
+    hostname: wireguard
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      PUID: 1000
+      PGID: 1000
+      TZ: Asia/Karachi
+      PEERS: dev-pc
+      PEERDNS: auto
+      INTERNAL_SUBNET: 10.90.0.0
+      ALLOWEDIPS: 10.0.0.0/8
+      LOG_CONFS: "true"
+    volumes:
+      - /aios/configs/wireguard:/config
+      - /lib/modules:/lib/modules:ro
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    restart: unless-stopped
+
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+  # ORCHESTRATION LAYER +�G�Gǥ n8n + Workers (10.20.0.0/24)
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+
+  n8n-db:
+    image: postgres:16-alpine
+    container_name: aios-n8n-db
+    hostname: n8n-db
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.15
+    volumes:
+      - n8n-db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: n8n
+      POSTGRES_PASSWORD: ${N8N_DB_PASSWORD}
+      POSTGRES_DB: n8n
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U n8n -d n8n"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: aios-n8n
+    hostname: n8n
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.10
+      aios-data:
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n-data:/home/node/.n8n
+    depends_on:
+      n8n-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: 10.20.0.15
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: n8n
+      DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD}
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: 168
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      N8N_METRICS: "true"
+      N8N_METRICS_INCLUDE_DEFAULT_METRICS: "true"
+      EXECUTIONS_MODE: queue
+      QUEUE_BULL_REDIS_HOST: 10.30.0.30
+      QUEUE_BULL_REDIS_PORT: 6379
+      QUEUE_BULL_REDIS_DB: 0
+      N8N_PAYLOAD_SIZE_MAX: 16
+      N8N_MULTI_USER: "true"
+      WEBHOOK_URL: http://10.0.0.100:5678/
+      N8N_PROTOCOL: http
+      N8N_HOST: 10.0.0.100:5678
+    restart: unless-stopped
+
+  n8n-worker-1:
+    image: n8nio/n8n:latest
+    container_name: aios-n8n-worker-1
+    hostname: n8n-worker-1
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.13
+      aios-data:
+    volumes:
+      - n8n-data:/home/node/.n8n
+    depends_on:
+      n8n-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: 10.20.0.15
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: n8n
+      DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      EXECUTIONS_MODE: queue
+      QUEUE_BULL_REDIS_HOST: 10.30.0.30
+      QUEUE_BULL_REDIS_PORT: 6379
+      QUEUE_BULL_REDIS_DB: 0
+      N8N_PAYLOAD_SIZE_MAX: 16
+    command: worker --concurrency=10
+    restart: unless-stopped
+
+  n8n-worker-2:
+    image: n8nio/n8n:latest
+    container_name: aios-n8n-worker-2
+    hostname: n8n-worker-2
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.12
+      aios-data:
+    volumes:
+      - n8n-data:/home/node/.n8n
+    depends_on:
+      n8n-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: 10.20.0.15
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: n8n
+      DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      EXECUTIONS_MODE: queue
+      QUEUE_BULL_REDIS_HOST: 10.30.0.30
+      QUEUE_BULL_REDIS_PORT: 6379
+      QUEUE_BULL_REDIS_DB: 0
+      N8N_PAYLOAD_SIZE_MAX: 16
+    command: worker --concurrency=10
+    restart: unless-stopped
+
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+  # VOICE LAYER +�G�Gǥ 10.50.0.0/24
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+
+  asterisk:
+    build:
+      context: /aios/configs/asterisk
+      dockerfile: Dockerfile.asterisk
+    image: aios-asterisk:latest
+    container_name: aios-asterisk
+    hostname: asterisk
+    network_mode: host
+    ports:
+      - "8088:8088/tcp"
+    volumes:
+      - /aios/configs/asterisk:/etc/asterisk
+      - asterisk-data:/var/spool/asterisk
+      - asterisk-log:/var/log/asterisk
+    environment:
+      EXT_100_SECRET: ${EXT_100_SECRET}
+      EXT_101_SECRET: ${EXT_101_SECRET}
+      EXT_102_SECRET: ${EXT_102_SECRET}
+      EXT_9000_SECRET: ${EXT_9000_SECRET}
+      EXT_103_SECRET: ${EXT_103_SECRET}
+      EXT_104_SECRET: ${EXT_104_SECRET}
+      ARI_ADMIN_PASSWORD: ${ARI_ADMIN_PASSWORD}
+    cap_add:
+      - NET_ADMIN
+      - SYS_NICE
+    healthcheck:
+      test: ["CMD", "asterisk", "-C", "/run/asterisk-configs/asterisk.conf", "-rx", "core ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  dnsmasq-tftp:
+    image: andyshinn/dnsmasq
+    container_name: aios-dnsmasq-tftp
+    hostname: dnsmasq-tftp
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - /tftp:/tftp
+      - /aios/configs/dnsmasq/dnsmasq-tftp.conf:/etc/dnsmasq.conf
+    restart: unless-stopped
+
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: aios-mosquitto
+    hostname: mosquitto
+    networks:
+      aios-voice:
+        ipv4_address: 10.50.0.20
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - /aios/configs/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+    restart: unless-stopped
+
+  # ---
+  # VOICE LAYER CONTINUED --- Dograh (Voice Orchestration)
+  # ---
+
+  dograh-db-init:
+    image: postgres:16-alpine
+    container_name: aios-dograh-db-init
+    networks:
+      aios-data:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    command: >
+      sh -c "
+        psql -h 10.30.0.10 -U aios -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname = 'dograh'\" | grep -q 1 ||
+        psql -h 10.30.0.10 -U aios -d postgres -c 'CREATE DATABASE dograh'
+      "
+    restart: on-failure:3
+
+  dograh-api:
+    image: dograhai/dograh-api:latest
+    container_name: aios-dograh-api
+    hostname: dograh-api
+    networks:
+      aios-voice:
+        ipv4_address: 10.50.0.30
+      aios-data:
+      aios-ai:
+    ports:
+      - "8085:8000/tcp"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+      dograh-db-init:
+        condition: service_started
+    environment:
+      ENVIRONMENT: production
+      DEPLOYMENT_MODE: oss
+      DATABASE_URL: postgresql+asyncpg://aios:${POSTGRES_PASSWORD}@10.30.0.10:5432/dograh
+      REDIS_URL: redis://10.30.0.30:6379/0
+      MINIO_ENDPOINT: 10.30.0.40:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_PUBLIC_ENDPOINT: http://10.0.0.100:9001
+      OSS_JWT_SECRET: ${DOGRAH_JWT_SECRET}
+      BACKEND_API_ENDPOINT: http://10.50.0.30:8000
+      API_URL: http://10.50.0.30:8000
+      ENABLE_TELEMETRY: "false"
+      LOG_LEVEL: debug
+    healthcheck:
+      test: ["CMD-SHELL", 'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8000/api/v1/health'').read()"']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  dograh-ui:
+    image: dograhai/dograh-ui:latest
+    container_name: aios-dograh-ui
+    hostname: dograh-ui
+    networks:
+      aios-voice:
+        ipv4_address: 10.50.0.31
+    depends_on:
+      - dograh-api
+    environment:
+      BACKEND_URL: http://10.0.0.100:8085
+      NODE_ENV: oss
+      ENABLE_TELEMETRY: "false"
+    ports:
+      - "3010:3010"
+    restart: unless-stopped
+
+  # ---
+  # AI LAYER CONTINUED --- Chatterbox TTS (GPU)
+  # ---
+
+  chatterbox:
+    image: travisvn/chatterbox-tts-api:latest
+    container_name: aios-chatterbox
+    hostname: chatterbox
+    networks:
+      aios-ai:
+        ipv4_address: 10.40.0.30
+      aios-voice:
+    ports:
+      - "4123:4123"
+    volumes:
+      - chatterbox-data:/cache
+      - chatterbox-voices:/app/voices
+      - chatterbox-output:/app/outputs
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      PORT: 4123
+      USE_MULTILINGUAL_MODEL: "true"
+      EXAGGERATION: 0.5
+    restart: unless-stopped
+
+  # ---
+  # AI LAYER CONTINUED --- XTTS-v2-Urdu-FT (GPU)
+  # ---
+
+  xtts-urdu:
+    build:
+      context: /aios/configs/xtts
+      dockerfile: Dockerfile.xtts
+    image: aios-xtts-urdu:latest
+    container_name: aios-xtts-urdu
+    hostname: xtts-urdu
+    networks:
+      aios-ai:
+        ipv4_address: 10.40.0.32
+      aios-voice:
+    ports:
+      - "127.0.0.1:8020:8020"
+    volumes:
+      - xtts-cache:/app/model_cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      CUDA_VISIBLE_DEVICES: ""
+      XTTS_MODEL_REPO: arbml/xtts-v2-urdu-ft
+      COQUI_TOS_AGREED: "1"
+      HF_TOKEN: ${HF_TOKEN:-}
+    restart: unless-stopped
+
+  # ---
+  # AI LAYER CONTINUED --- Kokoro TTS (CPU fallback)
+  # ---
+
+  kokoro:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:latest
+    container_name: aios-kokoro
+    hostname: kokoro
+    networks:
+      aios-ai:
+        ipv4_address: 10.40.0.31
+      aios-voice:
+    ports:
+      - "127.0.0.1:8880:8880"
+    restart: unless-stopped
+
+  # ---
+  # AI LAYER CONTINUED --- TTS Router (Language-aware routing)
+  # ---
+
+  tts-router:
+    build:
+      context: /aios/configs/tts-router
+      dockerfile: Dockerfile.tts-router
+    image: aios-tts-router:latest
+    container_name: aios-tts-router
+    hostname: tts-router
+    networks:
+      aios-ai:
+        ipv4_address: 10.40.0.33
+      aios-voice:
+    ports:
+      - "127.0.0.1:8030:8030"
+    environment:
+      XTTS_URL: http://10.40.0.32:8020/v1/tts
+      CHATTERBOX_URL: http://10.40.0.30:4123/v1/audio/speech
+      KOKORO_URL: http://10.40.0.31:8880/v1/audio/speech
+    restart: unless-stopped
+
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+  # FOSS LAYER +�G�Gǥ 10.70.0.0/24 (Public client-facing apps)
+  # +�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�+�G��-�
+
+  # Open WebUI — Public chat interface (chat.socialbeesai.com)
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: aios-open-webui
+    hostname: open-webui
+    networks:
+      aios-foss:
+        ipv4_address: 10.70.0.200
+    ports:
+      - "3011:8080"
+    volumes:
+      - open-webui-data:/app/backend/data
+    environment:
+      OLLAMA_BASE_URL: http://10.40.0.10:4000
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
+      WEBUI_NAME: AIOS Chat
+      ENABLE_SIGNUP: "false"
+    restart: unless-stopped
+

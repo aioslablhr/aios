@@ -1,0 +1,289 @@
+# AIOS — Traefik Dynamic Configuration
+# Auto-loaded from /etc/traefik/dynamic/
+
+# ── Middlewares ──────────────────────────────────
+
+http:
+  middlewares:
+    # CrowdSec bouncer — blocks malicious IPs
+    crowdsec-bouncer:
+      plugin:
+        bouncer:
+          crowdsecLAPIUrl: http://10.10.0.11:8080
+          crowdsecLAPIKey: "YWuWVzg89fN0HqBs71qDc8sxzcLxofC45jxvJQM/vbk"
+          secure: false
+          updateIntervalSeconds: 30
+
+    # Security headers
+    secure-headers:
+      headers:
+        frameDeny: true
+        sslRedirect: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        forceSTSHeader: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 31536000
+        customFrameOptionsValue: "SAMEORIGIN"
+
+    # Rate limiting
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 200
+
+    # Error page for unavailable services
+    error-page:
+      errors:
+        status:
+          - "500-599"
+        service: error-service
+        query: "/"
+
+    # Strip prefix for subpath backends
+    strip-prometheus:
+      stripPrefix:
+        prefixes:
+          - /prometheus
+
+    strip-portainer:
+      stripPrefix:
+        prefixes:
+          - /portainer
+
+  # ── Routers ─────────────────────────────────────
+
+  routers:
+    # Traefik dashboard — admin.socialbeesai.com
+    traefik-dashboard:
+      rule: "Host(`admin.socialbeesai.com`)"
+      service: api@internal
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+
+    # Landing page — socialbeesai.com
+    landing:
+      rule: "Host(`socialbeesai.com`) || Host(`www.socialbeesai.com`)"
+      service: landing
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+
+    # App subdomain — app.socialbeesai.com
+    app-n8n:
+      rule: "Host(`app.socialbeesai.com`) && PathPrefix(`/n8n`)"
+      service: app-n8n
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+
+    app-n8n-direct:
+      rule: "Host(`n8n.socialbeesai.com`)"
+      service: app-n8n
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+
+    app-flowise:
+      rule: "Host(`app.socialbeesai.com`) && PathPrefix(`/flowise`)"
+      service: app-flowise
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+
+    # Monitor subdomain — monitor.socialbeesai.com
+    mon-grafana:
+      rule: "Host(`monitor.socialbeesai.com`) && PathPrefix(`/grafana`)"
+      service: mon-grafana
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+
+    mon-prometheus:
+      rule: "Host(`monitor.socialbeesai.com`) && PathPrefix(`/prometheus`)"
+      service: mon-prometheus
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+
+    mon-portainer:
+      rule: "Host(`monitor.socialbeesai.com`) && PathPrefix(`/portainer`)"
+      service: mon-portainer
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - strip-portainer
+
+    # Data subdomain — data.socialbeesai.com
+    data-supabase:
+      rule: "Host(`data.socialbeesai.com`)"
+      service: data-supabase
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+
+    data-minio:
+      rule: "Host(`data.socialbeesai.com`) && PathPrefix(`/minio`)"
+      service: data-minio
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+
+    # AI subdomain — ai.socialbeesai.com
+    ai-bifrost:
+      rule: "Host(`ai.socialbeesai.com`) && PathPrefix(`/bifrost`)"
+      service: ai-bifrost
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+
+    ai-chat:
+      rule: "Host(`chat.socialbeesai.com`)"
+      service: ai-open-webui
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+
+    # Voice subdomain — voice.socialbeesai.com
+    voice-asterisk:
+      rule: "Host(`voice.socialbeesai.com`) && PathPrefix(`/asterisk`)"
+      service: voice-asterisk
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+
+    voice-dograh:
+      rule: "Host(`voice.socialbeesai.com`)"
+      service: voice-dograh
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+
+  # ── Services ────────────────────────────────────
+
+  services:
+    # Landing page
+    landing:
+      loadBalancer:
+        servers:
+          - url: "http://10.60.0.70:8080"
+
+    # Error service for unavailable backends
+    error-service:
+      loadBalancer:
+        servers:
+          - url: "http://10.60.0.70:8080"
+
+    # App services (placeholder — will be filled when deployed)
+    app-n8n:
+      loadBalancer:
+        servers:
+          - url: "http://10.20.0.10:5678"
+    app-flowise:
+      loadBalancer:
+        servers:
+          - url: "http://10.20.0.20:3000"
+
+    # Monitoring services (placeholder)
+    mon-grafana:
+      loadBalancer:
+        servers:
+          - url: "http://10.60.0.30:3000"
+    mon-prometheus:
+      loadBalancer:
+        servers:
+          - url: "http://10.60.0.20:9090"
+    mon-portainer:
+      loadBalancer:
+        servers:
+          - url: "http://10.60.0.50:9000"
+
+    # Data services (placeholder)
+    data-supabase:
+      loadBalancer:
+        servers:
+          - url: "http://10.30.0.10:8000"
+    data-minio:
+      loadBalancer:
+        servers:
+          - url: "http://10.30.0.40:9001"
+
+    # AI services (placeholder)
+    ai-bifrost:
+      loadBalancer:
+        servers:
+          - url: "http://10.40.0.10:4000"
+    ai-open-webui:
+      loadBalancer:
+        servers:
+          - url: "http://10.40.0.20:3000"
+
+    # Admin services (placeholder)
+    admin-keycloak:
+      loadBalancer:
+        servers:
+          - url: "http://10.20.0.40:8080"
+    admin-vault:
+      loadBalancer:
+        servers:
+          - url: "http://10.20.0.50:8200"
+
+    # Voice services (placeholder)
+    voice-asterisk:
+      loadBalancer:
+        servers:
+          - url: "http://10.50.0.10:8088"
+    voice-mqtt:
+      loadBalancer:
+        servers:
+          - url: "http://10.50.0.20:1883"
+    voice-dograh:
+      loadBalancer:
+        servers:
+          - url: "http://10.50.0.31:3010"

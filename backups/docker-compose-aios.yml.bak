@@ -1,0 +1,268 @@
+﻿# AIOS ├óΓé¼ΓÇ¥ AI Core Stack (Layer B)
+# 7 Docker network zones ├óΓé¼ΓÇ¥ never deviate from this structure
+
+networks:
+  aios-dmz:
+    external: true
+  aios-app:
+    external: true
+  aios-data:
+    external: true
+    internal: true
+  aios-ai:
+    external: true
+  aios-voice:
+    external: true
+  aios-mon:
+    external: true
+  aios-foss:
+    external: true
+
+volumes:
+  postgres-data:
+  qdrant-data:
+  minio-data:
+  crowdsec-data:
+  vault-data:
+  asterisk-data:
+  asterisk-log:
+  mosquitto-data:
+  mosquitto-log:
+
+services:
+  # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
+  # DATA LAYER ├óΓé¼ΓÇ¥ 10.30.0.0/24
+  # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: aios-postgres
+    hostname: postgres
+    networks:
+      aios-data:
+        ipv4_address: 10.30.0.10
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: aios
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: aios
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aios -d aios"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: aios-qdrant
+    hostname: qdrant
+    networks:
+      aios-data:
+        ipv4_address: 10.30.0.20
+    ports:
+      - "127.0.0.1:6333:6333"
+      - "127.0.0.1:6334:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY}
+      QDRANT__SERVICE__GRPC_PORT: 6334
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/6333 && echo -e 'GET /healthz HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | head -1 | grep -q 200"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
+  # SECURITY LAYER ├óΓé¼ΓÇ¥ 10.20.0.0/24
+  # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
+
+  vault:
+    image: hashicorp/vault:latest
+    container_name: aios-vault
+    hostname: vault
+    network_mode: host
+    user: root
+    volumes:
+      - /aios/data/vault:/vault/file
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_ADDR: http://127.0.0.1:8200
+      VAULT_API_ADDR: http://10.0.0.100:8200
+      VAULT_CLUSTER_ADDR: https://10.0.0.100:8201
+      VAULT_DEV_LISTEN_ADDRESS: ""
+      VAULT_LOCAL_CONFIG: |
+        storage "raft" {
+          path = "/vault/file"
+          node_id = "aios-vault-1"
+        }
+        listener "tcp" {
+          address = "0.0.0.0:8200"
+          tls_disable = true
+        }
+        disable_mlock = true
+        ui = true
+    command: server
+    healthcheck:
+      test: ["CMD-SHELL", "vault status >/dev/null 2>&1 || test $? -eq 2"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  vault-unseal:
+    image: hashicorp/vault:latest
+    container_name: aios-vault-unseal
+    network_mode: host
+    depends_on:
+      vault:
+        condition: service_healthy
+    volumes:
+      - /aios/.vault-keys:/vault/config/.vault-keys:ro
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_ADDR: http://127.0.0.1:8200
+    entrypoint: ""
+    command: >
+      sh -c "
+        for i in $$(seq 1 10); do
+          STATUS=$$(/bin/vault status -format=json 2>/dev/null)
+          SEALED=$$(echo \"$$STATUS\" | grep '\"sealed\"' | awk '{print $$2}' | tr -d ' ,')
+          INIT=$$(echo \"$$STATUS\" | grep '\"initialized\"' | awk '{print $$2}' | tr -d ' ,')
+          if [ \"$$INIT\" = 'true' ] && [ \"$$SEALED\" = 'true' ]; then
+            echo '[Vault-Unseal] Sealed — unsealing...'
+            grep '^  Key' /vault/config/.vault-keys | head -3 | awk '{print $$NF}' | while read key; do
+              /bin/vault operator unseal \"$$key\" >/dev/null
+            done
+            echo '[Vault-Unseal] Done — vault is unsealed'
+            break
+          elif [ \"$$INIT\" = 'true' ] && [ \"$$SEALED\" = 'false' ]; then
+            echo '[Vault-Unseal] Already unsealed'
+            break
+          fi
+          echo '[Vault-Unseal] Waiting for vault...'
+          sleep 3
+        done
+        while true; do sleep 3600; done
+      "
+    restart: unless-stopped
+
+  # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
+  # DEV LAYER ├óΓé¼ΓÇ¥ GitOps Agent
+  # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
+
+  gitops:
+    image: alpine:latest
+    container_name: aios-gitops
+    hostname: gitops
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.100
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /aios:/aios
+      - ~/.ssh:/root/.ssh
+    environment:
+      GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=accept-new"
+    command: >
+      sh -c "
+        apk add --no-cache git docker-cli >/dev/null 2>&1 &&
+        git config --global --add safe.directory /aios &&
+        echo '[GitOps] Watching github.com:aioslablhr/aios.git every 30s' &&
+        while true; do
+          cd /aios &&
+          REMOTE_SHA=$$(timeout 10 git ls-remote origin HEAD 2>&1) &&
+          LOCAL_SHA=$$(git rev-parse HEAD 2>&1) &&
+          if echo \"$$REMOTE_SHA\" | grep -q '^[a-f0-9]\{40\}' && \
+             [ \"$$REMOTE_SHA\" != \"$$LOCAL_SHA\" ]; then
+            echo '[GitOps] Change detected, pulling...' &&
+            if timeout 10 git pull --ff-only origin main; then
+              docker compose -f /aios/docker-compose-aios.yml up -d &&
+              echo '[GitOps] Deployed commit: '$$(git rev-parse --short HEAD)
+            else
+              echo '[GitOps] Pull failed, will retry in 30s'
+            fi
+          fi &&
+          sleep 30
+        done
+      "
+    restart: unless-stopped
+
+  # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
+  # DEV LAYER ├óΓé¼ΓÇ¥ Hermes Agent (24/7 Autonomous Ops)
+  # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
+
+  hermes:
+    image: alpine:latest
+    container_name: aios-hermes
+    hostname: hermes
+    pid: host
+    networks:
+      aios-app:
+        ipv4_address: 10.20.0.70
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /aios/scripts:/scripts:ro
+    command: >
+      sh -c "
+        apk add --no-cache docker-cli jq util-linux >/dev/null 2>&1 &&
+        exec /scripts/hermes.sh
+      "
+    restart: unless-stopped
+
+  # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
+  # VOICE LAYER ├óΓé¼ΓÇ¥ 10.50.0.0/24
+  # ├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É├óΓÇó┬É
+
+  asterisk:
+    build:
+      context: /aios/configs/asterisk
+      dockerfile: Dockerfile.asterisk
+    image: aios-asterisk:latest
+    container_name: aios-asterisk
+    hostname: asterisk
+    network_mode: host
+    ports:
+      - "8088:8088/tcp"
+    volumes:
+      - /aios/configs/asterisk:/etc/asterisk
+      - asterisk-data:/var/spool/asterisk
+      - asterisk-log:/var/log/asterisk
+    environment:
+      EXT_100_SECRET: ${EXT_100_SECRET}
+      EXT_101_SECRET: ${EXT_101_SECRET}
+      EXT_102_SECRET: ${EXT_102_SECRET}
+      EXT_9000_SECRET: ${EXT_9000_SECRET}
+      EXT_103_SECRET: ${EXT_103_SECRET}
+      EXT_104_SECRET: ${EXT_104_SECRET}
+      ARI_ADMIN_PASSWORD: ${ARI_ADMIN_PASSWORD}
+    cap_add:
+      - NET_ADMIN
+      - SYS_NICE
+    healthcheck:
+      test: ["CMD", "asterisk", "-C", "/run/asterisk-configs/asterisk.conf", "-rx", "core ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  dnsmasq-tftp:
+    image: andyshinn/dnsmasq
+    container_name: aios-dnsmasq-tftp
+    hostname: dnsmasq-tftp
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - /tftp:/tftp
+      - /aios/configs/dnsmasq/dnsmasq-tftp.conf:/etc/dnsmasq.conf
+    restart: unless-stopped

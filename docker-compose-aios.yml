@@ -1228,6 +1228,26 @@ services:
     restart: unless-stopped
 
   # ---
+  # AI LAYER CONTINUED --- Whisper STT (CPU — Urdu speech-to-text)
+  # ---
+
+  whisper-stt:
+    image: onerahmet/openai-whisper-asr-webservice:latest
+    container_name: aios-whisper-stt
+    hostname: whisper-stt
+    networks:
+      aios-ai:
+        ipv4_address: 10.40.0.40
+    ports:
+      - "127.0.0.1:8140:9000"
+    environment:
+      ASR_MODEL: medium
+      ASR_ENGINE: openai_whisper
+      INFERENCE_DEVICE: cpu
+      MODEL_CACHE_DIR: /app/model-cache
+    restart: unless-stopped
+
+  # ---
   # AI LAYER CONTINUED --- Kokoro TTS (CPU fallback)
   # ---
 
