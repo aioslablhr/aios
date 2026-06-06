@@ -1,16 +1,16 @@
 # AIOS — Session Checkpoint
 
-**Version:** 4.12
+**Version:** 6.0
 **Date:** June 6, 2026
 **Branch:** main
-**Last commit:** (pending — bifrost auth + config fix)
+**Last commit:** 69fe5b1 (pending)
 
 ---
 
 ## Container Status (Server)
 
 ### Running (44 — all services healthy or starting)
-aios-traefik, aios-postgres, aios-redis, aios-qdrant, aios-minio, aios-clickhouse, aios-ollama, aios-bifrost, aios-langfuse, aios-docling, aios-mem0, aios-asterisk, aios-dnsmasq-tftp, aios-knowledge-ingest, aios-knowledge-compile, aios-dograh-api, aios-dograh-ui, aios-tts-router, aios-chatterbox, aios-kokoro, aios-xtts-urdu, aios-n8n, aios-n8n-worker-1, aios-n8n-worker-2, aios-n8n-db, aios-flowise, aios-open-webui, aios-keycloak, aios-mcp, aios-vault, aios-vault-unseal, aios-grafana, aios-portainer, aios-dashy, aios-prometheus, aios-cadvisor, aios-node-exporter, aios-loki, aios-crowdsec, aios-frigate, aios-mosquitto, aios-gitops, aios-hermes, aios-data-minio-proxy, aios-data-qdrant-proxy
+aios-traefik, aios-postgres, aios-redis, aios-qdrant, aios-minio, aios-clickhouse, aios-ollama, aios-bifrost, aios-langfuse, aios-docling, aios-mem0, aios-asterisk, aios-dnsmasq-tftp, aios-knowledge-ingest, aios-knowledge-compile, aios-dograh-api, aios-dograh-ui, aios-tts-router, aios-chatterbox, aios-kokoro, aios-xtts-urdu, aios-whisper-stt, aios-n8n, aios-n8n-worker-1, aios-n8n-worker-2, aios-n8n-db, aios-flowise, aios-open-webui, aios-keycloak, aios-mcp, aios-vault, aios-vault-unseal, aios-grafana, aios-portainer, aios-dashy, aios-prometheus, aios-cadvisor, aios-node-exporter, aios-loki, aios-crowdsec, aios-frigate, aios-mosquitto, aios-gitops, aios-hermes, aios-data-minio-proxy, aios-data-qdrant-proxy
 
 ### Known Issues
 - Chatterbox: runs with model loaded on CUDA but Docker healthcheck marks unhealthy
@@ -21,121 +21,142 @@ aios-traefik, aios-postgres, aios-redis, aios-qdrant, aios-minio, aios-clickhous
 ### Written but NOT started
 - Nextcloud (10.70.0.30), Odoo (10.70.0.20), Metabase (10.70.0.40) — docker-compose-apps.yml exists, never started
 
----
-
-## What's Done This Session (June 6 — Stack Recovery + Bifrost Fix)
-
-### 1. Stack Recovery — All 45 Containers Running ✅
-- Diagnosed: 0 containers running (stack never started after server reboot)
-- Started all containers, manually fixed 15 stuck in "Created" state
-- Created & enabled `aios-stack.service` systemd unit for auto-start on boot
-
-### 2. Bifrost Auth — Fixed ✅
-- Root cause: Master key `sk-aios-master-admin-key-change-me` not hashed/seeded into `LiteLLM_VerificationToken` table in PostgreSQL
-- Dropped stale token tables → Bifrost recreated via migration → inserted SHA256 hash of master key directly into DB
-- Verified: `curl /v1/chat/completions` with Bearer token returns clean LLM responses through OpenRouter free tier (Gemma-4-31b-it)
-
-### 3. Bifrost Config.yaml — Fixed ✅
-- Changed env var syntax from `${OPENROUTER_API_KEY}` → `os.environ/OPENROUTER_API_KEY` (LiteLLM native syntax)
-- Removed invalid `disable_auth: true` setting (doesn't exist in LiteLLM v1.82.6)
-- Set `master_key: os.environ/BIFROST_ADMIN_KEY` (was `${BIFROST_ADMIN_KEY:-sk-aios-master}`)
-
-### 4. docker-compose-aios.yml — Fixed ✅
-- Removed `DISABLE_AUTH: "true"` from bifrost env
-- Added `${LANGFUSE_PUBLIC_KEY:-}` / `${LANGFUSE_SECRET_KEY:-}` — defaults to blank to suppress compose warnings
-- Added `${WEBUI_SECRET_KEY:-change-me-in-env}` — default value to suppress compose warning
-- Added `kokoro` service definition — was running as orphan, now tracked by compose
-- Fixed `KC_PROXY` duplicate key in keycloak service definition
-
-### 5. Hermes — Fixed ✅
-- `chmod +x /aios/scripts/hermes.sh` resolved exit 126 Permission denied
-- Container now runs cleanly
-
-### 6. Systemd Auto-Start — Added ✅
-- `/etc/systemd/system/aios-stack.service` — `docker compose up -d` on boot
-- Enabled, tested
-
-### 7. Compose Warnings — Cleaned ✅
-- No more `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, or `WEBUI_SECRET_KEY` warnings
-- No more orphan container warnings (kokoro now defined in compose)
-- Single warning remaining: WireGuard sysctl (known, pre-existing)
+### Container Count: 45 (44 running, 1 created/non-functional)
 
 ---
 
-## Pending (Not Started / Not Working)
+## What's Done This Session (June 6 — Voice Agent Pipeline)
+
+### 1. Whisper STT — Upgraded to `large-v3` ✅
+- Switched from `medium` (1.5GB) → `large-v3` (3GB, ~7.8GB RSS) at 10.40.0.40:9000
+- English STT verified perfect: "Hello, can you help me book an appointment for tomorrow"
+- Urdu STT: `medium` detected English (wrong), `large-v3` now correctly detects Urdu but still can't transcribe accurately — root cause is XTTS-generated Urdu audio quality, not Whisper model size
+
+### 2. XTTS Voice Cloning ✅
+- Received WhatsApp voice note (PTT-20260606-WA0032.mp3, ~30s, Urdu)
+- Converted to 24kHz WAV, replaced `/app/model_cache/default_speaker.wav` in XTTS container
+- New voice sample helped: STT detects language as Urdu (was Chinese before), but XTTS output still garbled for accurate transcription
+- **Bottleneck confirmed**: XTTS Urdu output quality is the limiting factor, not Whisper model size
+
+### 3. Dograh ARI Integration ✅
+- Discovered Dograh has native Asterisk ARI support (`ARIConfigurationRequest` schema with `provider: ari`)
+- Created Dograh ARI telephony config (`Asterisk-Local`, config ID 1): endpoint `http://10.0.0.100:8088`, app name `dograh`
+- Fixed Asterisk `http.conf` — removed `prefix = asterisk` so ARI WebSocket URL resolves at root
+- Added ARI user `dograh` with password to `ari.conf`
+- Dograh ARI WebSocket connected successfully: `[ARI org=2] WebSocket connected to http://10.0.0.100:8088`
+
+### 4. n8n — Fixed Secure Cookie ✅
+- Added `N8N_SECURE_COOKIE: "false"` to compose (was using HTTPS-only cookies in HTTP context)
+- Password reset: inserted bcrypt hash directly into n8n Postgres DB
+- Login working: `admin@socialbeesai.com` / `admin123`
+
+### 5. Dograh UI Login — Fixed ✅
+- **Root cause**: UI's Next.js rewrite rule sends API calls to `http://api:8000` — hostname `api` didn't resolve in Docker DNS
+- **Fix**: Added `api` as network alias to `dograh-api` in `aios-voice` network
+- Login verified working: `http://10.50.0.31:3010` with `admin@socialbeesai.com` / `admin123`
+
+### 6. Architecture Reset — Dograh Replaces AGI ✅
+- **Decision**: AGI script hack is wrong. Correct architecture is:
+  - Asterisk (SIP core only) → Dograh (ARI voice orchestrator with native STT/LLM/TTS pipeline) → AI models
+  - Dograh's built-in STT (configurable), LLM (via Bifrost), TTS (via Speaches/TTS Router)
+- AGI script at `/var/lib/asterisk/agi-bin/ai-agent.agi` deprecating in favor of Dograh Stasis routing
+
+### 7. Git — Committed & Pushed ✅
+- Commit `69fe5b1`: whisper STT, kokoro compose entry, systemd auto-start, crowdsec configs, test scripts
+- 231 files, 7004 insertions, 1294 deletions
+- Pushed to GitHub main branch
+
+## What's Done This Session (June 6 — Session 2: Voice Agent End-to-End)
+
+### 8. Dograh Workflow Created: "AI Voice Receptionist" ✅
+- Workflow ID 1, status: active, version 1 (published)
+- 3 nodes: startCall → agentNode → endCall
+- Phone number (Ext 102) created on telephony config ID 1
+  - `inbound_workflow_id: 1`, linked to Workflow ID 1
+  - Address: "102", type: sip_extension, country: PK
+- Full workflow definition verified via Dograh API
+
+### 9. ARI WebSocket Tested — Events Flowing ✅
+- Dograh receives all ARI events from Asterisk: ChannelCreated, ChannelDialplan, Dial, ChannelStateChange, StasisStart
+- WebSocket connects and stays connected through container restarts
+- Active connections: 1 (config: 1, org: 2)
+
+### 10. Stasis(dograh) Dialplan Configured ✅
+- Ext 102 routing changed from `AGI(ai-agent.agi)` → `Stasis(dograh)` (no Answer() before Stasis)
+- **Critical insight**: Dograh's ARI handler has TWO code paths:
+  - **Inbound (state=Ring)**: Looks up phone number → finds workflow → creates run → answers call → starts pipeline
+  - **Outbound (state=Up)**: Requires explicit `workflow_run_id=X,workflow_id=X,user_id=X` in Stasis args as key=value pairs
+  - Removing `Answer()` from dialplan ensures calls enter Stasis as "Ring" → inbound handler fires
+
+### 11. End-to-End Voice Pipeline Ready for Testing ✅
+- ARI connection: ✅ (WebSocket connected, events flowing)
+- Dialplan routing: ✅ (Ext 102 → Stasis(dograh))
+- Workflow: ✅ (ID 1, active, 3 nodes)
+- Phone number mapping: ✅ (Ext 102 → Workflow ID 1)
+- User config: ✅ (LLM → Bifrost, TTS → Speaches, STT → Dograh built-in)
+- Test pending: physically dial 102 from Cisco phone (Ext 9000) to trigger inbound handler
+
+---
+
+## Voice Pipeline Architecture (Current)
+
+```
+Caller → SIP → Asterisk → ARI → Dograh (voice orchestrator)
+  Dograh handles:
+    1. Receive audio from caller via ARI WebSocket
+    2. STT: configurable (Dograh built-in, or external)
+    3. LLM: via Bifrost → OpenRouter (general-reasoning route)
+    4. TTS: via Speaches provider → TTS Router (10.40.0.33:8030)
+       Urdu → XTTS, English → Chatterbox/Kokoro
+    5. Send audio back to caller via ARI
+```
+
+### Component Endpoints
+
+| Component | Endpoint | Status |
+|-----------|----------|--------|
+| Whisper STT | `POST /asr` with `audio_file` (form-data) at 10.40.0.40:9000 | ✅ `large-v3`, English perfect, Urdu limited by TTS quality |
+| Bifrost LLM | `POST /v1/chat/completions` with Bearer token at 10.40.0.10:4000 | ✅ Routes via OpenRouter |
+| TTS Router | `POST /v1/audio/speech` (OpenAI-compatible) at 10.40.0.33:8030 | ✅ All backends working |
+| XTTS Urdu | `POST /v1/tts` at 10.40.0.32:8020 | ✅ Voice cloned with WhatsApp sample, quality TBD |
+| Dograh API | 10.50.0.30:8000 | ✅ Connected via ARI WebSocket |
+| Dograh UI | 10.50.0.31:3010 | ✅ Login working |
+
+### Asterisk Extensions
+- **Ext 100**: Admin
+- **Ext 101**: Softphone (10.0.0.11)
+- **Ext 102**: AI Agent — `Stasis(dograh)` → Dograh ARI inbound handler → Workflow ID 1
+- **Ext 9000**: Cisco 7962G (registered, sip:9000@10.0.0.100)
+
+### Dograh Configuration
+| Item | Detail |
+|------|--------|
+| Telephony Config ID 1 | Asterisk-Local, ARI provider, endpoint `http://10.0.0.100:8088` |
+| Phone Number ID 1 | Ext 102, linked to Workflow ID 1, type: sip_extension |
+| Workflow ID 1 | "AI Voice Receptionist", status: active, 3 nodes |
+| User Config | LLM=Dograh→Bifrost, TTS=Speaches(10.40.0.33:8030), STT=Dograh built-in |
+
+---
+
+## Pending
 
 | Item | Priority | Status |
 |------|----------|--------|
-| Pull Ollama models (qalb-1.0-8b, llava:7b) | Medium | ❌ Only nomic-embed-text loaded |
-| FOSS apps start (Nextcloud, Odoo, Metabase) | Medium | ❌ `docker compose -f docker-compose-apps.yml up -d` never run |
-| Chatterbox healthcheck fix | Low | ❌ Container works, healthcheck endpoint missing |
-| WireGuard peer config retrieval | Low | ❌ Config auto-generated but sysctl blocks start |
-| Nightly backup cron | Low | ❌ Script exists (`backup.py`) but no cron job |
-| First n8n workflow (AI employee) | Deferred | ❌ Blocked on infra completion |
+| Test end-to-end call: dial 102 from Cisco phone (Ext 9000) | **High** | 🔴 **Critical** — physical phone pick-up needed |
+| Fix Urdu STT accuracy (better TTS / voice sample) | Medium | ❌ XTTS Urdu quality bottleneck |
+| Chatterbox healthcheck fix | Low | ❌ Container works, missing `/health` endpoint |
+| Nightly backup cron | Low | ❌ script exists, no cron |
+| FOSS apps (Nextcloud, Odoo, Metabase) | Low | ❌ never started |
 
 ---
-
-## Voice Pipeline Architecture
-
-```
-Caller → SIP Trunk → Asterisk → AGI (ai-agent.agi)
-  → Record WAV → POST to n8n webhook (/webhook/ai-agent)
-    → Whisper STT (Ollama/Bifrost)
-    → Qalb LLM (via Bifrost → Ollama)
-    → TTS Router (Urdu→XTTS, English→Chatterbox, fallback→Kokoro)
-  → Return WAV → Play to Caller
-  → Loop for conversation
-```
-
-- **Asterisk Ext 102**: AI Agent — triggers `ai-agent.agi` AGI script
-- **Asterisk Ext 9000**: Cisco 7962G phone (registered, test calls)
-- **Asterisk Ext 101**: Softphone on 10.0.0.11 (active)
-- **Dograh** (10.50.0.30:8000): Full voice agent orchestration with ARI+WebSocket integration. API prefix `/api/v1`, telephony routes at `/api/v1/telephony/initiate` and WebSocket at `/ws/ari`. Requires n8n workflow for full pipeline.
-- **n8n webhook**: `/webhook/ai-agent` on n8n (10.20.0.10:5678) — **not created yet**, needs workflow
-
-## How to Test the Pipeline
-
-### Level 1 — Component Tests (no phone, immediate)
-```bash
-# Test Urdu TTS
-curl http://10.40.0.32:8020/v1/tts -d '{"text":"السلام علیکم","language":"ur"}' -o /tmp/xtts-test.wav
-
-# Test TTS Router (auto Urdu detection)
-curl http://10.40.0.33:8030/v1/audio/speech \
-  -d '{"input":"السلام علیکم، آپ کیسے ہیں؟"}' -o /tmp/router-test.wav
-
-# Test Bifrost LLM (via OpenRouter free tier)
-curl http://10.40.0.10:4000/v1/chat/completions \
-  -H "Authorization: Bearer sk-aios-master-admin-key-change-me" \
-  -d '{"model":"general-reasoning","messages":[{"role":"user","content":"say hi"}]}'
-
-# Test all 3 TTS backends via health check
-curl http://10.40.0.33:8030/health
-```
-
-### Level 2 — Phone Call Test
-- Pick up Cisco 7962G (Ext 9000) → call 101 → talks to softphone on 10.0.0.11 (basic SIP test)
-- Pick up Cisco → call 103/104 → tests other registered phones
-- Requires active n8n `ai-agent` webhook for Ext 102 (AI Agent) to work
-
-### Level 3 — Full AI Voice Conversation
-1. Create n8n workflow: Receive WAV → Whisper STT → Bifrost/Qalb LLM → TTS Router → Return WAV
-2. Save as webhook `/webhook/ai-agent`
-3. Call Ext 102 from any phone → full Urdu voice conversation with Qalb
-
-### Level 4 — Dograh Integration
-- Configure Dograh with Asterisk ARI provider
-- Use Dograh REST API or UI (10.50.0.31:3010) for outbound campaigns and advanced voice flows
 
 ## Key Architectural Decisions
 
-1. **GPU limitation**: Quadro M4000 (Maxwell CC 5.0) maxes at NVIDIA driver 470, CUDA 11.4. No CUDA 12.x support. Ollama bundles its own CUDA 12.x and works anyway. Other containers (XTTS, Chatterbox) need explicit handling.
-2. **Qalb GGUF**: 8B model at Q4_K_M (4.92GB) fits in 8GB VRAM alongside other models. FP16 (16GB) is too large.
-3. **XTTS CPU-only**: Using CPU PyTorch because CUDA 12.x not available. TTS inference is fast enough on modern CPU.
+1. **Architecture reset**: AGI script was a hack. Proper stack is Asterisk (SIP only) → Dograh (ARI voice orchestrator with built-in pipeline) → AI models. Dograh was designed for this exact use case.
+2. **Dograh chosen** because it natively supports Asterisk ARI as telephony provider (discovered via API schema `provider: "ari"` → `ARIConfigurationRequest`)
+3. **GPU limitation**: Quadro M4000 (Maxwell CC 5.0) maxes at NVIDIA driver 470, CUDA 11.4. No CUDA 12.x support. Ollama bundles its own CUDA 12.x and works. Other containers (XTTS, Chatterbox) need explicit handling.
 4. **TTS pipeline**: Urdu → XTTS, English → Chatterbox (GPU), fallback → Kokoro (CPU), routed by TTS Router (10.40.0.33:8030).
-5. **Voice pipeline**: Asterisk AGI → n8n webhook → Whisper/Qalb/TTS → response WAV. Dograh provides advanced orchestration (ARI, WebSocket, outbound campaigns) as alternative path.
-6. **Bifrost auth**: LiteLLM v1.82.6 stores tokens in `LiteLLM_VerificationToken` (sha256 hash, no salt column in this version). Master key must be manually seeded or auto-seeded on fresh DB. `${VAR}` not supported in config.yaml — use `os.environ/VAR` syntax.
-
----
-(pending commit — bifrost auth + config fix, kokoro compose entry, env var defaults)
-```
+5. **Bifrost auth**: LiteLLM v1.82.6 stores tokens in `LiteLLM_VerificationToken` (SHA256 hash). Use `os.environ/VAR` syntax in config.yaml, not `${VAR}`.
+6. **Whisper STT API**: Uses `POST /asr` endpoint (not OpenAI `/v1/audio/transcriptions`). Fields: `audio_file` (form-data), `task` (transcribe/translate), `language` (ISO code), `output` (txt/vtt/srt/tsv/json).
+7. **Urdu STT bottleneck**: XTTS-generated Urdu speech is garbled — not recognizable by Whisper `large-v3` for transcription (though language detection now works correctly). Need better XTTS voice sample or alternative Urdu TTS.
+8. **Dograh user config**: TTS provider already set to `speaches` → `http://10.40.0.33:8030`. STT provider set to `dograh` (built-in). LLM via Dograh provider → Bifrost.
