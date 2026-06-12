@@ -1303,6 +1303,30 @@ services:
     restart: unless-stopped
 
   # ---
+  # AI LAYER CONTINUED --- LLM Proxy (strips tools for Qalb)
+  # ---
+
+  llm-proxy:
+    build:
+      context: /aios/configs/llm-proxy
+      dockerfile: Dockerfile
+    image: aios-llm-proxy:latest
+    container_name: aios-llm-proxy
+    hostname: llm-proxy
+    networks:
+      aios-ai:
+        ipv4_address: 10.40.0.35
+    environment:
+      OLLAMA_URL: http://10.40.0.20:11434
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; exit(0 if urllib.request.urlopen('http://localhost:11435/health').status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  # ---
   # AI LAYER CONTINUED --- Dia-1.6B-Urdu TTS (GPU — Urdu primary)
   # ---
 
@@ -1347,6 +1371,7 @@ services:
       - "127.0.0.1:8030:8030"
     environment:
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY}
+      ELEVENLABS_VOICE_ID: G1gUElsVCoazUpfBnLnt
     restart: unless-stopped
 
   # ================================================================
