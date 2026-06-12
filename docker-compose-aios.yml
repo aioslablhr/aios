@@ -618,6 +618,8 @@ services:
         ollama create qalb-1.0-8b -f /modelfiles/Qalb &&
         echo 'Pulling llava:7b-q4_K_M...' &&
         ollama pull llava:7b-q4_K_M &&
+        echo 'Pulling qwen2.5:7b-instruct-q4_K_M...' &&
+        ollama pull qwen2.5:7b-instruct-q4_K_M &&
         echo 'Done.'
       "
     restart: "no"
