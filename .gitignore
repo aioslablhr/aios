@@ -11,6 +11,10 @@ acme.json
 Thumbs.db
 desktop.ini
 
+# AWS secrets
+aios_accessKeys.csv
+*accessKeys*.csv
+
 # Data
 /data/
 __pycache__/

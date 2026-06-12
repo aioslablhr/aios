@@ -1,10 +1,9 @@
 import os
-import io
 import json
 import logging
+import subprocess
+import io
 import requests
-import urllib.request
-import urllib.parse
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
@@ -12,23 +11,73 @@ from pydantic import BaseModel
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("tts-router")
 
-app = FastAPI(title="AIOS TTS Router", version="1.0.0")
+app = FastAPI(title="AIOS TTS Router", version="2.0.0")
 
-XTTS_URL = os.environ.get("XTTS_URL", "http://10.40.0.32:8020/v1/tts")
-CHATTERBOX_URL = os.environ.get("CHATTERBOX_URL", "http://10.40.0.30:4123/v1/audio/speech")
-KOKORO_URL = os.environ.get("KOKORO_URL", "http://10.40.0.31:8880/v1/audio/speech")
+ELEVENLABS_API_KEY = os.environ.get(
+    "ELEVENLABS_API_KEY",
+    "sk_c0142c0acb1fa35302a6f6cc35bf38a938e2e8000a22d24a"
+)
+ELEVENLABS_VOICE_ID = os.environ.get(
+    "ELEVENLABS_VOICE_ID",
+    "Ukfq9vQ0QNLZ4MGK0Uxc"
+)
+ELEVENLABS_MODEL = os.environ.get("ELEVENLABS_MODEL", "eleven_multilingual_v2")
+ELEVENLABS_URL = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}/stream"
 
-# Simple character-range-based Urdu detection
-URDU_RANGE = range(0x0600, 0x06FF + 1)
-ARABIC_RANGE = range(0x0750, 0x077F + 1)
+HEADERS = {
+    "xi-api-key": ELEVENLABS_API_KEY,
+    "Content-Type": "application/json"
+}
 
 
-def has_urdu(text: str) -> bool:
-    for ch in text:
-        cp = ord(ch)
-        if cp in URDU_RANGE or cp in ARABIC_RANGE:
-            return True
-    return False
+TARGET_SAMPLE_RATE = int(os.environ.get("TARGET_SAMPLE_RATE", "24000"))
+
+
+def call_elevenlabs(text: str) -> bytes:
+    payload = {
+        "text": text,
+        "model_id": ELEVENLABS_MODEL,
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.75
+        }
+    }
+    resp = requests.post(ELEVENLABS_URL, json=payload, headers=HEADERS, timeout=30)
+    resp.raise_for_status()
+    return resp.content
+
+
+def mp3_to_pcm(mp3_bytes: bytes) -> bytes:
+    logger.info(f"Converting MP3 ({len(mp3_bytes)} bytes) to {TARGET_SAMPLE_RATE}Hz raw PCM")
+    # Write MP3 to temp file, then ffmpeg to raw PCM
+    tmp_in = f"/tmp/tts_in_{os.getpid()}.mp3"
+    tmp_out = f"/tmp/tts_out_{os.getpid()}.raw"
+    try:
+        with open(tmp_in, "wb") as f:
+            f.write(mp3_bytes)
+        cmd = [
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-i", tmp_in,
+            "-f", "s16le",
+            "-acodec", "pcm_s16le",
+            "-ac", "1",
+            "-ar", str(TARGET_SAMPLE_RATE),
+            tmp_out
+        ]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        _, err = proc.communicate()
+        if proc.returncode != 0:
+            raise RuntimeError(f"ffmpeg conversion failed: {err.decode()}")
+        with open(tmp_out, "rb") as f:
+            pcm = f.read()
+        logger.info(f"Converted to PCM ({len(pcm)} bytes, {len(pcm)/2/TARGET_SAMPLE_RATE:.2f}s)")
+        return pcm
+    finally:
+        for f in [tmp_in, tmp_out]:
+            try:
+                os.remove(f)
+            except OSError:
+                pass
 
 
 class TTSRequest(BaseModel):
@@ -48,92 +97,31 @@ class LegacyTTSRequest(BaseModel):
 
 @app.post("/v1/audio/speech")
 async def synthesize(req: TTSRequest):
-    text = req.input
-    lang = req.language or ""
-
-    if not lang:
-        lang = "ur" if has_urdu(text) else "en"
-
-    if lang.startswith("ur"):
-        logger.info(f"Routing to XTTS (Urdu): {text[:60]}")
-        try:
-            payload = {"text": text, "language": "ur"}
-            resp = requests.post(XTTS_URL, json=payload, timeout=60)
-            resp.raise_for_status()
-            return Response(content=resp.content, media_type="audio/wav")
-        except Exception as e:
-            logger.warning(f"XTTS failed ({e}), falling back to Chatterbox")
-            lang = "en"
-
-    if lang.startswith("en") or lang.startswith("ar"):
-        logger.info(f"Routing to Chatterbox (English): {text[:60]}")
-        try:
-            payload = {
-                "model": "tts-1",
-                "input": text,
-                "voice": req.voice,
-                "response_format": req.response_format,
-                "speed": req.speed,
-            }
-            resp = requests.post(CHATTERBOX_URL, json=payload, timeout=60)
-            resp.raise_for_status()
-            return Response(content=resp.content, media_type=f"audio/{req.response_format}")
-        except Exception as e:
-            logger.warning(f"Chatterbox failed ({e}), falling back to Kokoro")
-
-    logger.info(f"Routing to Kokoro (CPU fallback): {text[:60]}")
+    logger.info(f"ElevenLabs TTS ({len(req.input)} chars): {req.input[:60]}")
     try:
-        payload = {"model": "tts-1", "input": text, "voice": req.voice}
-        resp = requests.post(KOKORO_URL, json=payload, timeout=60)
-        resp.raise_for_status()
-        return Response(content=resp.content, media_type=f"audio/{req.response_format}")
+        mp3 = call_elevenlabs(req.input)
+        pcm = mp3_to_pcm(mp3)
+        return Response(content=pcm, media_type="audio/L16;rate=24000;channels=1")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"All TTS backends failed: {e}")
+        raise HTTPException(status_code=502, detail=f"ElevenLabs failed: {e}")
 
 
 @app.post("/v1/text-to-speech")
 async def tts_legacy(req: LegacyTTSRequest):
-    text = req.text
-    lang = req.language or ("ur" if has_urdu(text) else "en")
-
-    if lang.startswith("ur"):
-        try:
-            payload = {"text": text, "language": "ur"}
-            resp = requests.post(XTTS_URL, json=payload, timeout=60)
-            resp.raise_for_status()
-            return Response(content=resp.content, media_type="audio/wav")
-        except:
-            lang = "en"
-
+    logger.info(f"ElevenLabs TTS legacy ({len(req.text)} chars): {req.text[:60]}")
     try:
-        payload = {"model": "tts-1", "input": text, "voice": "default"}
-        resp = requests.post(CHATTERBOX_URL, json=payload, timeout=60)
-        resp.raise_for_status()
-        return Response(content=resp.content, media_type=f"audio/wav")
-    except:
-        pass
-
-    try:
-        payload = {"model": "tts-1", "input": text, "voice": "default"}
-        resp = requests.post(KOKORO_URL, json=payload, timeout=60)
-        resp.raise_for_status()
-        return Response(content=resp.content, media_type=f"audio/wav")
+        mp3 = call_elevenlabs(req.text)
+        pcm = mp3_to_pcm(mp3)
+        return Response(content=pcm, media_type="audio/L16;rate=24000;channels=1")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"TTS failed: {e}")
+        raise HTTPException(status_code=502, detail=f"ElevenLabs failed: {e}")
 
 
 @app.get("/health")
 async def health():
-    backends = {}
-    for name, url in [("xtts", XTTS_URL), ("chatterbox", CHATTERBOX_URL), ("kokoro", KOKORO_URL)]:
-        try:
-            r = requests.get(url.replace("/v1/audio/speech", "/health").replace("/v1/tts", "/health"), timeout=3)
-            backends[name] = "ok" if r.status_code == 200 else f"http_{r.status_code}"
-        except Exception as e:
-            backends[name] = f"unreachable: {str(e)[:40]}"
-    return {"status": "ok", "backends": backends}
+    return {"status": "ok", "backend": "ElevenLabs", "voice_id": ELEVENLABS_VOICE_ID}
 
 
 @app.get("/")
 async def root():
-    return {"service": "aios-tts-router", "version": "1.0.0", "docs": "/docs"}
+    return {"service": "aios-tts-router", "version": "2.0.0", "backend": "ElevenLabs"}

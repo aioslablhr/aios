@@ -1,9 +1,11 @@
 FROM python:3.11-slim
 
 LABEL maintainer="AIOS Lab"
-LABEL description="AIOS TTS Router — language-aware routing: Urdu→XTTS, English→Chatterbox, fallback→Kokoro"
+LABEL description="AIOS TTS Router — ElevenLabs → WAV converter for Dograh"
 
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

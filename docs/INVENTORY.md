@@ -3,7 +3,7 @@
 
 ---
 
-## 1. SERVICES — All 35 Compose Services Running
+## 1. SERVICES — All 47 Compose Services Running
 
 ### DMZ Zone — 10.10.0.0/24
 | Service | Container | Image | IP | Ports | Status | Endpoint |
@@ -38,8 +38,15 @@
 | Bifrost (LiteLLM) | aios-bifrost | ghcr.io/berriai/litellm:main-latest | 10.40.0.10 | 4000 | healthy | ai.socialbeesai.com |
 | Ollama | aios-ollama | ollama/ollama:latest | 10.40.0.20 | 11434 | healthy | (internal — embeddings + vision) |
 | Chatterbox TTS | aios-chatterbox | travisvn/chatterbox-tts-api:latest | 10.40.0.30 | 4123 | running (starting) | (internal — GPU TTS primary, Dograh auto-selects) |
-| Kokoro TTS | aios-kokoro | ghcr.io/remsky/kokoro-fastapi:latest | 10.40.0.31 | 8880 | planned | (internal — CPU TTS fallback, Dograh auto-selects) |
+| Kokoro TTS | aios-kokoro | ghcr.io/remsky/kokoro-fastapi:latest | 10.40.0.31 | 8880 | running | (internal — CPU TTS fallback, Dograh auto-selects) |
+| Dia-1.6B-Urdu | aios-dia-tts | aios-dia-tts:latest (custom) | 10.40.0.34 | 8034 | running (CPU) | (internal — GPU Urdu TTS primary, replaces XTTS for Urdu, CPU fallback on Quadro) |
+| XTTS Urdu | aios-xtts-urdu | aios-xtts-urdu:latest (custom) | 10.40.0.32 | 8020 | running | (internal — Urdu TTS fallback, voice cloned) |
+| Speaches STT/TTS | aios-speaches | ghcr.io/speaches-ai/speaches:latest-cpu | 10.40.0.41 | 8141 | healthy | (internal — faster-whisper-large-v3, OpenAI-compatible) |
+| Whisper STT | aios-whisper-stt | onerahmet/openai-whisper-asr-webservice:latest | 10.40.0.40 | 9000 | running | (internal — large-v3, English primary) |
+| TTS Router | aios-tts-router | aios-tts-router:latest (custom) | 10.40.0.33 | 8030 | running | (internal — ElevenLabs REST API proxy) |
 | Frigate NVR | aios-frigate | ghcr.io/blakeblackshear/frigate:stable | 10.40.0.50 | 5000 | healthy | frigate.socialbeesai.com |
+| Docling | aios-docling | aios-docling:latest (custom) | 10.40.0.42 | — | healthy | (internal — document parsing) |
+| Mem0 | aios-mem0 | aios-mem0:latest (custom) | 10.40.0.43 | — | healthy | (internal — memory layer) |
 
 ### Voice Zone — 10.50.0.0/24
 | Service | Container | Image | IP | Ports | Status | Endpoint |
@@ -56,7 +63,7 @@
 | Prometheus | aios-prometheus | prom/prometheus:latest | 10.60.0.20 | 9090 | running | monitor.socialbeesai.com/prometheus |
 | Grafana | aios-grafana | grafana/grafana:latest | 10.60.0.30 | 3000 | running | monitor.socialbeesai.com/grafana |
 | Loki | aios-loki | grafana/loki:latest | 10.60.0.40 | 3100 | running | (internal — logs) |
-| Portainer | aios-portainer | portainer/portainer-ce:latest | 10.60.0.50 | 9000 | running | monitor.socialbeesai.com/portainer |
+| Portainer | aios-portainer | portainer/portainer-ce:latest | 10.60.0.50 | 9000 | running | monitor.socialbeesai.com/portainer, host:9000 |
 | cAdvisor | aios-cadvisor | gcr.io/cadvisor/cadvisor:latest | 10.60.0.60 | 8080 | healthy | monitor.socialbeesai.com/cadvisor |
 | Node Exporter | aios-node-exporter | prom/node-exporter:latest | 10.60.0.61 | 9100 | running | (internal — host metrics) |
 | Dashy | aios-dashy | lissy93/dashy:latest | 10.60.0.70 | 8080 | running (starting) | socialbeesai.com |
@@ -115,6 +122,8 @@
 | chatterbox-data | /app/data | Chatterbox TTS |
 | chatterbox-voices | /app/voices | Chatterbox TTS |
 | chatterbox-output | /app/output | Chatterbox TTS |
+| dia-tts-cache | /app/model_cache | Dia-1.6B-Urdu TTS |
+| speaches-cache | /home/ubuntu/.cache/huggingface/hub | Speaches STT/TTS |
 
 ---
 
@@ -141,6 +150,9 @@
 | CrowdSec | API key | `.env` | (see .env on server) |
 | Frigate RTSP | password | `.env` | Lahore*999 |
 | Flowise | user/pass | — | admin / admin |
+| Portainer | host port | `.env` / compose | http://10.0.0.100:9000 (admin setup required) |
+| AWS IAM | access keys | `/aios/aios_accessKeys.csv` | AKIA565H4TDW4RHSX7TJ |
+| EC2 SSH | key pair | `/aios/aios-key.pem` | ubuntu@3.91.2.202 |
 
 Full list: `docs/ref/credentials.md`
 
@@ -278,4 +290,29 @@ All other LLM inference uses OpenRouter $0 tier (25 free models via Bifrost).
 
 ---
 
-*Created May 21, 2026 • Updated May 26, 2026 — AIOS Inventory v4.4*
+## 10. AWS INFRASTRUCTURE
+
+| Resource | ID/Value | Notes |
+|----------|----------|-------|
+| AWS Account | 959740418285 | IAM user: `aios` |
+| Region | us-east-1 | Default VPC: vpc-07a4c322baf02e112 |
+| EC2 Key Pair | aios-key | PEM at `/aios/aios-key.pem` on server |
+| EC2 Instance | i-01b37e00dfe0fc251 | t3.micro, 3.91.2.202, us-east-1a |
+| AMI | ami-0d7405d05f836d0d4 | Ubuntu 22.04 LTS |
+| Docker | 29.5.3 + Compose v5.1.4 | Installed on EC2 |
+| Security Group | sg-0c170aa450b71d1b0 | Ports 22, 80, 443, 5678 open |
+| Subnet | subnet-0e4c29f19887dadf3 | Default, auto-assign public IP |
+| Note | t3.micro (1GB RAM) too small for full AIOS stack | Upgrade to g4dn.xlarge needed |
+
+---
+
+## 11. KEY DIRECTORIES (Updated)
+
+| Path | Purpose | Git? |
+|------|---------|------|
+| `/aios/configs/dia-tts/` | Dia-1.6B-Urdu TTS Docker build (Dockerfile.dia, server.py, requirements.txt) | yes |
+| `/aios/configs/speaches/` | Speaches STT/TTS config | yes |
+
+---
+
+*Created May 21, 2026 • Updated June 12, 2026 — AIOS Inventory v6.0*

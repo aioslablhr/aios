@@ -1,0 +1,25 @@
+FROM python:3.11-slim
+
+LABEL maintainer="AIOS Lab"
+LABEL description="Dia-1.6B-Urdu TTS — Urdu text-to-speech with GPU acceleration"
+
+WORKDIR /app
+
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends \
+    build-essential \
+    libsndfile1 \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+RUN pip install --no-cache-dir git+https://github.com/nari-labs/dia.git
+
+COPY server.py .
+
+EXPOSE 8034
+
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8034"]

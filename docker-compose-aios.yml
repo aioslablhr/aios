@@ -40,6 +40,8 @@ volumes:
   chatterbox-output:
   open-webui-data:
   xtts-cache:
+  dia-tts-cache:
+  speaches-cache:
 
 services:
   # ================================================================
@@ -484,8 +486,10 @@ services:
       aios-mon:
         ipv4_address: 10.60.0.50
       aios-dmz:
+    ports:
+      - "9000:9000"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run/docker.sock:/var/run/docker.sock
       - portainer-data:/data
     command: --http-enabled
     restart: unless-stopped
@@ -1251,6 +1255,35 @@ services:
     restart: unless-stopped
 
   # ---
+  # AI LAYER CONTINUED --- Speaches STT/TTS (OpenAI-compatible, faster-whisper)
+  #   Replaces whisper-stt for Dograh's OpenAI-compatible STT needs.
+  #   Uses faster-whisper-large-v3 for Urdu support.
+  # ---
+
+  speaches:
+    image: ghcr.io/speaches-ai/speaches:latest-cpu
+    container_name: aios-speaches
+    hostname: speaches
+    networks:
+      aios-ai:
+        ipv4_address: 10.40.0.41
+      aios-voice:
+    ports:
+      - "127.0.0.1:8141:8000"
+    volumes:
+      - speaches-cache:/home/ubuntu/.cache/huggingface/hub
+    environment:
+      WHISPER__MODEL: Systran/faster-whisper-large-v3
+      WHISPER__TTL: "-1"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://0.0.0.0:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  # ---
   # AI LAYER CONTINUED --- Kokoro TTS (CPU fallback)
   # ---
 
@@ -1270,8 +1303,34 @@ services:
     restart: unless-stopped
 
   # ---
-  # AI LAYER CONTINUED --- TTS Router (Language-aware routing)
+  # AI LAYER CONTINUED --- Dia-1.6B-Urdu TTS (GPU — Urdu primary)
   # ---
+
+  dia-tts:
+    build:
+      context: /aios/configs/dia-tts
+      dockerfile: Dockerfile.dia
+    image: aios-dia-tts:latest
+    container_name: aios-dia-tts
+    hostname: dia-tts
+    networks:
+      aios-ai:
+        ipv4_address: 10.40.0.34
+      aios-voice:
+    ports:
+      - "127.0.0.1:8034:8034"
+    volumes:
+      - dia-tts-cache:/app/model_cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      CUDA_VISIBLE_DEVICES: "0"
+    restart: unless-stopped
 
   tts-router:
     build:
@@ -1287,6 +1346,7 @@ services:
     ports:
       - "127.0.0.1:8030:8030"
     environment:
+      DIA_URL: http://10.40.0.34:8034/v1/audio/speech
       XTTS_URL: http://10.40.0.32:8020/v1/tts
       CHATTERBOX_URL: http://10.40.0.30:4123/v1/audio/speech
       KOKORO_URL: http://10.40.0.31:8880/v1/audio/speech

@@ -18,7 +18,7 @@
 | MinIO Console | https://data.socialbeesai.com/minio | admin | minioadmin | S3 storage |
 | Grafana | https://monitor.socialbeesai.com/grafana | admin | grafana_admin_2026 | Metrics dashboards |
 | Prometheus | https://monitor.socialbeesai.com/prometheus | — | — | Metrics backend |
-| Portainer | https://monitor.socialbeesai.com/portainer | (create on first visit) | — | Docker management |
+| Portainer | https://monitor.socialbeesai.com/portainer, http://10.0.0.100:9000 | (create on first visit) | — | Docker management, host port 9000 |
 | cAdvisor | https://monitor.socialbeesai.com/cadvisor | — | — | Container monitoring |
 | Qdrant Dashboard | https://qdrant.socialbeesai.com/dashboard | API key: aios_qdrant_2026 | — | Vector database UI |
 | ClickHouse Play | https://clickhouse.socialbeesai.com | default | clickhouse | Analytics queries |
@@ -43,6 +43,11 @@
 | Dograh UI | 10.50.0.31:3010 | Sign up on first visit | Voice dashboard |
 | Chatterbox TTS | 10.40.0.30:4123 | — | GPU text-to-speech (primary, Dograh auto-selects) |
 | Kokoro TTS | 10.40.0.31:8880 | — | CPU text-to-speech (fallback, Dograh auto-selects) |
+| Dia-1.6B-Urdu TTS | 10.40.0.34:8034 | — | GPU Urdu TTS (CPU fallback on Quadro) |
+| XTTS Urdu TTS | 10.40.0.32:8020 | — | Urdu TTS with voice clone |
+| Speaches STT/TTS | 10.40.0.41:8141 | — | faster-whisper-large-v3, OpenAI-compatible |
+| TTS Router | 10.40.0.33:8030 | — | ElevenLabs REST API proxy |
+| Whisper STT | 10.40.0.40:9000 | — | large-v3, POST /asr endpoint |
 | Mosquitto MQTT | 10.50.0.20:1883 | — | Event bus |
 | Asterisk ARI | 10.0.0.100:8088 | ai / 95vt3r6ke1w8lgqg6qpcui8e | PBX API |
 | ClickHouse | 10.60.0.11:8123 | default / clickhouse | Analytics DB |
@@ -75,6 +80,9 @@
 | Cloudflare | (see .env on server) | DNS:Edit scope, admin@socialbeesai.com |
 | CrowdSec | (see .env on server) | WAF bouncer key |
 | MinIO | admin / minioadmin | Console + API |
+| Deepgram | (see /aios/.env on server) | Urdu STT — Nova-3 |
+| AWS Access Key | AKIA565H4TDW4RHSX7TJ | IAM user: aios, in /aios/aios_accessKeys.csv |
+| AWS EC2 Key Pair | aios-key | PEM at /aios/aios-key.pem on server |
 
 ---
 
