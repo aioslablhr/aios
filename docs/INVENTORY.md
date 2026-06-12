@@ -311,7 +311,7 @@ All other LLM inference uses OpenRouter $0 tier (25 free models via Bifrost).
 | Path | Purpose | Git? |
 |------|---------|------|
 | `/aios/configs/dia-tts/` | Dia-1.6B-Urdu TTS Docker build (Dockerfile.dia, server.py, requirements.txt) | yes |
-| `/aios/configs/speaches/` | Speaches STT/TTS config | yes |
+| `/aios/configs/speaches/` | Speaches STT/TTS config (pre-built image, no local config needed) | no |
 
 ---
 

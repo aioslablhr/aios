@@ -13,10 +13,9 @@ logger = logging.getLogger("tts-router")
 
 app = FastAPI(title="AIOS TTS Router", version="2.0.0")
 
-ELEVENLABS_API_KEY = os.environ.get(
-    "ELEVENLABS_API_KEY",
-    "sk_c0142c0acb1fa35302a6f6cc35bf38a938e2e8000a22d24a"
-)
+ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
+if not ELEVENLABS_API_KEY:
+    raise RuntimeError("ELEVENLABS_API_KEY must be set in environment")
 ELEVENLABS_VOICE_ID = os.environ.get(
     "ELEVENLABS_VOICE_ID",
     "Ukfq9vQ0QNLZ4MGK0Uxc"
