@@ -6,7 +6,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("llm-proxy")
 app = FastAPI(title="AIOS LLM Proxy")
 
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://10.40.0.20:11434")
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://10.40.0.10:4000")
 
 @app.get("/health")
 async def health():
@@ -26,7 +26,7 @@ async def proxy(path: str, request: Request):
             data.pop("tools", None)
             data.pop("tool_choice", None)
             if had_tools:
-                logger.info(f"Stripped tools for Qalb")
+                logger.info(f"Stripped tools for local-urdu")
             body = json.dumps(data).encode()
         except json.JSONDecodeError:
             pass
