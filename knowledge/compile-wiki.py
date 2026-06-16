@@ -238,7 +238,7 @@ def compile_company(config: dict, slug: str):
             if current_filename and current_content:
                 save_wiki_page(wiki_dir, current_type, current_filename, current_content)
                 page_count += 1
-            current_type = None
+            current_type = ""  # index goes in root of wiki dir
             current_content = []
             current_filename = None
         elif stripped == "---" or not stripped:
@@ -258,12 +258,12 @@ def compile_company(config: dict, slug: str):
 
 
 def save_wiki_page(wiki_dir: Path, category: str | None, filename: str, content_lines: list[str]):
-    if not category or not filename:
+    if category is None or not filename:
         return
     content = "\n".join(content_lines).strip()
     if not content:
         return
-    cat_dir = wiki_dir / category
+    cat_dir = wiki_dir / category if category else wiki_dir
     cat_dir.mkdir(exist_ok=True)
     path = cat_dir / filename
     with open(path, "w", encoding="utf-8") as f:
