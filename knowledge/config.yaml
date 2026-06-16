@@ -37,6 +37,9 @@ minio:
   input_bucket: raw-uploads
   processed_bucket: processed-text
 
+# Company wiki directories (one per company)
+companies_dir: /app/companies
+
 # Scheduled tasks
 schedule:
   daily_compilation: "0 0 * * *"  # midnight

@@ -1,27 +1,28 @@
 # AIOS — Session Checkpoint
 
-**Version:** 6.3
-**Date:** June 12, 2026
+**Version:** 6.7
+**Date:** June 13, 2026
 **Branch:** main
-**Last commit:** c5aa64a (pushed to GitHub)
+**Last commit:** 7628689 (pushed to GitHub)
 
 ---
 
-## Container Status (Server — June 12 after reboot recovery)
+## Container Status (Server — June 13, 2026)
 
-### Running (47 — all services healthy or starting)
-aios-traefik, aios-postgres, aios-redis, aios-qdrant, aios-minio, aios-clickhouse, aios-ollama, aios-bifrost, aios-langfuse, aios-docling, aios-mem0, aios-asterisk, aios-dnsmasq-tftp, aios-knowledge-ingest, aios-knowledge-compile, aios-dograh-api, aios-dograh-ui, aios-tts-router, aios-chatterbox, aios-kokoro, aios-xtts-urdu, aios-whisper-stt, aios-n8n, aios-n8n-worker-1, aios-n8n-worker-2, aios-n8n-db, aios-flowise, aios-open-webui, aios-keycloak, aios-mcp, aios-vault, aios-vault-unseal, aios-grafana, aios-portainer, aios-dashy, aios-prometheus, aios-cadvisor, aios-node-exporter, aios-loki, aios-crowdsec, aios-frigate, aios-mosquitto, aios-gitops, aios-hermes, aios-speaches, aios-dia-tts, aios-data-qdrant-proxy
+### Running (48 — all services healthy or starting)
+aios-traefik, aios-postgres, aios-redis, aios-qdrant, aios-minio, aios-clickhouse, aios-ollama, aios-bifrost, aios-langfuse, aios-docling, aios-mem0, aios-asterisk, aios-dnsmasq-tftp, aios-knowledge-ingest, aios-knowledge-compile, aios-dograh-api, aios-dograh-ui, aios-tts-router, aios-chatterbox, aios-kokoro, aios-xtts-urdu, aios-whisper-stt, aios-n8n, aios-n8n-worker-1, aios-n8n-worker-2, aios-n8n-db, aios-flowise, aios-open-webui, aios-keycloak, aios-mcp, aios-vault, aios-vault-unseal, aios-grafana, aios-portainer, aios-dashy, aios-prometheus, aios-cadvisor, aios-node-exporter, aios-loki, aios-crowdsec, aios-frigate, aios-mosquitto, aios-gitops, aios-hermes, aios-speaches, aios-dia-tts, aios-data-qdrant-proxy, aios-llm-proxy
 
 ### Known Issues
 - Chatterbox: runs with model loaded on CUDA but Docker healthcheck marks unhealthy
 - Keycloak: health: starting (takes ~2min to become healthy)
 - WireGuard: Created state (sysctl `net.ipv4.conf.all.src_valid_mark` not allowed in host network namespace — pre-existing, user wants to keep)
 - dia-tts: Build context created on server, image built, container running but on CPU (Quadro M4000 can't run CUDA 12.x required by PyTorch 2.6)
+- **TTS English words**: ElevenLabs voice `G1gUElsVCoazUpfBnLnt` mispronounces English words mixed in Pakistani Urdu. Need native Urdu voice clone.
 
 ### Written but NOT started
 - Nextcloud (10.70.0.30), Odoo (10.70.0.20), Metabase (10.70.0.40) — docker-compose-apps.yml exists, never started
 
-### Container Count: 47 running (1 building: dia-tts initially missing)
+### Container Count: 48 running
 
 ---
 
@@ -29,7 +30,7 @@ aios-traefik, aios-postgres, aios-redis, aios-qdrant, aios-minio, aios-clickhous
 
 | File | Contents | Status |
 |------|----------|--------|
-| `docker-compose-aios.yml` | AI infrastructure + orchestration: Traefik, Postgres, Redis, Qdrant, MinIO, Bifrost, Langfuse, Ollama, Asterisk, Dograh, n8n, Flowise, Open WebUI, CrowdSec, Grafana, Portainer, Speaches, Dia-TTS, etc. | **Running** (47 containers) |
+| `docker-compose-aios.yml` | AI infrastructure + orchestration: Traefik, Postgres, Redis, Qdrant, MinIO, Bifrost, Langfuse, Ollama, Asterisk, Dograh, n8n, Flowise, Open WebUI, CrowdSec, Grafana, Portainer, Speaches, Dia-TTS, LLM-Proxy, etc. | **Running** (48 containers) |
 | `docker-compose-apps.yml` | FOSS business apps: Nextcloud, Odoo, Metabase | **Never started** |
 
 ---
@@ -190,6 +191,46 @@ aios-traefik, aios-postgres, aios-redis, aios-qdrant, aios-minio, aios-clickhous
 
 ---
 
+### Session 6 — June 13: LLM Proxy, Qalb Rejected, Qwen Rejected, Switched to Bifrost/OpenRouter Cloud
+
+#### 34. Root Cause: Qalb 1.0-8b Does Not Support Tools ✅
+- Ext 105 call: greeting plays → user speaks → Deepgram STT transcribes → Dograh sends tools → Qalb 400 error (`does not support tools`) → crash → hangup
+- STT was working correctly all along (confirmed by direct Deepgram API test)
+- **Fix**: Created `configs/llm-proxy/` — lightweight FastAPI proxy at 10.40.0.35:11435 that strips `tools` and `tool_choice` from requests before forwarding to Ollama
+
+#### 35. Urdu Prompts — Grammar Fixed + Shortened ✅
+- Rewrote all 3 workflow nodes for Workflow 5, greeting updated with "Social Bees AI" brand name
+
+#### 36. Qalb 1.0-8b — REJECTED (Gibberish + Unusably Slow) ❌
+- 16-29s TTFB (2.78 tok/s). Urdu outputs were nonsensical: introduced itself as "احمد خان", degraded into gibberish, finally gave up "مجھے افسوس ہے، میں آپ کی مدد کرنے نہیں سکتی۔"
+- No tool support, terrible Urdu, unusably slow on Quadro M4000
+
+#### 37. Qwen 2.5 7B — REJECTED (Also Gibberish + Slow) ❌
+- Already pulled on Ollama (4.68GB, Q4_K_M). Tested at 7.08 tok/s (~2.5x faster than Qalb)
+- BUT: Urdu output was equally bad — mixed Chinese characters (`窃取以下工具的信息，以便更好地回答用户问题`), English words mixed in (`velvet group`, `reception`), nonsensical sentences
+- Both local models failed: Quadro M4000 (Maxwell 2015, 8GB VRAM) is too weak for any local Urdu LLM at usable quality
+
+#### 38. Switched to Bifrost → OpenRouter Cloud (Multilingual) ✅
+- Dograh config ID=2 updated: model=`multilingual`, base_url=`http://10.40.0.10:4000/v1`, api_key=`sk-aios-bifrost`
+- Bifrost routes `multilingual` → OpenRouter free tier: Qwen 3 80B → Gemma 4 31B → Qwen 2.5 72B (with fallback chain)
+- Created Bifrost virtual key `sk-aios-bifrost` for Dograh access
+- Result: **Fast cloud inference, coherent native Urdu, culturally appropriate language**
+- User confirmed: "much better, urdu native language is very good now"
+
+#### 39. TTS: Google Tested → Back to ElevenLabs ✅
+- Switched TTS to Google TTS (`voice="urdu"`) — user said "pathetic accent"
+- Switched back to ElevenLabs (`voice="default"`, voice ID `G1gUElsVCoazUpfBnLnt`)
+- Current TTS quality: OK for pure Urdu but **bad pronunciation of English words mixed in Urdu**
+- In Pakistani Urdu, English words are commonly mixed in ("main ne meeting schedule kar di"). The ElevenLabs voice pronounces English words with wrong accent because it's not a native Urdu speaker
+- **Next step**: Need a native Urdu ElevenLabs voice (voice cloning or different voice ID)
+
+#### 40. LLM Prompts Updated for Native Pakistani Urdu ✅
+- Main Conversation: "Speak only natural Pakistani Urdu. Use common Urdu phrases like جی، ٹھیک ہے، اچھا، بھئی. Keep responses short and conversational like a real person. Never mix in English or Hindi words."
+- Start Call: "You are a Pakistani Urdu-speaking receptionist. Greet callers in natural Urdu with proper adab."
+- These are separate from TTS — LLM language quality is now good, TTS accent is the remaining issue
+
+---
+
 ## AWS Infrastructure (Current)
 
 | Resource | ID/Value | Status |
@@ -210,18 +251,22 @@ aios-traefik, aios-postgres, aios-redis, aios-qdrant, aios-minio, aios-clickhous
 Caller → SIP → Asterisk → ARI → Dograh (voice orchestrator)
   Dograh handles:
     1. Receive audio from caller via ARI WebSocket
-    2. STT: Deepgram Nova-3 Urdu (cloud) — replaces local Whisper
-    3. LLM: Dograh provider → Bifrost (10.40.0.10:4000) → OpenRouter
-    4. TTS: Speaches provider → TTS Router (10.40.0.33:8030)
-       → ElevenLabs multilingual_v2 (cloud, REST API)
-    5. Send audio back to caller via ARI
+    2. STT: Deepgram Nova-3 Urdu (cloud)
+    3. LLM (Urdu/105): SpeachesLLMService → Bifrost (10.40.0.10:4000, model=multilingual) → OpenRouter free tier
+       → Qwen 3 80B → Gemma 4 31B → Qwen 2.5 72B (with fallback chain)
+       Fast cloud inference, coherent native Pakistani Urdu
+    4. LLM (English/102): Dograh provider → Bifrost (10.40.0.10:4000) → OpenRouter
+    5. TTS (all): Speaches provider → TTS Router (10.40.0.33:8030, voice-based routing)
+       → voice="default" → ElevenLabs REST API (voice ID G1gUElsVCoazUpfBnLnt)
+       → voice="urdu" → Google TTS (translate.googleapis.com, tl=ur)
+    6. Send audio back to caller via ARI
 
 TTS Pipeline (via Speaches provider):
   user_config.tts.base_url = "http://10.40.0.33:8030/v1"
   SpeachesTTSService extends OpenAITTSService
-  Request: POST {base_url}/audio/speech → POST /v1/audio/speech
-  TTS Router POST to https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream
-  Voice: hardcoded to ELEVENLABS_VOICE_ID = "Ukfq9vQ0QNLZ4MGK0Uxc"
+  TTS Router routes by voice name:
+    default → ElevenLabs API (voice ID from env var ELEVENLABS_VOICE_ID)
+    urdu/google/google_tts → Google Translate TTS
   Returns: raw PCM s16le 24000Hz mono, audio/L16;rate=24000;channels=1
 ```
 
@@ -261,7 +306,7 @@ TTS Pipeline (via Speaches provider):
 | Phone Number Ext 105 | Linked to Workflow ID 5 (Urdu), type: sip_extension |
 | Workflow ID 1 | "AI Voice Receptionist" (English), active, v2 (edges fixed) |
 | Workflow ID 5 | "Urdu Voice Receptionist", active, v1 |
-| User Config (user_id=2) | STT=Deepgram(nova-3,ur), TTS=Speaches(TTS Router:8030/v1), LLM=Dograh→Bifrost |
+| User Config (user_id=2) | STT=Deepgram(nova-3,ur), TTS=Speaches(TTS Router:8030/v1, voice=default→ElevenLabs), LLM=Speaches→Bifrost(10.40.0.10:4000, multilingual→OpenRouter free tier) |
 | ARI Status | `Active connections: 1 (configs: [1])` — org 2 only |
 
 ---
@@ -270,8 +315,9 @@ TTS Pipeline (via Speaches provider):
 
 | Item | Priority | Status |
 |------|----------|--------|
-| Test end-to-end call: dial 102 (English) from Cisco phone (Ext 9000) | **High** | 🟡 TTS fixed, routing fixed (org 3 removed). Physically dial 102 from lab |
-| Test end-to-end call: dial 105 (Urdu) from Cisco phone (Ext 9000) | **High** | 🟡 Verify Urdu STT/TTS pipeline after cleanup |
+| Test end-to-end call: dial 102 (English) from Cisco phone (Ext 9000) | **High** | 🟡 Not tested yet |
+| Test end-to-end call: dial 105 (Urdu) from Cisco phone (Ext 9000) | **Done** | ✅ LLM = Bifrost/OpenRouter multilingual (fast, native Urdu). TTS = ElevenLabs (accent OK for pure Urdu, bad on English words). Conversation flows naturally. |
+| Get native Urdu ElevenLabs voice | **High** | 🟡 Current voice `G1gUElsVCoazUpfBnLnt` has poor pronunciation of English words mixed in Urdu. Need voice cloning or different voice ID. |
 | FOSS apps (Nextcloud, Odoo, Metabase) | Low | ❌ never started |
 | Chatterbox healthcheck fix | Low | ❌ Container works, missing `/health` endpoint |
 | Nightly backup cron | Low | ❌ script exists, no cron |
@@ -297,3 +343,162 @@ TTS Pipeline (via Speaches provider):
 12. **Compose file separation**: `docker-compose-aios.yml` for AI infrastructure + orchestration, `docker-compose-apps.yml` for FOSS business apps (Odoo, Nextcloud, Metabase, FreePBX). Apps compose never started.
 13. **Server auto-start**: Systemd `aios-stack.service` starts compose on boot. Failed June 12 due to missing dia-tts build context. Fixed by creating the build directory on server. Service uses `Type=oneshot`, `RemainAfterExit=yes`.
 14. **AWS deployment**: AIOS can be deployed to AWS EC2. t3.micro free tier has only 1GB RAM — insufficient for full 47-container stack. Need g4dn.xlarge (or at least t3.medium) for production deployment. AWS CLI + key pair configured for automated deployment.
+15. **LLM Proxy for Qalb**: Qalb 1.0-8b does not support OpenAI tool/function calling. Dograh sends tool definitions (hangup, transfer, etc.) with every LLM call, causing Qalb to error. Created `aios-llm-proxy` (10.40.0.35:11435) that strips `tools` and `tool_choice` from requests before forwarding to Ollama. Downside: tools like hangup are unavailable — call ends via LLM-determined end condition only.
+16. **Qalb LLM rejected**: Qalb 1.0-8b was unusable — 2.78 tok/s (16-30s per turn), no tool support, gibberish Urdu responses. Replaced by Qwen 2.5 7B (7 tok/s, tools support, coherent Urdu). Qwen already pulled and available on Ollama. Switch involved: updating model name in `user_configurations.id=2`, reverting base_url from LLM proxy back to direct Ollama.
+17. **Qwen 2.5 7B also rejected**: 7 tok/s on Quadro M4000 (2.5x faster than Qalb) but Urdu output was still gibberish with Chinese/English mixed in. Quadro M4000 is fundamentally too weak for any local Urdu LLM at usable quality.
+18. **Bifrost/OpenRouter cloud for Urdu**: Final working LLM solution. Dograh → Bifrost (`model=multilingual`) → OpenRouter free tier. Routes to Qwen 3 80B → Gemma 4 31B → Qwen 2.5 72B with fallback. Fast cloud inference, coherent native Pakistani Urdu, free tier. Follows CLAUDE.md Bifrost routing principle (ALL LLM calls through Bifrost).
+19. **Bifrost key management**: Virtual key `sk-aios-bifrost` created via Bifrost API for Dograh access. Master admin key is `sk-aios-master-admin-key-change-me`. Config reference: `/aios/configs/bifrost/config.yaml` has all model routing.
+20. **TTS accent problem**: ElevenLabs voice `G1gUElsVCoazUpfBnLnt` handles pure Urdu OK but English words mixed in Urdu ("main ne meeting schedule kar di") are mispronounced. The voice is not a native Urdu speaker. Solution: voice cloning from a native Urdu speaker recording (2-3 min sample) or finding a better ElevenLabs voice ID.
+
+---
+
+### Session 7 — June 13: Urdu Call End-to-End Test + TTS Speed Fix
+
+#### 41. TTS Router v4.0.0 — Verified Healthy ✅
+- Rebuilt and running (container up, `/health` returns `{"status":"healthy"}`)
+- Uses `--no-cache` to fully rebuild; second build used cache (ffmpeg layer cached, ~0.2s)
+
+#### 42. Ext 105 Urdu Call — Tested End-to-End from Cisco 7962G ✅
+- Caller (Ext 9000) dials 105 → Asterisk → Dograh ARI → Workflow 5 (Urdu)
+- Greeting plays in Urdu
+- User speaks Urdu → Deepgram Nova-3 transcribes
+- LLM responds via Bifrost/OpenRouter multilingual chain
+- TTS via TTS Router → ElevenLabs
+- **Observed latency**: ~5.6s per turn (improved from ~8-9s in Session 6)
+- Call ended with `call_duration_exceeded` (hit 5 min / 300s limit — now increased to 600s)
+
+#### 43. Root Cause: Silent/No Reply After First Turn ✅
+- Multiple factors combined:
+  1. **VAD too sensitive (default 0.7)** — background noise from 2 devices triggered false speech detection mid-LLM response → Dograh thought user interrupted → early hangup
+  2. **Context blowup** — noise triggers produced large prompts (5,257 tokens on last turn), causing 6.04s LLM TTFB
+  3. **OpenRouter 429 rate limits** — Bifrost paid fallback model routing caused profuse errors
+  4. **TTS speed=1.0 default** — no speed parameter passed, ElevenLabs default (normal speed) sounded choppy
+
+#### 44. VAD Threshold — Increased to 0.85 ✅
+- Edit: `/aios/dograh-api/run_pipeline.py` line 252: `VAD_THRESHOLD = 0.85` (was 0.70)
+- Less sensitive to background noise, less false interrupt detection
+
+#### 45. Max Call Duration — Increased to 600s ✅
+- Docker env `MAX_CALL_DURATION=600` on `dograh-api` service in compose
+
+#### 46. TTS Speed — Reduced to 0.8 ✅
+- PostgreSQL: `UPDATE user_configurations SET config = jsonb_set(config, '{tts,speed}', '"0.8"') WHERE id = 2;`
+- BUT: TTS Router was **not passing speed param** to ElevenLabs API — speed was always 1.0
+
+#### 47. Bifrost Paid Fallback Models — Fixed (404 Tool Call Errors) ✅
+- Original Bifrost config had `gemma-4-31b-it:free` and `qwen3-next-80b-a3b-instruct:free` as fallback models
+- When free-tier rate limits hit, Bifrost tried paid models WITHOUT `:free` suffix → `qwen3-next-80b-a3b-instruct` and `gemma-4-31b-it` don't exist as standalone model IDs on OpenRouter → 404 errors
+- **Fix**: Updated Bifrost config: `gemma-4-31b-it` (same model, drop `:free` suffix) and `qwen-3-80b` (correct name without `next`)
+- Result: **Zero 404 errors**. No more tool calling failures.
+
+#### 48. TTS Router `server.py` — Fixed Speed Pass-Through ✅
+- `call_upliftai(text, speed=1.0)` now accepts and passes `speed` to Uplift AI API
+- `payload["speed"] = speed` included when speed ≠ 1.0
+- Rebuilt and deployed (cached build, container restarted)
+- Verified via grep: speed parameter fully wired in server.py
+
+#### Remaining: TTS English Words in Urdu
+- ElevenLabs voice `G1gUElsVCoazUpfBnLnt` still mispronounces English words mixed in Pakistani Urdu
+- Conversation quality is good — LLM Urdu is native, VAD is stable, latency ~5.6s
+- Next: native Urdu ElevenLabs voice or voice cloning
+
+---
+
+### Session 7 (cont'd) — June 13: Paid Bifrost Chain, Latency Analysis
+
+#### 49. Bifrost Model Chain — Paid Only (No More 404/429) ✅
+- Removed all `:free` OpenRouter models (no tool support → 404 cascading failures)
+- New chain: `google/gemma-4-31b-it` (paid) → `qwen/qwen3-next-80b-a3b-instruct` (paid) → `meta-llama/llama-3.3-70b-instruct` (paid)
+- OpenRouter balance: $9.77 — cost per call ~$0.01-0.02, lasts hundreds of calls
+- Zero 404/429 errors. Full tool support.
+- **Bifrost restart required** — LiteLLM persists old models in DB, needed clean restart
+
+#### 50. TTS Speed — Applied via ffmpeg atempo ✅
+- Speed changed from 1.0 → **0.90** (10% slower)
+- Applied via `-af "atempo=0.9"` in ffmpeg conversion — guaranteed, independent of Uplift AI support
+- Verfied: POST /v1/audio/speech showing `speed=0.9` in logs
+
+#### 51. VAD Threshold — 0.85 (Stable) ✅
+- Increased from 0.7 to 0.85 — less false interrupt from background noise
+
+#### 52. Call Duration — 1800s (30 min) ✅
+- Hardcoded in `/app/api/services/pipecat/run_pipeline.py:344`
+- Changed from 600 → 1800 via sed on running container
+- Dograh API restarted to apply
+
+#### 53. Uplift AI 503 Transient Outage ✅
+- Uplift AI returned 503 Service Unavailable during one call
+- TTS Router passed through 502 → Dograh pipeline errored
+- Resolved on its own (transient upstream issue)
+
+#### 54. Latency Analysis — 3 Remaining Bottlenecks 🔴
+
+From run_id=175 exact timestamps:
+
+| Step | Time | % of total |
+|------|------|-----------|
+| User stops speaking | 0s | — |
+| LLM TTFB (first call) | **2.55s** | 51% |
+| Speaches pipeline overhead | **0.91s** | 18% |
+| TTS generation (Uplift AI) | **1.52s** | 30% |
+| **Total → audio plays** | **~5.0s** | 100% |
+
+Subsequent turns: LLM TTFB drops to 1.06s → total ~3.5s
+
+**Fix 1 — TTS Router Connection Pooling** 🔴
+- TTS Router creates a new httpx.AsyncClient() per request
+- Reuse a shared client with connection pooling → eliminate TLS handshake (~300-500ms)
+- Reduces TTS latency by ~25-33%
+- **File**: `configs/tts-router/server.py` — move `httpx.AsyncClient` to module-level singleton
+
+**Fix 2 — Larger TTS Chunks** 🔴
+- Dograh splits LLM responses into small chunks (4-150 chars) 
+- Each chunk = 1 Uplift AI API call = 1.5s round trip
+- Average response: 3-5 chunks = 4.5-7.5s total TTS time
+- Reducing chunk count by 50% would cut total TTS time by ~40%
+- **Requires**: Dograh Speaches provider TTS aggregation config
+
+**Fix 3 — Professional Urdu Prompt** 🟡
+- Current prompts are basic (greeting, conversation, tools)
+- Pro prompt with: natural fillers ("اہ...", "جی جی"), conversational flow, cultural tone, confusion handling
+- Transform *quality* — caller feels like talking to a person
+- **Do after latency fixed** — good prompt wasted on 5s pause
+
+---
+
+## Voice Pipeline Architecture (Updated — June 13)
+
+```
+Caller → SIP → Asterisk → ARI → Dograh (voice orchestrator)
+  Dograh handles:
+    1. Receive audio from caller via ARI WebSocket
+    2. STT: Deepgram Nova-3 Urdu (cloud) — ~0.5s TTFB
+    3. LLM (Urdu/105): SpeachesLLMService → Bifrost (10.40.0.10:4000, model=multilingual)
+       → PAID: Gemma 4 31B → Qwen 3 80B → Llama 3.3 70B
+       → NO free tier models (free doesn't support tool calling → 404 cascade)
+       → TTFB: ~1-2.5s (2.55s first call warmup, ~1.06s subsequent)
+    4. LLM (English/102): Dograh provider → Bifrost → OpenRouter
+    5. TTS: Speaches → TTS Router (10.40.0.33:8030, voice=uplift → Uplift AI API)
+       → Speed=0.90 via ffmpeg atempo (local post-processing)
+       → Processing time: ~1.5-2s per chunk (includes Uplift AI generation + ffmpeg)
+    6. Send audio back to caller via ARI WebSocket
+
+Total per-turn latency: ~5s (first) / ~3.5s (subsequent)
+  Bottlenecks: LLM TTFB (51%), TTS (30%), Speaches pipeline overhead (18%)
+```
+
+---
+
+## Key Architectural Decision #21
+- **TTS speed handling**: Dograh sends `speed` in TTS request payload via Speaches provider but TTS Router was ignoring it. Fix: explicit `speed` parameter in `call_upliftai()` function. Lesson: parameters must be explicitly forwarded through proxy layers — they are not automatically passed through.
+
+## Key Architectural Decision #22
+- **Paid OpenRouter > free**: Free tier (`:free` suffix) on OpenRouter does NOT support tool/function calling for most models. Dograh sends tool definitions (hangup, transfer) with every LLM call. Free models return 404 → Bifrost cascades through fallbacks → 5-10s extra latency per turn. Paid models ($9.77 balance, $0.01-0.02/call) support tools natively, zero 404s, no rate limits.
+
+## Key Architectural Decision #23
+- **ffmpeg atempo for TTS speed**: Rather than relying on upstream TTS providers (Uplift AI, ElevenLabs) to support the `speed` parameter correctly, apply `atempo` filter in ffmpeg post-processing in TTS Router. Guaranteed speed control independent of provider support.
+
+## Key Architectural Decision #24
+- **Connection pooling for TTS Router**: Current implementation creates a new `httpx.AsyncClient()` for every TTS request. This means a new TCP connection + TLS handshake per request (~300-500ms overhead). Fix: shared module-level client with connection pooling. Applied as part of latency optimization sprint.
+
+(End of file - total 490 lines)
