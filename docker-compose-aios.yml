@@ -1058,6 +1058,7 @@ services:
       EXT_9000_SECRET: ${EXT_9000_SECRET}
       EXT_103_SECRET: ${EXT_103_SECRET}
       EXT_104_SECRET: ${EXT_104_SECRET}
+      EXT_2000_SECRET: ${EXT_2000_SECRET}
       ARI_ADMIN_PASSWORD: ${ARI_ADMIN_PASSWORD}
     cap_add:
       - NET_ADMIN
@@ -1155,6 +1156,8 @@ services:
       API_URL: http://10.50.0.30:8000
       ENABLE_TELEMETRY: "false"
       LOG_LEVEL: debug
+    volumes:
+      - ./dograh-patches/ari_manager.py:/app/api/services/telephony/ari_manager.py
     healthcheck:
       test: ["CMD-SHELL", 'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8000/api/v1/health'').read()"']
       interval: 30s
