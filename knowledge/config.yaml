@@ -3,15 +3,15 @@
 # Embedding service (Bifrost → Ollama)
 embedding:
   provider: openai
-  base_url: http://10.40.0.10:4000/v1
+  base_url: http://bifrost:4000/v1
   model: nomic-embed-text
   api_key: sk-aios-bifrost
 
 # LLM for compilation (Bifrost → OpenRouter)
 llm:
   provider: openai
-  base_url: http://10.40.0.10:4000/v1
-  model: gemma-4-31b
+  base_url: http://bifrost:4000/v1
+  model: general-reasoning
   api_key: sk-aios-bifrost
 
 # Vector store (Qdrant)

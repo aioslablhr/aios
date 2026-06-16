@@ -199,50 +199,55 @@ def compile_company(config: dict, slug: str):
     if not result:
         logger.error("LLM returned empty response")
         return
+    with open(company_dir / "_raw_llm_response.txt", "w", encoding="utf-8") as f:
+        f.write(result)
+    logger.info(f"Raw LLM response ({len(result)} chars) saved to _raw_llm_response.txt")
     wiki_dir = company_dir / "wiki"
     wiki_dir.mkdir(parents=True, exist_ok=True)
     for cat in ("concepts", "entities", "sources"):
         (wiki_dir / cat).mkdir(exist_ok=True)
-    sections = result.split("---")
+    lines = result.split("\n")
     current_type = None
     current_filename = None
     current_content = []
     page_count = 0
-    for section in sections:
-        section = section.strip()
-        if section.startswith("CONCEPT"):
+    for line in lines:
+        stripped = line.strip()
+        if stripped in ("---CONCEPT---", "---CONCEPT", "CONCEPT---", "CONCEPT"):
             if current_filename and current_content:
                 save_wiki_page(wiki_dir, current_type, current_filename, current_content)
                 page_count += 1
             current_type = "concepts"
             current_content = []
             current_filename = None
-        elif section.startswith("ENTITY"):
+        elif stripped in ("---ENTITY---", "---ENTITY", "ENTITY---", "ENTITY"):
             if current_filename and current_content:
                 save_wiki_page(wiki_dir, current_type, current_filename, current_content)
                 page_count += 1
             current_type = "entities"
             current_content = []
             current_filename = None
-        elif section.startswith("SOURCE"):
+        elif stripped in ("---SOURCE---", "---SOURCE", "SOURCE---", "SOURCE"):
             if current_filename and current_content:
                 save_wiki_page(wiki_dir, current_type, current_filename, current_content)
                 page_count += 1
             current_type = "sources"
             current_content = []
             current_filename = None
-        elif section.startswith("INDEX"):
+        elif stripped in ("---INDEX---", "---INDEX", "INDEX---", "INDEX"):
             if current_filename and current_content:
                 save_wiki_page(wiki_dir, current_type, current_filename, current_content)
                 page_count += 1
             current_type = None
             current_content = []
             current_filename = None
-        elif section.startswith("filename:"):
-            current_filename = section.split("filename:")[1].strip()
+        elif stripped == "---" or not stripped:
+            pass
+        elif stripped.startswith("filename:"):
+            current_filename = stripped.split("filename:")[1].strip()
         else:
-            if section and current_content is not None:
-                current_content.append(section)
+            if current_content is not None:
+                current_content.append(line)
     if current_filename and current_content:
         save_wiki_page(wiki_dir, current_type, current_filename, current_content)
         page_count += 1
