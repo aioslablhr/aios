@@ -1,9 +1,9 @@
 # AIOS — Session Checkpoint
 
-**Version:** 7.0
+**Version:** 7.1
 **Date:** June 16, 2026
 **Branch:** main
-**Last commit:** 9655697 (pushed to GitHub)
+**Last commit:** 5f2e363 (pushed to GitHub)
 
 ---
 
@@ -526,4 +526,27 @@ Total per-turn latency: ~5s (first) / ~3.5s (subsequent)
 - Server local modifications (stashed on June 16): asterisk, bifrost, tts-router, xtts configs — not committed. Git reset forced after stash failed (permission on `crowdsec/hub/.index.json`). Those config changes are lost.
 - LLM output is non-deterministic — each compile produces slightly different content (page count varies 2-5)
 
-(End of file - total 490 lines)
+---
+
+## Session 8 — Shin Travels: Extension 2000 AI Voice Agent (June 16)
+
+### Completed
+- Created Dograh organization 4 (Shin Travels), user 4, phone number 2000
+- Created workflow 6 (Shin Travels): Start Call → Agent Node → End Call, published
+- Added PJSIP endpoint/auth/aor for extension 2000 in `pjsip.conf`
+- Added dialplan entry `exten => 2000,Stasis(dograh)` in `extensions.conf`
+- Fixed `http.conf`: removed `prefix = asterisk` (Dograh ARI manager doesn't support it)
+- Fixed `ari.conf`: added `[dograh]` user for Dograh ARI authentication
+- Configured user 4 with: dograh LLM, deepgram STT (nova-3-general, en), speaches TTS
+- Updated workflow 6 configs to match: speaches TTS, deepgram STT, dograh LLM
+- **Patched `ari_manager.py`**: changed `_handle_inbound_stasis_start` to skip (not hangup) when extension doesn't match current config. Both Social Bees (org 2) and Shin Travels (org 4) share Stasis app `dograh` — without this patch, first config to receive the event hangs up before the correct config can handle it.
+- Mounted patched `dograh-patches/ari_manager.py` as bind volume in docker-compose
+- Added `EXT_2000_SECRET` to Asterisk environment in docker-compose
+- Verified end-to-end pipeline: Asterisk → ARI → Dograh pipeline → STT (Deepgram) → LLM (Dograh) → TTS (Speaches) → audio back to caller — run 205 completed successfully
+
+### Known Issues
+- `ari_manager.py` patch is required for any multi-org setup sharing the same Stasis app — must be mounted via docker-compose volume. If the Dograh image is updated, the patch may need to be reapplied.
+- EXT_2000_SECRET must be in `.env` file (gitignored) and in Asterisk container env vars
+- Workflow 6 uses text greeting, not audio file greeting
+
+(End of file - total 505 lines)
