@@ -550,6 +550,7 @@ Config resolution: workflow.user_id → user_configurations → resolve_effectiv
 - Verified end-to-end pipeline: Asterisk → ARI → Dograh pipeline → STT (Deepgram) → LLM (Dograh) → TTS (Speaches) → audio back to caller — run 205 completed successfully
 
 ### Known Issues
+<<<<<<< HEAD
 - `ari_manager.py` patch was required for multi-org setup — no longer needed since all workflows are in a single org
 - EXT_2000_SECRET must be in `.env` file (gitignored) and in Asterisk container env vars
 
@@ -683,4 +684,10 @@ wiki/
 - Build client-facing dashboard in Metabase or Grafana
 - Add lead capture workflow (n8n → Chatwoot → email/Slack)
 
+=======
+- `ari_manager.py` patch is required for any multi-org setup sharing the same Stasis app — must be mounted via docker-compose volume. If the Dograh image is updated, the patch may need to be reapplied.
+- EXT_2000_SECRET must be in `.env` file (gitignored) and in Asterisk container env vars
+- Workflow 6 uses text greeting, not audio file greeting
+
+>>>>>>> origin/main
 (End of file - total 505 lines)
