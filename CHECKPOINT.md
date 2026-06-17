@@ -1,9 +1,9 @@
 # AIOS — Session Checkpoint
 
-**Version:** 7.0
+**Version:** 7.1
 **Date:** June 16, 2026
 **Branch:** main
-**Last commit:** 9655697 (pushed to GitHub)
+**Last commit:** 5f2e363 (pushed to GitHub)
 
 ---
 
@@ -301,13 +301,14 @@ TTS Pipeline (via Speaches provider):
 
 | Item | Detail |
 |------|--------|
-| Telephony Config ID 1 | Asterisk-Local, ARI provider, endpoint `http://10.0.0.100:8088`, org 2 |
+| Telephony Config ID 1 | Asterisk-Local, ARI provider, endpoint `http://10.0.0.100:8088`, org 1 |
 | Phone Number Ext 102 | Linked to Workflow ID 1 (English), type: sip_extension |
 | Phone Number Ext 105 | Linked to Workflow ID 5 (Urdu), type: sip_extension |
-| Workflow ID 1 | "AI Voice Receptionist" (English), active, v2 (edges fixed) |
+| Phone Number Ext 2000 | Linked to Workflow ID 6 (Shin Travels), type: sip_extension |
+| Workflow ID 1 | "AI Voice Receptionist" (English), active, v2 |
 | Workflow ID 5 | "Urdu Voice Receptionist", active, v1 |
-| User Config (user_id=2) | STT=Deepgram(nova-3,ur), TTS=Speaches(TTS Router:8030/v1, voice=default→ElevenLabs), LLM=Speaches→Bifrost(10.40.0.10:4000, multilingual→OpenRouter free tier) |
-| ARI Status | `Active connections: 1 (configs: [1])` — org 2 only |
+| Workflow ID 6 | "Shin Travels" (English), active, v3 |
+| User Config (user_id=1) | **Single config for all workflows.** LLM=Speaches→Bifrost(multilingual, 10.40.0.10:4000), STT=Deepgram(nova-3,en), TTS=Speaches→TTS Router(10.40.0.33:8030, voice=default→ElevenLabs, speed=0.9). WF 5 overrides: stt.language=ur, tts.voice=uplift. |
 
 ---
 
@@ -472,19 +473,23 @@ Subsequent turns: LLM TTFB drops to 1.06s → total ~3.5s
 Caller → SIP → Asterisk → ARI → Dograh (voice orchestrator)
   Dograh handles:
     1. Receive audio from caller via ARI WebSocket
-    2. STT: Deepgram Nova-3 Urdu (cloud) — ~0.5s TTFB
-    3. LLM (Urdu/105): SpeachesLLMService → Bifrost (10.40.0.10:4000, model=multilingual)
+    2. STT: Deepgram Nova-3 (cloud) — ~0.5s TTFB
+       → Base config: language=en
+       → WF 5 override: language=ur
+    3. LLM (all workflows): SpeachesLLMService → Bifrost (10.40.0.10:4000, model=multilingual)
        → PAID: Gemma 4 31B → Qwen 3 80B → Llama 3.3 70B
-       → NO free tier models (free doesn't support tool calling → 404 cascade)
        → TTFB: ~1-2.5s (2.55s first call warmup, ~1.06s subsequent)
-    4. LLM (English/102): Dograh provider → Bifrost → OpenRouter
-    5. TTS: Speaches → TTS Router (10.40.0.33:8030, voice=uplift → Uplift AI API)
+    4. TTS (base): Speaches → TTS Router (10.40.0.33:8030, voice=default → ElevenLabs, speed=0.90)
+       → WF 5 override: voice=uplift → Uplift AI API
        → Speed=0.90 via ffmpeg atempo (local post-processing)
-       → Processing time: ~1.5-2s per chunk (includes Uplift AI generation + ffmpeg)
-    6. Send audio back to caller via ARI WebSocket
+       → Processing time: ~1.5-2s per chunk
+    5. Send audio back to caller via ARI WebSocket
 
 Total per-turn latency: ~5s (first) / ~3.5s (subsequent)
   Bottlenecks: LLM TTFB (51%), TTS (30%), Speaches pipeline overhead (18%)
+
+Config resolution: workflow.user_id → user_configurations → resolve_effective_config(workflow_definitions.workflow_configurations.model_overrides)
+  → Single org (org 1), single user (user 1: socialbeesaios@gmail.com)
 ```
 
 ---
@@ -526,4 +531,156 @@ Total per-turn latency: ~5s (first) / ~3.5s (subsequent)
 - Server local modifications (stashed on June 16): asterisk, bifrost, tts-router, xtts configs — not committed. Git reset forced after stash failed (permission on `crowdsec/hub/.index.json`). Those config changes are lost.
 - LLM output is non-deterministic — each compile produces slightly different content (page count varies 2-5)
 
-(End of file - total 490 lines)
+---
+
+## Session 8 — Shin Travels: Extension 2000 AI Voice Agent (June 16)
+
+### Completed
+- Created Dograh organization 4 (Shin Travels), user 4, phone number 2000
+- Created workflow 6 (Shin Travels): Start Call → Agent Node → End Call, published
+- Added PJSIP endpoint/auth/aor for extension 2000 in `pjsip.conf`
+- Added dialplan entry `exten => 2000,Stasis(dograh)` in `extensions.conf`
+- Fixed `http.conf`: removed `prefix = asterisk` (Dograh ARI manager doesn't support it)
+- Fixed `ari.conf`: added `[dograh]` user for Dograh ARI authentication
+- Configured user 4 with: dograh LLM, deepgram STT (nova-3-general, en), speaches TTS
+- Updated workflow 6 configs to match: speaches TTS, deepgram STT, dograh LLM
+- **Patched `ari_manager.py`**: changed `_handle_inbound_stasis_start` to skip (not hangup) when extension doesn't match current config. Both Social Bees (org 2) and Shin Travels (org 4) share Stasis app `dograh` — without this patch, first config to receive the event hangs up before the correct config can handle it.
+- Mounted patched `dograh-patches/ari_manager.py` as bind volume in docker-compose
+- Added `EXT_2000_SECRET` to Asterisk environment in docker-compose
+- Verified end-to-end pipeline: Asterisk → ARI → Dograh pipeline → STT (Deepgram) → LLM (Dograh) → TTS (Speaches) → audio back to caller — run 205 completed successfully
+
+### Known Issues
+- `ari_manager.py` patch was required for multi-org setup — no longer needed since all workflows are in a single org
+- EXT_2000_SECRET must be in `.env` file (gitignored) and in Asterisk container env vars
+
+---
+
+## Session 9 — Dograh Org Consolidation (June 17)
+
+### Completed
+- Consolidated all Dograh data into a single org (org 1) with single user (user 1: socialbeesaios@gmail.com)
+- Deleted org 2, org 4, user 2, user 4 (test artifacts from development)
+- Moved all workflows (WF 1 English, WF 5 Urdu, WF 6 Shin Travels) → org 1, user 1
+- Moved telephony config, phone numbers, external credentials → org 1
+- Merged usage cycle history → org 1
+- **Updated User Config 1** (single master config):
+  - LLM: Speaches → Bifrost (multilingual, 10.40.0.10:4000) — ALL workflows now use local gateway
+  - STT: Deepgram Nova-3 (en) — base language English
+  - TTS: Speaches → TTS Router (voice=default → ElevenLabs, speed=0.9)
+- **Added WF 5 overrides** for Urdu: `workflow_configurations.model_overrides` → stt.language=ur, tts.voice=uplift
+- Added phone number Ext 2000 → WF 6 (Shin Travels) under org 1
+- Removed `ari_manager.py` multi-org patch dependency (single org, no Stasis event competition)
+
+### Config Resolution Chain (simplified)
+```
+Inbound call → phone_number.inbound_workflow_id → workflows.user_id → user_configurations
+  → resolve_effective_config(workflow_definitions.workflow_configurations.model_overrides)
+  → final effective config
+```
+- All 3 workflows use the same base User Config (id=1)
+- WF 5 (Urdu) additionally merges: `{stt: {language: ur}, tts: {voice: uplift}}`
+- WF 1 (English) and WF 6 (Shin Travels) use base config unchanged
+- Workflow 6 uses text greeting, not audio file greeting
+
+---
+
+## Session 10 — June 17: Ext 102 SHIN Travels Sales Agent + Chatwoot CRM
+
+### Completed
+
+#### 55. Factory Reset Dograh + Fresh Setup ✅
+- Dropped `dograh` database, recreated with clean schema via Alembic migrations
+- Fresh user `socialbeesaios@gmail.com` / `aiosadmin2026`, org 1 auto-created
+- Dograh pinned to `1.35.0` in docker-compose
+- Login loop fixed: `secure:!0` → `secure:!1` in Next.js route handlers
+
+#### 56. User Config — Local Providers ✅
+```json
+LLM: speaches → Bifrost (10.40.0.10:4000/v1, model=frontier-reasoning, api_key=sk-aios-master-admin-key-change-me)
+STT: deepgram (nova-3-general, en-GB, api_key=fe444a27a666a3e471b8002ff56be87f964b9938)
+TTS: elevenlabs (voice=pFZP5JQG7iQjIQuC4Bku / Lily, model=eleven_flash_v2_5)
+```
+
+#### 57. Ext 102 Workflow — Created & Tested ✅
+- 3-node workflow: Welcome & Qualify → Travel Sales Conversation → End Call
+- Greeting: "Hello, thank you for calling SHIN Travels. This is Emma speaking."
+- ARI WebSocket connected to Asterisk (dograh-ws, port 8088)
+- Test call succeeded: greeting plays (UK accent), STT transcribes, LLM responds, TTS speaks
+- **Pipeline errors fixed**: STT was calling Speaches `/audio/transcriptions` (404) — switched to Deepgram
+
+#### 58. Call Duration — Extended to 15 min ✅
+- 3 limits found and patched:
+  1. `audio_config.py:34` — `max_recording_duration_seconds` 300→900
+  2. `pipeline_engine_callbacks_processor.py:26` — `max_call_duration_seconds` 300→900
+  3. `workflow_configurations.max_call_duration` — set to 900 via API
+- All patches saved to `/aios/dograh-patches/`
+
+#### 59. Full Shin Travels Website Content Extracted ✅
+- Deployed `browserless/chrome` (10.40.0.60) for headless JS rendering
+- Scraped all 11 pages: home (18K chars), about, 6 articles, privacy, terms, cookies
+- Total: ~40K chars of travel content
+
+#### 60. LLM Wiki — Compiled ✅
+Structured markdown wiki saved to `/aios/n8n/knowledge/shin-travels/wiki/`:
+```
+wiki/
+├── index.md              — Company overview (3.3K)
+├── concepts/
+│   ├── destinations.md   — All destinations with details
+│   └── services.md       — All services
+├── entities/
+│   └── packages.md       — Pricing, deals, FX rates, policies
+├── source/
+│   └── raw-scraped.txt   — Full raw website content (40K)
+├── faq.md                — 28 real-world FAQs
+```
+
+#### 61. Travel Sales System Prompt — 7,396 chars ✅
+- Emma persona (UK female, SHIN Travels sales consultant)
+- Complete sales methodology: Open → Qualify → Recommend → Handle Objections → Close → Capture Lead
+- All Shin Travels knowledge embedded (destinations, pricing, Umrah, policies)
+- Scripted objection handling (price, visa, safety, timing)
+- Published as workflow v3
+
+#### 62. Chatwoot CRM — Deployed & Connected ✅
+- Deployed `chatwoot/chatwoot:latest` with `pgvector/pgvector:pg16` DB
+- Services: chatwoot-db (10.70.0.55), chatwoot-redis (10.70.0.56), chatwoot-web (10.70.0.50), chatwoot-worker
+- URL: `http://10.0.0.100:8070/` or `https://chatwoot.socialbeesai.com`
+- Admin: `socialbeesaios@gmail.com` / `LahorePakistan@2026`
+- "Call Transcripts" inbox created (ID 1, identifier `8xXig1ed5a9Ps4hQVjuMsrSL`)
+- API token: `S25Q5AkyFCGwUrXUzzn8SCYw`
+
+#### 63. Dograh → Chatwoot Transcript Sync ✅
+- Script: `/aios/scripts/dograh_to_chatwoot.py` — polls Dograh API for new runs
+- Cron: runs every minute, auto-pushes transcripts to Chatwoot
+- **31 conversations synced** (all past and new calls)
+- Run 42 (latest call, 4377 chars) → Chatwoot conversation 31
+
+#### 64. Standalone Emma Chat UI ✅
+- Created at `http://10.0.0.100:8081/emma_chat.html`
+- Dark-themed, standalone chat interface for Emma
+- Uses Dograh text-chat API (workflow 1 sessions)
+- Accessible without Dograh UI
+
+#### 65. New Services Added
+| Service | IP | Port | Purpose |
+|---------|----|------|---------|
+| browserless/chrome | 10.40.0.60 | 3000 | Headless browser for JS rendering |
+| chatwoot-web | 10.70.0.50 | 3000 | Chatwoot CRM web UI |
+| chatwoot-worker | 10.70.0.51 | — | Chatwoot background jobs |
+| chatwoot-db | 10.70.0.55 | 5432 | Chatwoot PostgreSQL with pgvector |
+| chatwoot-redis | 10.70.0.56 | 6379 | Chatwoot Redis cache |
+
+### Known Issues
+- ElevenLabs voice `pFZP5JQG7iQjIQuC4Bku` (Lily) is UK female but limited free-tier voice quality
+- OpenRouter balance $0.11 — Claude Sonnet 4 costs ~$3/M input tokens, ~$15/M output tokens
+- Hermes container in restart loop (unrelated to session changes)
+- browserless/chrome container still running — stop when not needed
+
+### Next Steps
+- Switch TTS from ElevenLabs Lily to Chatterbox GPU TTS (better quality, free, local)
+- Set up proper RAG pipeline: Qdrant ↔ MCP server ↔ Dograh tools
+- Build client-facing dashboard in Metabase or Grafana
+- Add lead capture workflow (n8n → Chatwoot → email/Slack)
+
+(End of file - total 505 lines)

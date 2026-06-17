@@ -4,12 +4,7 @@
 
 networks:
   aios-foss:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 10.70.0.0/24
-          gateway: 10.70.0.1
-    name: aios-foss
+    external: true
   aios-dmz:
     external: true
 
@@ -24,6 +19,12 @@ volumes:
     name: aios-odoo-db
   metabase-data:
     name: aios-metabase-data
+  chatwoot-db:
+    name: aios-chatwoot-db
+  chatwoot-redis:
+    name: aios-chatwoot-redis
+  chatwoot-storage:
+    name: aios-chatwoot-storage
 
 services:
   # ── Nextcloud (File Sync + Collaboration) ──
@@ -147,4 +148,83 @@ services:
       - "traefik.http.services.metabase.loadbalancer.server.port=3000"
       - "traefik.http.routers.metabase.entrypoints=websecure"
       - "traefik.docker.network=aios-dmz"
+    restart: unless-stopped
+
+  # ── Chatwoot (Customer Support Platform) ──
+  chatwoot-db:
+    image: pgvector/pgvector:pg16
+    container_name: aios-chatwoot-db
+    hostname: chatwoot-db
+    networks: [aios-foss]
+    volumes:
+      - chatwoot-db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: chatwoot
+      POSTGRES_USER: chatwoot
+      POSTGRES_PASSWORD: ${CHATWOOT_DB_PASSWORD}
+    restart: unless-stopped
+
+  chatwoot-redis:
+    image: redis:7-alpine
+    container_name: aios-chatwoot-redis
+    hostname: chatwoot-redis
+    networks: [aios-foss]
+    restart: unless-stopped
+
+  chatwoot-web:
+    image: chatwoot/chatwoot:latest
+    container_name: aios-chatwoot-web
+    hostname: chatwoot-web
+    networks:
+      aios-foss:
+        ipv4_address: 10.70.0.50
+      aios-dmz:
+    ports:
+      - "127.0.0.1:8070:3000"
+    environment:
+      POSTGRES_HOST: chatwoot-db
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: chatwoot
+      POSTGRES_USERNAME: chatwoot
+      POSTGRES_PASSWORD: ${CHATWOOT_DB_PASSWORD}
+      REDIS_URL: redis://chatwoot-redis:6379
+      SECRET_KEY_BASE: ${CHATWOOT_SECRET_KEY}
+      FRONTEND_URL: https://chatwoot.socialbeesai.com
+      DEFAULT_LOCALE: en_GB
+      RAILS_ENV: production
+      INSTALLATION_ENV: docker
+      NODE_ENV: production
+    depends_on:
+      - chatwoot-db
+      - chatwoot-redis
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.chatwoot.rule=Host(`chatwoot.socialbeesai.com`)"
+      - "traefik.http.routers.chatwoot.tls.certresolver=letsencrypt"
+      - "traefik.http.services.chatwoot.loadbalancer.server.port=3000"
+      - "traefik.http.routers.chatwoot.entrypoints=websecure"
+      - "traefik.docker.network=aios-dmz"
+    restart: unless-stopped
+
+  chatwoot-worker:
+    image: chatwoot/chatwoot:latest
+    container_name: aios-chatwoot-worker
+    hostname: chatwoot-worker
+    networks: [aios-foss]
+    environment:
+      POSTGRES_HOST: chatwoot-db
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: chatwoot
+      POSTGRES_USERNAME: chatwoot
+      POSTGRES_PASSWORD: ${CHATWOOT_DB_PASSWORD}
+      REDIS_URL: redis://chatwoot-redis:6379
+      SECRET_KEY_BASE: ${CHATWOOT_SECRET_KEY}
+      FRONTEND_URL: https://chatwoot.socialbeesai.com
+      DEFAULT_LOCALE: en_GB
+      RAILS_ENV: production
+      INSTALLATION_ENV: docker
+    command: bundle exec sidekiq -C config/sidekiq.yml
+    depends_on:
+      - chatwoot-db
+      - chatwoot-redis
     restart: unless-stopped

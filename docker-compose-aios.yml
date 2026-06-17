@@ -1055,7 +1055,9 @@ services:
       EXT_100_SECRET: ${EXT_100_SECRET}
       EXT_101_SECRET: ${EXT_101_SECRET}
       EXT_102_SECRET: ${EXT_102_SECRET}
+      EXT_2000_SECRET: ${EXT_2000_SECRET}
       EXT_9000_SECRET: ${EXT_9000_SECRET}
+      EXT_2000_SECRET: ${EXT_2000_SECRET}
       EXT_103_SECRET: ${EXT_103_SECRET}
       EXT_104_SECRET: ${EXT_104_SECRET}
       ARI_ADMIN_PASSWORD: ${ARI_ADMIN_PASSWORD}
@@ -1120,7 +1122,7 @@ services:
     restart: on-failure:3
 
   dograh-api:
-    image: dograhai/dograh-api:latest
+    image: dograhai/dograh-api:1.35.0
     container_name: aios-dograh-api
     hostname: dograh-api
     networks:
@@ -1155,6 +1157,8 @@ services:
       API_URL: http://10.50.0.30:8000
       ENABLE_TELEMETRY: "false"
       LOG_LEVEL: debug
+    volumes:
+      - ./dograh-patches/ari_manager.py:/app/api/services/telephony/ari_manager.py
     healthcheck:
       test: ["CMD-SHELL", 'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8000/api/v1/health'').read()"']
       interval: 30s
@@ -1164,7 +1168,7 @@ services:
     restart: unless-stopped
 
   dograh-ui:
-    image: dograhai/dograh-ui:latest
+    image: dograhai/dograh-ui:1.35.0
     container_name: aios-dograh-ui
     hostname: dograh-ui
     networks:
@@ -1303,34 +1307,6 @@ services:
       USE_GPU: "false"
       PORT: 8880
     restart: unless-stopped
-
-  # ---
-  # AI LAYER CONTINUED --- LLM Proxy (strips tools for Qalb)
-  # ---
-
-  llm-proxy:
-    build:
-      context: /aios/configs/llm-proxy
-      dockerfile: Dockerfile
-    image: aios-llm-proxy:latest
-    container_name: aios-llm-proxy
-    hostname: llm-proxy
-    networks:
-      aios-ai:
-        ipv4_address: 10.40.0.35
-    environment:
-      OLLAMA_URL: http://10.40.0.10:4000
-    healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; exit(0 if urllib.request.urlopen('http://localhost:11435/health').status == 200 else 1)"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
-    restart: unless-stopped
-
-  # ---
-  # AI LAYER CONTINUED --- Dia-1.6B-Urdu TTS (GPU — Urdu primary)
-  # ---
 
   dia-tts:
     build:

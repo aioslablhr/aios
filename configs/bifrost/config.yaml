@@ -110,24 +110,21 @@ model_list:
       model: openrouter/nex-agi/nex-n2-pro:free
       api_key: os.environ/OPENROUTER_API_KEY
 
-  # MULTILINGUAL ($0 free models only — June 2026)
-  # All models are OpenRouter free tier ($0). Rate-limited ~8 req/min per model.
-  # Fallback chain tries next model if rate-limited. Add more free models here.
+  # MULTILINGUAL (paid — June 2026)
+  # Paid models only. OpenRouter balance: $9.77.
+  # No :free suffix — free tier doesn't support tool calling (404 errors).
+  # Paid = full tool support, zero rate limits, fast TTFB.
   - model_name: multilingual
     litellm_params:
-      model: openrouter/google/gemma-4-31b-it:free
+      model: openrouter/google/gemma-4-31b-it
       api_key: os.environ/OPENROUTER_API_KEY
   - model_name: multilingual
     litellm_params:
-      model: openrouter/qwen/qwen3-next-80b-a3b-instruct:free
+      model: openrouter/qwen/qwen3-next-80b-a3b-instruct
       api_key: os.environ/OPENROUTER_API_KEY
   - model_name: multilingual
     litellm_params:
-      model: openrouter/nousresearch/hermes-3-llama-3.1-405b:free
-      api_key: os.environ/OPENROUTER_API_KEY
-  - model_name: multilingual
-    litellm_params:
-      model: openrouter/meta-llama/llama-3.3-70b-instruct:free
+      model: openrouter/meta-llama/llama-3.3-70b-instruct
       api_key: os.environ/OPENROUTER_API_KEY
 
   # CODE GENERATION ($0 free only)
