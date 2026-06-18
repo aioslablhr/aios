@@ -57,8 +57,9 @@ async def sync_to_chatwoot(
         ext = call_metadata.get("ext_channel_id", "")
         caller_number = call_metadata.get("caller_number", "")
 
+        is_valid_phone = caller_number and caller_number.startswith("+")
         contact_name = f"Caller {caller_number}" if caller_number else f"Call {workflow_run_id}"
-        phone = caller_number if caller_number else f"+441234567{workflow_run_id % 100000:05d}"
+        phone = caller_number if is_valid_phone else f"+441234567{workflow_run_id % 100000:05d}"
 
         status, cw_resp = _cw_api("POST", "/contacts", {
             "inbox_id": 1,
