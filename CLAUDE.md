@@ -149,6 +149,12 @@ Voice pipeline:
     → LLM: Bifrost → OpenRouter
     → TTS: Dograh auto-selects Chatterbox (GPU) or Kokoro (CPU)
   → Audio back → Asterisk → Caller
+
+Text chat pipeline:
+  Browser → chat_server.py (10.0.0.100:8081) → Dograh text-chat API (X-API-Key auth)
+    → Same Bifrost/frontier-reasoning LLM pipeline
+    → Knowledge injected on session creation (address, destinations, pricing)
+    → URL: voice.socialbeesai.com/chat (Traefik with stripPrefix)
 ```
 ```
 

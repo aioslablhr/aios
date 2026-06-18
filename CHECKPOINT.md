@@ -3,7 +3,7 @@
 **Version:** 8.0
 **Date:** June 18, 2026
 **Branch:** main
-**Last commit:** 0331202 (pushed to GitHub)
+**Last commit:** 9ca6faf (pushed to GitHub)
 
 ---
 
@@ -18,7 +18,7 @@ aios-asterisk, aios-bifrost, aios-cadvisor, aios-chatterbox, aios-chatwoot-db, a
 - WireGuard: Created state (sysctl `net.ipv4.conf.all.src_valid_mark` not allowed in host network namespace)
 - dia-tts: CPU-only on Quadro M4000 (can't run CUDA 12.x)
 - **TTS English words**: ElevenLabs voice mispronounces English words in Urdu
-- **Text chat address**: Emma ignores address in prompt on text chat (voice works). Dograh internal issue.
+- **Chat server**: runs in screen session, not Docker (manual restart needed after reboot)
 
 ### Written but NOT started
 - Nextcloud, Odoo, Metabase — docker-compose-apps.yml exists, never started
@@ -31,7 +31,7 @@ aios-asterisk, aios-bifrost, aios-cadvisor, aios-chatterbox, aios-chatwoot-db, a
 
 | File | Contents | Status |
 |------|----------|--------|
-| `docker-compose-aios.yml` | AI infrastructure + orchestration: Traefik, Postgres, Redis, Qdrant, MinIO, Bifrost, Langfuse, Ollama, Asterisk, Dograh, n8n, Flowise, Open WebUI, CrowdSec, Grafana, Portainer, Speaches, Dia-TTS, LLM-Proxy, etc. | **Running** (48 containers) |
+| `docker-compose-aios.yml` | AI infrastructure + orchestration: 54 containers across 8 zones | **Running** (54 containers) |
 | `docker-compose-apps.yml` | FOSS business apps: Nextcloud, Odoo, Metabase | **Never started** |
 
 ---
@@ -550,9 +550,8 @@ Config resolution: workflow.user_id → user_configurations → resolve_effectiv
 - Added `EXT_2000_SECRET` to Asterisk environment in docker-compose
 - Verified end-to-end pipeline: Asterisk → ARI → Dograh pipeline → STT (Deepgram) → LLM (Dograh) → TTS (Speaches) → audio back to caller — run 205 completed successfully
 
-### Known Issues
-<<<<<<< HEAD
-- `ari_manager.py` patch was required for multi-org setup — no longer needed since all workflows are in a single org
+### Known Issues (Session 8)
+- `ari_manager.py` patch is only needed for multi-org setups sharing the same Stasis app — currently unnecessary with single org
 - EXT_2000_SECRET must be in `.env` file (gitignored) and in Asterisk container env vars
 
 ---
@@ -736,31 +735,52 @@ wiki/
 - Uses v3 prompt (same as voice calls)
 - API: `X-API-Key: dgr_JxFoGXkzncAlJM2aUhPhFOZ_GCQKgBHpajfgH15V0Bc`
 
-#### 72. Git — Cleaned & Pushed ✅
+#### 72. Text Chat Knowledge Injection — Fixed ✅
+- **Problem**: Dograh's text chat runner doesn't pass the full workflow node prompt to the LLM (unlike voice pipeline which uses the complete 7,255-char prompt)
+- **Impact**: Text chat ignored company info — address, destinations, pricing all missing
+- **Fix**: Modified `chat_server.py` to inject a knowledge message into every new text chat session after creation. `KNOWLEDGE_MSG` contains: address (123 High Street, London, E1 1AA), destinations, pricing, Umrah details
+- All three services now give consistent answers: voice call, text chat API, and chat URL
+
+#### 73. Shin Travels Address — Fixed ✅
+- **Problem**: Missing from prompt entirely. Emma hallucinated "123 Adventure Lane" etc.
+- **Website**: `shintravels.co.uk` — 123 High Street, London, E1 1AA
+- **Fix**: Added to company info section in v3 prompt. Also injected into chat server knowledge message.
+- Voice call: correct address. Text chat: correct address (via injection).
+
+#### 74. Git — Cleaned & Pushed ✅
 - Merge conflict markers removed from all files
-- Temp files cleaned (27 files deleted from git tracking)
+- Temp files cleaned
 - `docs/CHECKPOINT.md` stale copy deleted
-- All fixes committed: `2f65ebe`, `0331202`
-- Server and dev PC in sync with GitHub
+- All 8 commits pushed to GitHub: `f111431` → `2f65ebe` → `0331202` → `d5081bb` → `3c6bbd6` → `e0edbf6` → `6cf77a3` → `9ca6faf`
+- Server and dev PC in sync
 
 ### Key Files
 | File | Purpose |
 |------|---------|
-| `/aios/dograh-patches/chatwoot_sync.py` | Real-time Chatwoot transcript sync (v3, all bugs fixed) |
+| `/aios/dograh-patches/chatwoot_sync.py` | Real-time Chatwoot transcript sync (all bugs fixed) |
 | `/aios/dograh-patches/run_pipeline.py` | Patched pipeline with sync hook + duration tracking |
-| `/aios/dograh-patches/emma_v3_prompt.txt` | Emma v3 prompt (7,255 chars, adaptive LOD) |
-| `/aios/dograh-patches/emma_v2_prompt.txt` | Emma v2 prompt (6,691 chars, backup) |
-| `/aios/configs/traefik/dynamic/emma-chat.yml` | Traefik route with stripPrefix |
-| `/aios/chat/chat_server.py` | Emma chat HTTP server (stdlib) |
+| `/aios/dograh-patches/emma_v3_prompt.txt` | Emma v3 prompt (7,255 chars, adaptive LOD, address fixed) |
+| `/aios/dograh-patches/chat_server.py` | Emma chat HTTP server with knowledge injection |
 | `/aios/chat/index.html` | Emma chat UI with BASE path detection |
+| `/aios/configs/traefik/dynamic/emma-chat.yml` | Traefik route with stripPrefix |
 | `/aios/docker-compose-aios.yml` | Fixed merge conflicts, networks, volumes |
+| `/aios/.env.aios` | EXT_2000_SECRET added |
+
+### Running Services (End of Session 11)
+| Service | URL/Port | Status |
+|---------|----------|--------|
+| Voice Call (Ext 102) | Dial 102 from any SIP phone | ✅ Emma v3 prompt, correct address, Emma Taylor voice |
+| Text Chat | `https://voice.socialbeesai.com/chat` | ✅ Knowledge injected, correct answers |
+| Chatwoot | `https://chatwoot.socialbeesai.com` | ✅ Transcripts syncing after every call |
+| Dograh API | 10.50.0.30:8000 | ✅ Healthy, 4 networks (Voice/AI/Data/FOSS) |
 
 ### Known Issues
-- `call_duration_seconds` fix deployed but not yet tested (shows None for runs before the fix)
-- Chat server runs in screen session (not Docker) — doesn't survive reboot
-- OpenMonitor balance — needs monitoring
+- Chat server runs in screen session (not Docker) — doesn't survive reboot without manual restart
+- Dograh text chat runner doesn't pass full node prompt to LLM (knowledge injection via chat server is the workaround)
+- OpenRouter balance — needs monitoring
 
 ### Next Steps
-- Monitor Chatwoot sync for edge cases (long calls, multiple simultaneous calls)
 - Add chat server to docker-compose for reboot persistence
+- Monitor Chatwoot sync for edge cases
+- Native Urdu TTS voice cloning
 (End of file - total 505 lines)
