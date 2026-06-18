@@ -31,14 +31,11 @@ def _parse_turns(transcript_text: str):
         line = line.strip()
         if not line:
             continue
-        if line.lower().startswith("user:"):
-            turns.append({"speaker": "Caller", "text": line[5:].strip()})
-        elif line.lower().startswith("assistant:"):
-            turns.append({"speaker": "Emma", "text": line[10:].strip()})
-        elif line.lower().startswith("caller:"):
-            turns.append({"speaker": "Caller", "text": line[7:].strip()})
-        elif line.lower().startswith("emma:"):
-            turns.append({"speaker": "Emma", "text": line[5:].strip()})
+        content = line.split("]", 1)[-1].strip() if "]" in line else line
+        if content.lower().startswith("user:"):
+            turns.append({"speaker": "Caller", "text": content[5:].strip()})
+        elif content.lower().startswith("assistant:"):
+            turns.append({"speaker": "Emma", "text": content[10:].strip()})
     return turns
 
 async def sync_to_chatwoot(
@@ -51,15 +48,16 @@ async def sync_to_chatwoot(
             logger.info(f"Run {workflow_run_id}: empty transcript, skipping")
             return
 
+        turns = _parse_turns(transcript_text)
+
         call_id = call_metadata.get("call_id", f"run-{workflow_run_id}")
-        duration = call_metadata.get("call_duration_seconds", 0)
+        duration = call_metadata.get("call_duration_seconds") or 0
         disposition = call_metadata.get("call_disposition", "unknown")
         ext = call_metadata.get("ext_channel_id", "")
         caller_number = call_metadata.get("caller_number", "")
 
-        is_valid_phone = caller_number and caller_number.startswith("+")
-        contact_name = f"Caller {caller_number}" if caller_number else f"Call {workflow_run_id}"
-        phone = caller_number if is_valid_phone else f"+441234567{workflow_run_id % 100000:05d}"
+        contact_name = f"Call {workflow_run_id}"
+        phone = f"+441234567{workflow_run_id % 100000:05d}"
 
         status, cw_resp = _cw_api("POST", "/contacts", {
             "inbox_id": 1,
@@ -108,8 +106,7 @@ async def sync_to_chatwoot(
                     data=json.dumps(msg).encode(),
                     headers={"Content-Type": "application/json", "api_access_token": CW_TOKEN},
                     method="POST")
-                await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: urllib.request.urlopen(msg_req, timeout=15))
+                _cw_api("POST", f"/conversations/{conv_id}/messages", msg)
             except Exception as e:
                 logger.warning(f"Run {workflow_run_id}: message send error: {e}")
 

@@ -315,4 +315,4 @@ All other LLM inference uses OpenRouter $0 tier (25 free models via Bifrost).
 
 ---
 
-*Created May 21, 2026 • Updated June 12, 2026 — AIOS Inventory v6.0*
+*Created May 21, 2026 • Updated June 18, 2026 — AIOS Inventory v7.0*

@@ -1,4 +1,5 @@
 import asyncio
+import time
 from typing import Optional
 
 from fastapi import HTTPException
@@ -332,6 +333,7 @@ async def _run_pipeline(
         resolved_user_config: User configuration with model_overrides already
             applied. Fetched and resolved here if None.
     """
+    _start_time = time.time()
     if workflow_run is None:
         workflow_run = await db_client.get_workflow_run(workflow_run_id, user_id)
 
@@ -892,7 +894,7 @@ async def _run_pipeline(
             call_metadata = {
                 "call_id": workflow_run_id,
                 "workflow_run_id": workflow_run_id,
-                "call_duration_seconds": None,
+                "call_duration_seconds": int(time.time() - _start_time),
                 "call_disposition": "completed",
                 "ext_channel_id": "",
                 "caller_number": merged_call_context_vars.get("caller_number", ""),

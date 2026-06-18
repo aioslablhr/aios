@@ -1,9 +1,9 @@
 # AIOS — Session Checkpoint
 
-**Version:** 7.1
-**Date:** June 16, 2026
+**Version:** 8.0
+**Date:** June 18, 2026
 **Branch:** main
-**Last commit:** 5f2e363 (pushed to GitHub)
+**Last commit:** 0331202 (pushed to GitHub)
 
 ---
 
@@ -678,16 +678,88 @@ wiki/
 - Hermes container in restart loop (unrelated to session changes)
 - browserless/chrome container still running — stop when not needed
 
-### Next Steps
+### Next Steps (Session 10)
 - Switch TTS from ElevenLabs Lily to Chatterbox GPU TTS (better quality, free, local)
 - Set up proper RAG pipeline: Qdrant ↔ MCP server ↔ Dograh tools
 - Build client-facing dashboard in Metabase or Grafana
 - Add lead capture workflow (n8n → Chatwoot → email/Slack)
 
-=======
-- `ari_manager.py` patch is required for any multi-org setup sharing the same Stasis app — must be mounted via docker-compose volume. If the Dograh image is updated, the patch may need to be reapplied.
-- EXT_2000_SECRET must be in `.env` file (gitignored) and in Asterisk container env vars
-- Workflow 6 uses text greeting, not audio file greeting
+---
 
->>>>>>> origin/main
+## Session 11 — June 18: Emma v3 Prompt, Chatwoot Sync Fix, Emma Taylor Voice
+
+### Completed
+
+#### 66. Root Cause: Ext 102 Call Answer Delay (Model Routing) ✅
+- Server reboot at ~10:53 UTC cleared VAD+model config; `multilingual` (Gemma 4 31B paid) doesn't support tool use on OpenRouter causing 6.7s fallback cascade
+- **Fix**: Switched to `frontier-reasoning` (Claude Sonnet 4 / GPT-4o, paid, tool-native)
+- Confirmed all override paths clean (user=DB, workflow=empty, org=empty)
+
+#### 67. Real-time Chatwoot Sync — Built & Debugged ✅
+- Module: `/aios/dograh-patches/chatwoot_sync.py` — fires inside `run_pipeline.py` `finally` block
+- **3 bugs found and fixed:**
+  1. **Network isolation**: dograh-api was on Voice/AI/Data zones but NOT FOSS zone. Chatwoot is on FOSS (10.70.0.50). Added `aios-foss` network to dograh-api in compose.
+  2. **Phone E.164 validation**: Cisco Ext 9000 passes `"9000"` as caller_number. Chatwoot rejects non-E.164 numbers (`422`). Fix: removed caller_number from phone field, always uses `+441234567{run_id:05d}` (same as old working polling script).
+  3. **Missing `turns` variable**: `_parse_turns()` was never called. Fix: added `turns = _parse_turns(transcript_text)`.
+  4. **Transcript format mismatch**: `_parse_turns` checked for lines starting with `user:` but real transcript format is `[timestamp] user: text`. Fix: strip `[timestamp]` prefix before parsing.
+  5. **Async message send**: Used `run_in_executor` which failed when event loop was shutting down. Fix: made message send synchronous via `_cw_api()`.
+- **Duration fix**: Added `_start_time = time.time()` at pipeline start, changed `"call_duration_seconds": None` to `int(time.time() - _start_time)`.
+- Verified: test run 4444 created Chatwoot conversation 91 with full transcript.
+
+#### 68. docker-compose-aios.yml — Cleaned & Fixed ✅
+- Removed nested 3-way merge conflict (`<<<<<<< HEAD` x2, `=======`, `>>>>>>>`)
+- Removed duplicate `EXT_2000_SECRET` from asterisk env (was 3 copies)
+- Removed stale `ari_manager.py` volume mount (pointed to outdated file)
+- Added `run_pipeline.py` + `chatwoot_sync.py` volume mounts
+- Added `aios-foss` network to dograh-api service
+- Added `EXT_2000_SECRET=2000pass` to `.env.aios` (silenced warning)
+- All validated: `docker compose config` passes
+
+#### 69. Emma v3 Prompt — Deployed (7,255 chars) ✅
+- Completely rewritten from v2 (6,691 chars) with:
+  - **Adaptive LOD**: 3 modes — Brief (fast facts), Standard (conversation), Narrative (rich descriptions). Emma reads the customer's pace within 10 seconds.
+  - **Emotional radar**: Detects stressed/excited/confused/nervous/hesitant/sad and adapts naturally.
+  - **Proactive intelligence**: Connects dots before customer asks (Umrah + elderly parents → wheelchair assistance; Lahore → ask which area)
+  - **Deeper cultural identity**: British-Pakistani voice with natural Urdu mix, understanding of community needs
+  - **Stronger anti-pattern rules**: Never ask two questions at once, never say "I understand your concern"
+- Deployed to workflow_definitions Node 1 (Travel Sales Conversation)
+
+#### 70. Emma Taylor TTS Voice — Switched ✅
+- From: `pFZP5JQG7iQjIQuC4Bku` (Lily - Velvety Actress)
+- To: `S9EGwlCtMF7VXtENq79v` (Emma Taylor - Gentle, London accent)
+- Updated in `user_configurations` DB
+
+#### 71. Standalone Emma Chat URL ✅
+- URL: `http://10.0.0.100:8081/` (LAN) or `https://voice.socialbeesai.com/chat` (public via Traefik with stripPrefix)
+- Dark-themed chat UI with BASE path detection for Traefik proxy
+- Uses v3 prompt (same as voice calls)
+- API: `X-API-Key: dgr_JxFoGXkzncAlJM2aUhPhFOZ_GCQKgBHpajfgH15V0Bc`
+
+#### 72. Git — Cleaned & Pushed ✅
+- Merge conflict markers removed from all files
+- Temp files cleaned (27 files deleted from git tracking)
+- `docs/CHECKPOINT.md` stale copy deleted
+- All fixes committed: `2f65ebe`, `0331202`
+- Server and dev PC in sync with GitHub
+
+### Key Files
+| File | Purpose |
+|------|---------|
+| `/aios/dograh-patches/chatwoot_sync.py` | Real-time Chatwoot transcript sync (v3, all bugs fixed) |
+| `/aios/dograh-patches/run_pipeline.py` | Patched pipeline with sync hook + duration tracking |
+| `/aios/dograh-patches/emma_v3_prompt.txt` | Emma v3 prompt (7,255 chars, adaptive LOD) |
+| `/aios/dograh-patches/emma_v2_prompt.txt` | Emma v2 prompt (6,691 chars, backup) |
+| `/aios/configs/traefik/dynamic/emma-chat.yml` | Traefik route with stripPrefix |
+| `/aios/chat/chat_server.py` | Emma chat HTTP server (stdlib) |
+| `/aios/chat/index.html` | Emma chat UI with BASE path detection |
+| `/aios/docker-compose-aios.yml` | Fixed merge conflicts, networks, volumes |
+
+### Known Issues
+- `call_duration_seconds` fix deployed but not yet tested (shows None for runs before the fix)
+- Chat server runs in screen session (not Docker) — doesn't survive reboot
+- OpenMonitor balance — needs monitoring
+
+### Next Steps
+- Monitor Chatwoot sync for edge cases (long calls, multiple simultaneous calls)
+- Add chat server to docker-compose for reboot persistence
 (End of file - total 505 lines)
