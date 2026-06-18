@@ -1,4 +1,4 @@
-﻿# AIOS — AI Core Stack (Layer B)
+# AIOS — AI Core Stack (Layer B)
 # 7 Docker network zones — never deviate from this structure
 
 networks:
@@ -1057,7 +1057,6 @@ services:
       EXT_102_SECRET: ${EXT_102_SECRET}
       EXT_2000_SECRET: ${EXT_2000_SECRET}
       EXT_9000_SECRET: ${EXT_9000_SECRET}
-      EXT_2000_SECRET: ${EXT_2000_SECRET}
       EXT_103_SECRET: ${EXT_103_SECRET}
       EXT_104_SECRET: ${EXT_104_SECRET}
       ARI_ADMIN_PASSWORD: ${ARI_ADMIN_PASSWORD}
@@ -1132,6 +1131,7 @@ services:
           - api
       aios-data:
       aios-ai:
+      aios-foss:
     ports:
       - "8085:8000/tcp"
     depends_on:
@@ -1157,20 +1157,10 @@ services:
       API_URL: http://10.50.0.30:8000
       ENABLE_TELEMETRY: "false"
       LOG_LEVEL: debug
-<<<<<<< HEAD
-<<<<<<< HEAD
-    volumes:
-      - ./dograh-patches/ari_manager.py:/app/api/services/telephony/ari_manager.py
-=======
-    volumes:
-      - ./dograh-patches/ari_manager.py:/app/api/services/telephony/ari_manager.py
->>>>>>> origin/main
-    healthcheck:
-=======
     volumes:
       - ./dograh-patches/run_pipeline.py:/app/api/services/pipecat/run_pipeline.py
+      - ./dograh-patches/chatwoot_sync.py:/app/api/services/pipecat/chatwoot_sync.py
     healthcheck:
->>>>>>> afaad01 (fix: ext 102 latency - switch to general-reasoning (free), VAD 0.85, TTS speed 0.9)
       test: ["CMD-SHELL", 'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8000/api/v1/health'').read()"']
       interval: 30s
       timeout: 10s

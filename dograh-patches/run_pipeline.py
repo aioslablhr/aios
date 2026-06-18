@@ -31,6 +31,7 @@ from api.services.pipecat.pre_call_fetch import execute_pre_call_fetch
 from api.services.pipecat.realtime_feedback_events import (
     build_node_transition_event,
 )
+from api.services.pipecat.chatwoot_sync import sync_to_chatwoot
 from api.services.pipecat.realtime_feedback_observer import (
     RealtimeFeedbackObserver,
     register_turn_log_handlers,
@@ -106,7 +107,7 @@ def _create_realtime_user_turn_config(provider: str):
                 start=[VADUserTurnStartStrategy(enable_interruptions=False)],
                 stop=[SpeechTimeoutUserTurnStopStrategy()],
             ),
-            SileroVADAnalyzer(params=VADParams(confidence=0.85, stop_secs=0.2)),
+            SileroVADAnalyzer(params=VADParams(confidence=0.85, stop_secs=0.5)),
         )
 
     if provider == ServiceProviders.OPENAI_REALTIME.value:
@@ -136,7 +137,7 @@ def _create_realtime_user_turn_config(provider: str):
             start=[VADUserTurnStartStrategy()],
             stop=[SpeechTimeoutUserTurnStopStrategy()],
         ),
-        SileroVADAnalyzer(params=VADParams(confidence=0.85, stop_secs=0.2)),
+        SileroVADAnalyzer(params=VADParams(confidence=0.85, stop_secs=0.5)),
     )
 
 
@@ -612,7 +613,7 @@ async def _run_pipeline(
         FunctionCallUserMuteStrategy(),
         CallbackUserMuteStrategy(should_mute_callback=engine.should_mute_user),
     ]
-    user_vad_analyzer = SileroVADAnalyzer(params=VADParams(confidence=0.85, stop_secs=0.2))
+    user_vad_analyzer = SileroVADAnalyzer(params=VADParams(confidence=0.85, stop_secs=0.5))
 
     # Configure turn strategies based on STT provider, model, and workflow configuration
     if is_realtime:
@@ -884,3 +885,19 @@ async def _run_pipeline(
         await engine.close_mcp_sessions()
         await feedback_observer.cleanup()
         logger.debug(f"Cleaned up context providers for workflow run {workflow_run_id}")
+
+        # Sync transcript to Chatwoot in real-time (fire-and-forget)
+        transcript_text = in_memory_logs_buffer.generate_transcript_text()
+        if transcript_text:
+            call_metadata = {
+                "call_id": workflow_run_id,
+                "workflow_run_id": workflow_run_id,
+                "call_duration_seconds": None,
+                "call_disposition": "completed",
+                "ext_channel_id": "",
+                "caller_number": merged_call_context_vars.get("caller_number", ""),
+            }
+            asyncio.ensure_future(sync_to_chatwoot(
+                workflow_run_id, transcript_text, call_metadata
+            ))
+            logger.info(f"Chatwoot sync initiated for run {workflow_run_id}")
