@@ -7,22 +7,23 @@
 
 ---
 
-## Container Status (Server — June 13, 2026)
+## Container Status (Server — June 18, 2026)
 
-### Running (48 — all services healthy or starting)
-aios-traefik, aios-postgres, aios-redis, aios-qdrant, aios-minio, aios-clickhouse, aios-ollama, aios-bifrost, aios-langfuse, aios-docling, aios-mem0, aios-asterisk, aios-dnsmasq-tftp, aios-knowledge-ingest, aios-knowledge-compile, aios-dograh-api, aios-dograh-ui, aios-tts-router, aios-chatterbox, aios-kokoro, aios-xtts-urdu, aios-whisper-stt, aios-n8n, aios-n8n-worker-1, aios-n8n-worker-2, aios-n8n-db, aios-flowise, aios-open-webui, aios-keycloak, aios-mcp, aios-vault, aios-vault-unseal, aios-grafana, aios-portainer, aios-dashy, aios-prometheus, aios-cadvisor, aios-node-exporter, aios-loki, aios-crowdsec, aios-frigate, aios-mosquitto, aios-gitops, aios-hermes, aios-speaches, aios-dia-tts, aios-data-qdrant-proxy, aios-llm-proxy
+### Running (54 — all services healthy)
+aios-asterisk, aios-bifrost, aios-cadvisor, aios-chatterbox, aios-chatwoot-db, aios-chatwoot-redis, aios-chatwoot-web, aios-chatwoot-worker, aios-clickhouse, aios-crowdsec, aios-dashy, aios-data-minio-proxy, aios-data-qdrant-proxy, aios-dia-tts, aios-dnsmasq-tftp, aios-docling, aios-dograh-api, aios-dograh-ui, aios-flowise, aios-frigate, aios-gitops, aios-grafana, aios-hermes, aios-keycloak, aios-knowledge-compile, aios-knowledge-ingest, aios-kokoro, aios-langfuse, aios-llm-proxy, aios-loki, aios-mcp, aios-mem0, aios-minio, aios-mosquitto, aios-n8n, aios-n8n-db, aios-n8n-worker-1, aios-n8n-worker-2, aios-node-exporter, aios-ollama, aios-open-webui, aios-portainer, aios-postgres, aios-prometheus, aios-qdrant, aios-redis, aios-speaches, aios-traefik, aios-tts-router, aios-vault, aios-vault-unseal, aios-whisper-stt, aios-wireguard, aios-xtts-urdu
 
 ### Known Issues
 - Chatterbox: runs with model loaded on CUDA but Docker healthcheck marks unhealthy
 - Keycloak: health: starting (takes ~2min to become healthy)
-- WireGuard: Created state (sysctl `net.ipv4.conf.all.src_valid_mark` not allowed in host network namespace — pre-existing, user wants to keep)
-- dia-tts: Build context created on server, image built, container running but on CPU (Quadro M4000 can't run CUDA 12.x required by PyTorch 2.6)
-- **TTS English words**: ElevenLabs voice `G1gUElsVCoazUpfBnLnt` mispronounces English words mixed in Pakistani Urdu. Need native Urdu voice clone.
+- WireGuard: Created state (sysctl `net.ipv4.conf.all.src_valid_mark` not allowed in host network namespace)
+- dia-tts: CPU-only on Quadro M4000 (can't run CUDA 12.x)
+- **TTS English words**: ElevenLabs voice mispronounces English words in Urdu
+- **Text chat address**: Emma ignores address in prompt on text chat (voice works). Dograh internal issue.
 
 ### Written but NOT started
-- Nextcloud (10.70.0.30), Odoo (10.70.0.20), Metabase (10.70.0.40) — docker-compose-apps.yml exists, never started
+- Nextcloud, Odoo, Metabase — docker-compose-apps.yml exists, never started
 
-### Container Count: 48 running
+### Container Count: 54 running
 
 ---
 
