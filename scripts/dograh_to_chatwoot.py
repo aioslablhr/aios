@@ -119,20 +119,25 @@ for run in new_runs:
     
     # Create contact in Chatwoot
     contact_name = f"Call {run_id}"
-    status, cw_resp = cw_api('POST', '/contacts', {
-        'inbox_id': 1,
-        'name': contact_name,
-        'phone_number': f"+4412345678{run_id:02d}",
-        'additional_attributes': {
-            'call_id': call_id,
-            'duration': duration,
-            'disposition': disposition
-        }
-    })
-    
-    if status != 200:
-        print(f"  Contact error ({status}): {cw_resp}")
-        last_run = max(last_run, run_id)
+    cw_resp = None
+    for attempt in range(3):
+        status, cw_resp = cw_api('POST', '/contacts', {
+            'inbox_id': 1,
+            'name': contact_name,
+            'phone_number': f"+441234567{run_id:05d}",
+            'additional_attributes': {
+                'call_id': call_id,
+                'duration': duration,
+                'disposition': disposition
+            }
+        })
+        if status == 200:
+            break
+        print(f"  Contact attempt {attempt+1} error ({status}): {cw_resp}")
+        time.sleep(2)
+
+    if status != 200 or not cw_resp:
+        print(f"  Contact failed after retries, will retry next cron tick")
         continue
     
     source_id = cw_resp.get('payload', {}).get('contact_inbox', {}).get('source_id', '')

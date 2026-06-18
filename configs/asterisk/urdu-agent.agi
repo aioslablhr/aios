@@ -1,1 +1,156 @@
-#!/bin/bash# AIOS Urdu AI Agent +óGé¼GÇ¥ AGI Bridge v1.0# Uses only: curl, sox, awk, sed, grep, tr (no python)WHISPER_URL="http://10.40.0.40:9000/asr"BIFROST_URL="http://10.40.0.10:4000/v1/chat/completions"BIFROST_KEY="sk-aios-master-admin-key-change-me"TTS_ROUTER_URL="http://10.40.0.33:8030/v1/audio/speech"AUDIO_SPOOL="/var/spool/asterisk/audio"MAX_LOOPS=20mkdir -p "$AUDIO_SPOOL"while read -r line; do    [ -z "$line" ] && breakdoneagi_cmd() {    echo "$1"    read -r AGI_RESULT}# Extract JSON string value for a key (no nesting)json_val() {    local key="$1"    sed -n "s/.*\"${key}\"[[:space:]]*:[[:space:]]*\"//p" | sed 's/".*//'}# JSON-escape a stringjson_escape() {    awk '{        gsub(/[\\]/,"\\\\")        gsub(/"/,"\\\"")        gsub(/\n/,"\\n")        gsub(/\r/,"\\r")        print    }' | sed 's/^/"/;s/$/"/'}record_and_process() {    local UNIQUE_ID="$1" CALLER_ID="$2" LOOP_NUM="$3"    local FILE_PATH="${AUDIO_SPOOL}/${UNIQUE_ID}-L${LOOP_NUM}"    agi_cmd "STREAM FILE beep \"\""    agi_cmd "RECORD FILE ${FILE_PATH} wav \"#\" 10000 0 3000 3"    case "$AGI_RESULT" in        *"result=#"*) return 2 ;;        *"result=0"*) return 1 ;;        *"result=-"*) return 1 ;;    esac    if [ ! -f "${FILE_PATH}.wav" ]; then return 1; fi    local FS=$(stat -c%s "${FILE_PATH}.wav" 2>/dev/null || echo 0)    if [ "$FS" -lt 100 ]; then return 1; fi    local TTS_FILE="${AUDIO_SPOOL}/${UNIQUE_ID}-L${LOOP_NUM}-response"    # Step 1: Whisper STT    agi_cmd "VERBOSE \"Urdu Agent: Transcribing...\" 3"    local STT_RESP=$(curl -s --max-time 30 "$WHISPER_URL" \        -F "audio_file=@${FILE_PATH}.wav" \        -F "task=transcribe" \        -F "response_format=text" 2>/dev/null)    rm -f "${FILE_PATH}.wav"    local TRANSCRIPT=$(echo "$STT_RESP" | tr -d '\n\r')    if [ -z "$TRANSCRIPT" ]; then        agi_cmd "VERBOSE \"Urdu Agent: STT empty\" 3"        agi_cmd "STREAM FILE \"pbx-invalid\" \"\""        return 1    fi    agi_cmd "VERBOSE \"Urdu Agent: You said: ${TRANSCRIPT:0:80}\" 3"    # Step 2: Bifrost LLM    local ESC_TEXT=$(echo "$TRANSCRIPT" | json_escape)    local LLM_PAYLOAD="{\"model\":\"local-urdu\",\"messages\":[{\"role\":\"system\",\"content\":\"You are an Urdu assistant. Keep responses to 1-2 short sentences in Urdu.\"},{\"role\":\"user\",\"content\":${ESC_TEXT}}],\"max_tokens\":150}"    local LLM_RESP=$(curl -s --max-time 30 "$BIFROST_URL" \        -H "Authorization: Bearer $BIFROST_KEY" \        -H "Content-Type: application/json" \        -d "$LLM_PAYLOAD" 2>/dev/null)    # Extract content from {"choices":[{"message":{"content":"..."}}]}    local REPLY_TEXT=$(echo "$LLM_RESP" | sed 's/.*"content":"//' | sed 's/".*//' | sed 's/\\"/"/g')    if [ -z "$REPLY_TEXT" ]; then        agi_cmd "VERBOSE \"Urdu Agent: LLM failed\" 3"        agi_cmd "STREAM FILE \"pbx-invalid\" \"\""        return 1    fi    agi_cmd "VERBOSE \"Urdu Agent: Reply: ${REPLY_TEXT:0:80}\" 3"    # Step 3: TTS Router    agi_cmd "VERBOSE \"Urdu Agent: TTS synthesizing...\" 3"    local ESC_REPLY=$(echo "$REPLY_TEXT" | json_escape)    local TTS_PAYLOAD="{\"model\":\"tts-1\",\"input\":${ESC_REPLY},\"voice\":\"default\"}"    local HTTP_CODE=$(curl -s --max-time 60 "$TTS_ROUTER_URL" \        -X POST -H "Content-Type: application/json" \        -d "$TTS_PAYLOAD" \        -o "${TTS_FILE}.wav" -w "%{http_code}" 2>/dev/null)    if [ "$HTTP_CODE" != "200" ] || [ ! -f "${TTS_FILE}.wav" ]; then        agi_cmd "VERBOSE \"Urdu Agent: TTS failed (HTTP $HTTP_CODE)\" 3"        agi_cmd "STREAM FILE \"pbx-invalid\" \"\""        return 1    fi    # Step 4: Play back to caller    agi_cmd "VERBOSE \"Urdu Agent: Playing response...\" 3"    local WS=$(stat -c%s "${TTS_FILE}.wav" 2>/dev/null || echo 0)    if [ "$WS" -gt 1000 ]; then        local PLAY_FILE="${TTS_FILE}-8k"        sox "${TTS_FILE}.wav" -r 8000 -c 1 "${PLAY_FILE}.wav" 2>/dev/null        if [ -f "${PLAY_FILE}.wav" ]; then            agi_cmd "STREAM FILE \"${PLAY_FILE}\" \"#*\""            rm -f "${PLAY_FILE}.wav"        else            agi_cmd "STREAM FILE \"${TTS_FILE}\" \"#*\""        fi        rm -f "${TTS_FILE}.wav"    else        agi_cmd "STREAM FILE \"vm-isonphone\" \"\""    fi    return 0}# MAINagi_cmd "ANSWER"agi_cmd "GET VARIABLE CALLERID(num)"CID=$(echo "$AGI_RESULT" | sed -n 's/^200 result=1 (\(.*\))$/\1/p')agi_cmd "GET VARIABLE UNIQUEID"UID=$(echo "$AGI_RESULT" | sed -n 's/^200 result=1 (\(.*\))$/\1/p')[ -z "$UID" ] && UID="call-$$"agi_cmd "STREAM FILE \"welcome\" \"\""LOOP_NUM=0while [ "$LOOP_NUM" -lt "$MAX_LOOPS" ]; do    LOOP_NUM=$((LOOP_NUM + 1))    record_and_process "$UID" "$CID" "$LOOP_NUM"    RC=$?    if [ "$RC" -eq 2 ]; then        agi_cmd "STREAM FILE \"good-bye\" \"\""        break    fi    if [ "$RC" -ne 0 ]; then        agi_cmd "WAIT FOR DIGIT 2000"        if echo "$AGI_RESULT" | grep -q "result=#"; then            agi_cmd "STREAM FILE \"good-bye\" \"\""            break        fi    fidonefind "$AUDIO_SPOOL" -name "${UID}*" -mmin +5 -delete 2>/dev/nullagi_cmd "HANGUP"exit 0
+#!/bin/bash
+# AIOS Urdu AI Agent â€” AGI Bridge v1.0
+# Uses only: curl, sox, awk, sed, grep, tr (no python)
+
+WHISPER_URL="http://10.40.0.40:9000/asr"
+BIFROST_URL="http://10.40.0.10:4000/v1/chat/completions"
+BIFROST_KEY="sk-aios-master-admin-key-change-me"
+TTS_ROUTER_URL="http://10.40.0.33:8030/v1/audio/speech"
+AUDIO_SPOOL="/var/spool/asterisk/audio"
+MAX_LOOPS=20
+
+mkdir -p "$AUDIO_SPOOL"
+
+# Drain STDIN (AGI sends initial env vars)
+while read -r line; do
+    [ -z "$line" ] && break
+done
+
+agi_cmd() {
+    echo "$1"
+    read -r AGI_RESULT
+}
+
+# Extract JSON string value for a key (no nesting)
+json_val() {
+    local key="$1"
+    sed -n "s/.*\"${key}\"[[:space:]]*:[[:space:]]*\"//p" | sed 's/".*//'
+}
+
+# JSON-escape a string
+json_escape() {
+    awk '{
+        gsub(/[\\]/,"\\\\")
+        gsub(/"/,"\\\"")
+        gsub(/\n/,"\\n")
+        gsub(/\r/,"\\r")
+        print
+    }' | sed 's/^/"/;s/$/"/'
+}
+
+record_and_process() {
+    local UNIQUE_ID="$1" CALLER_ID="$2" LOOP_NUM="$3"
+    local FILE_PATH="${AUDIO_SPOOL}/${UNIQUE_ID}-L${LOOP_NUM}"
+
+    agi_cmd "STREAM FILE beep \"\""
+    agi_cmd "RECORD FILE ${FILE_PATH} wav \"#\" 10000 0 3000 3"
+
+    case "$AGI_RESULT" in
+        *"result=#"*) return 2 ;;
+        *"result=0"*) return 1 ;;
+        *"result=-"*) return 1 ;;
+    esac
+
+    if [ ! -f "${FILE_PATH}.wav" ]; then return 1; fi
+    local FS=$(stat -c%s "${FILE_PATH}.wav" 2>/dev/null || echo 0)
+    if [ "$FS" -lt 100 ]; then return 1; fi
+
+    local TTS_FILE="${AUDIO_SPOOL}/${UNIQUE_ID}-L${LOOP_NUM}-response"
+
+    # Step 1: Whisper STT
+    agi_cmd "VERBOSE \"Urdu Agent: Transcribing...\" 3"
+    local STT_RESP=$(curl -s --max-time 30 "$WHISPER_URL" \
+        -F "audio_file=@${FILE_PATH}.wav" \
+        -F "task=transcribe" \
+        -F "response_format=text" 2>/dev/null)
+    rm -f "${FILE_PATH}.wav"
+
+    local TRANSCRIPT=$(echo "$STT_RESP" | tr -d '\n\r')
+    if [ -z "$TRANSCRIPT" ]; then
+        agi_cmd "VERBOSE \"Urdu Agent: STT empty\" 3"
+        agi_cmd "STREAM FILE \"pbx-invalid\" \"\""
+        return 1
+    fi
+    agi_cmd "VERBOSE \"Urdu Agent: You said: ${TRANSCRIPT:0:80}\" 3"
+
+    # Step 2: Bifrost LLM
+    local ESC_TEXT=$(echo "$TRANSCRIPT" | json_escape)
+    local LLM_PAYLOAD="{\"model\":\"local-urdu\",\"messages\":[{\"role\":\"system\",\"content\":\"You are an Urdu assistant. Keep responses to 1-2 short sentences in Urdu.\"},{\"role\":\"user\",\"content\":${ESC_TEXT}}],\"max_tokens\":150}"
+    local LLM_RESP=$(curl -s --max-time 30 "$BIFROST_URL" \
+        -H "Authorization: Bearer $BIFROST_KEY" \
+        -H "Content-Type: application/json" \
+        -d "$LLM_PAYLOAD" 2>/dev/null)
+
+    # Extract content from {"choices":[{"message":{"content":"..."}}]}
+    local REPLY_TEXT=$(echo "$LLM_RESP" | sed 's/.*"content":"//' | sed 's/".*//' | sed 's/\\"/"/g')
+    if [ -z "$REPLY_TEXT" ]; then
+        agi_cmd "VERBOSE \"Urdu Agent: LLM failed\" 3"
+        agi_cmd "STREAM FILE \"pbx-invalid\" \"\""
+        return 1
+    fi
+    agi_cmd "VERBOSE \"Urdu Agent: Reply: ${REPLY_TEXT:0:80}\" 3"
+
+    # Step 3: TTS Router
+    agi_cmd "VERBOSE \"Urdu Agent: TTS synthesizing...\" 3"
+    local ESC_REPLY=$(echo "$REPLY_TEXT" | json_escape)
+    local TTS_PAYLOAD="{\"model\":\"tts-1\",\"input\":${ESC_REPLY},\"voice\":\"default\"}"
+    local HTTP_CODE=$(curl -s --max-time 60 "$TTS_ROUTER_URL" \
+        -X POST -H "Content-Type: application/json" \
+        -d "$TTS_PAYLOAD" \
+        -o "${TTS_FILE}.wav" -w "%{http_code}" 2>/dev/null)
+
+    if [ "$HTTP_CODE" != "200" ] || [ ! -f "${TTS_FILE}.wav" ]; then
+        agi_cmd "VERBOSE \"Urdu Agent: TTS failed (HTTP $HTTP_CODE)\" 3"
+        agi_cmd "STREAM FILE \"pbx-invalid\" \"\""
+        return 1
+    fi
+
+    # Step 4: Play back to caller
+    agi_cmd "VERBOSE \"Urdu Agent: Playing response...\" 3"
+    local WS=$(stat -c%s "${TTS_FILE}.wav" 2>/dev/null || echo 0)
+    if [ "$WS" -gt 1000 ]; then
+        local PLAY_FILE="${TTS_FILE}-8k"
+        sox "${TTS_FILE}.wav" -r 8000 -c 1 "${PLAY_FILE}.wav" 2>/dev/null
+        if [ -f "${PLAY_FILE}.wav" ]; then
+            agi_cmd "STREAM FILE \"${PLAY_FILE}\" \"#*\""
+            rm -f "${PLAY_FILE}.wav"
+        else
+            agi_cmd "STREAM FILE \"${TTS_FILE}\" \"#*\""
+        fi
+        rm -f "${TTS_FILE}.wav"
+    else
+        agi_cmd "STREAM FILE \"vm-isonphone\" \"\""
+    fi
+    return 0
+}
+
+# MAIN
+agi_cmd "ANSWER"
+agi_cmd "GET VARIABLE CALLERID(num)"
+CID=$(echo "$AGI_RESULT" | sed -n 's/^200 result=1 (\(.*\))$/\1/p')
+agi_cmd "GET VARIABLE UNIQUEID"
+CALL_UID=$(echo "$AGI_RESULT" | sed -n 's/^200 result=1 (\(.*\))$/\1/p')
+[ -z "$CALL_UID" ] && CALL_UID="call-$$"
+
+agi_cmd "STREAM FILE \"welcome\" \"\""
+LOOP_NUM=0
+while [ "$LOOP_NUM" -lt "$MAX_LOOPS" ]; do
+    LOOP_NUM=$((LOOP_NUM + 1))
+    record_and_process "$CALL_UID" "$CID" "$LOOP_NUM"
+    RC=$?
+    if [ "$RC" -eq 2 ]; then
+        agi_cmd "STREAM FILE \"good-bye\" \"\""
+        break
+    fi
+    if [ "$RC" -ne 0 ]; then
+        agi_cmd "WAIT FOR DIGIT 2000"
+        if echo "$AGI_RESULT" | grep -q "result=#"; then
+            agi_cmd "STREAM FILE \"good-bye\" \"\""
+            break
+        fi
+    fi
+done
+
+find "$AUDIO_SPOOL" -name "${CALL_UID}*" -mmin +5 -delete 2>/dev/null
+agi_cmd "HANGUP"
+exit 0

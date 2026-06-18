@@ -1,0 +1,262 @@
+general_settings:
+  master_key: os.environ/BIFROST_ADMIN_KEY
+  store_model_in_db: false
+  allow_requests_on_db_unavailable: false
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+  cache: true
+  cache_params:
+    type: redis
+    host: 10.30.0.30
+    port: 6379
+    ttl: 3600
+    mode: default_semantic
+    similarity_threshold: 0.85
+  success_callback: ["langfuse"]
+  failure_callback: ["langfuse"]
+
+model_list:
+  # ════════════════════════════════════════════════════════════════
+  # TIER 1: BIFROST CACHE (50ms, $0) — hit → return
+  #   No model config needed — handled by cache_params above
+  # ════════════════════════════════════════════════════════════════
+
+  # ════════════════════════════════════════════════════════════════
+  # TIER 2: LOCAL GPU OLLAMA (10% — Urdu LLM, embeddings, vision)
+  #   Hardware: NVIDIA Quadro M4000 8GB VRAM (Maxwell)
+  #   ALWAYS LOADED: Qalb-1.0-8B (~5.5GB) + nomic-embed-text (~0.3GB)
+  #   ON DEMAND: LLaVA 7B vision (~4.5GB, swaps with Qalb)
+  # ════════════════════════════════════════════════════════════════
+
+  # Embeddings — always available, enables RAG + mem0 + semantic cache
+  - model_name: embedding
+    litellm_params:
+      model: ollama/nomic-embed-text
+      api_base: http://10.40.0.20:11434
+      mode: embedding
+      rpm: 120
+    model_info:
+      mode: embedding
+      vector_size: 768
+
+  # Local Urdu LLM — PRIMARY local conversation model (always loaded)
+  - model_name: local-urdu
+    litellm_params:
+      model: ollama/alif-1.0-8b
+      api_base: http://10.40.0.20:11434
+      rpm: 60
+    model_info:
+      mode: completion
+      supports_vision: false
+      supports_function_calling: true
+
+  # Backup Urdu LLM — fallback if Alif is being loaded/swapped
+  - model_name: local-urdu
+    litellm_params:
+      model: ollama/qalb-1.0-8b
+      api_base: http://10.40.0.20:11434
+      rpm: 30
+    model_info:
+      mode: completion
+      supports_vision: false
+      supports_function_calling: true
+
+  # Local vision — document scanning (CNIC, invoices, forms)
+  - model_name: local-vision
+    litellm_params:
+      model: ollama/llava:7b-q4_K_M
+      api_base: http://10.40.0.20:11434
+      rpm: 30
+    model_info:
+      mode: completion
+      supports_vision: true
+      supports_function_calling: false
+
+  # ════════════════════════════════════════════════════════════════
+  # TIER 3: OPENROUTER FREE (80% — primary workhorse)
+  #   Up to 25 free models available on OpenRouter.
+  #   Max coverage = max reliability via fallback chains.
+  # ════════════════════════════════════════════════════════════════
+
+  # GENERAL REASONING (strongest free models — June 2026)
+  - model_name: general-reasoning
+    litellm_params:
+      model: openrouter/google/gemma-4-31b-it:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: general-reasoning
+    litellm_params:
+      model: openrouter/meta-llama/llama-3.3-70b-instruct:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: general-reasoning
+    litellm_params:
+      model: openrouter/nousresearch/hermes-3-llama-3.1-405b:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: general-reasoning
+    litellm_params:
+      model: openrouter/nvidia/nemotron-3-super-120b-a12b:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: general-reasoning
+    litellm_params:
+      model: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: general-reasoning
+    litellm_params:
+      model: openrouter/poolside/laguna-m.1:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: general-reasoning
+    litellm_params:
+      model: openrouter/nex-agi/nex-n2-pro:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  # MULTILINGUAL ($0 free models only — June 2026)
+  # All models are OpenRouter free tier ($0). Rate-limited ~8 req/min per model.
+  # Fallback chain tries next model if rate-limited. Add more free models here.
+  - model_name: multilingual
+    litellm_params:
+      model: openrouter/google/gemma-4-31b-it:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: multilingual
+    litellm_params:
+      model: openrouter/qwen/qwen3-next-80b-a3b-instruct:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: multilingual
+    litellm_params:
+      model: openrouter/nousresearch/hermes-3-llama-3.1-405b:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: multilingual
+    litellm_params:
+      model: openrouter/meta-llama/llama-3.3-70b-instruct:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  # CODE GENERATION
+  - model_name: code
+    litellm_params:
+      model: openrouter/qwen/qwen3-coder:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: code
+    litellm_params:
+      model: openrouter/deepseek/deepseek-v4-flash:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: code
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: code
+    litellm_params:
+      model: openrouter/openai/gpt-4o
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  # FAST / CLASSIFICATION (small, cheap, fast — June 2026)
+  - model_name: fast-simple
+    litellm_params:
+      model: openrouter/meta-llama/llama-3.2-3b-instruct:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: fast-simple
+    litellm_params:
+      model: openrouter/liquid/lfm-2.5-1.2b-instruct:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: fast-simple
+    litellm_params:
+      model: openrouter/liquid/lfm-2.5-1.2b-thinking:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: fast-simple
+    litellm_params:
+      model: openrouter/cognitivecomputations/dolphin-mistral-24b-venice-edition:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: fast-simple
+    litellm_params:
+      model: openrouter/poolside/laguna-xs.2:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  # VISION (image understanding: invoices, photos, documents — June 2026)
+  - model_name: vision
+    litellm_params:
+      model: openrouter/google/gemma-4-31b-it:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: vision
+    litellm_params:
+      model: openrouter/qwen/qwen3-next-80b-a3b-instruct:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: vision
+    litellm_params:
+      model: openrouter/nvidia/nemotron-nano-12b-v2-vl:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: vision
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  # ════════════════════════════════════════════════════════════════
+  # TIER 4: OPENROUTER PAID (10% — frontier models)
+  #   Every call goes through OpenRouter — NEVER store direct API keys.
+  #   Budget control: OpenRouter allows per-month spending caps.
+  # ════════════════════════════════════════════════════════════════
+
+  # Frontline reasoning — Claude Sonnet 4 (best for complex reasoning)
+  - model_name: frontier-reasoning
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: frontier-reasoning
+    litellm_params:
+      model: openrouter/openai/gpt-4o
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: frontier-reasoning
+    litellm_params:
+      model: openrouter/anthropic/claude-3.5-haiku-20241022
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  # Frontier vision
+  - model_name: frontier-vision
+    litellm_params:
+      model: openrouter/openai/gpt-4o
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: frontier-vision
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  # Frontier code generation
+  - model_name: frontier-code
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: frontier-code
+    litellm_params:
+      model: openrouter/openai/gpt-4o
+      api_key: os.environ/OPENROUTER_API_KEY
+
+router_settings:
+  routing_strategy: usage-based-routing
+  enable_pre_call_checks: true
+  allowed_fails: 1
+  num_retries: 0
+  redis_host: 10.30.0.30
+  redis_port: 6379
+  routing_strategy_args:
+    max_response_time: 10
+    ttl: 3600
+
+  # ── FALLBACK CHAINS (shallow + fast — max 10s per chain) ──
+  fallbacks:
+    - local-urdu: [multilingual]
+    - local-vision: [vision]
+    - multilingual: [general-reasoning, frontier-reasoning]
+    - general-reasoning: [multilingual, frontier-reasoning]
+    - code: [frontier-code, general-reasoning]
+    - fast-simple: [general-reasoning, multilingual]
+    - vision: [frontier-vision, multilingual]
+    - frontier-reasoning: [frontier-vision]
+    - frontier-vision: [frontier-reasoning]
+    - frontier-code: [frontier-reasoning]
+
+number_requests: 100000
+max_budget: 1000.0
+budet_duration: 30d
+
+langfuse_settings:
+  host: http://10.60.0.10:3000
+  public_key: os.environ/LANGFUSE_PUBLIC_KEY
+  secret_key: os.environ/LANGFUSE_SECRET_KEY

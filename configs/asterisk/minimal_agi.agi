@@ -1,0 +1,14 @@
+#!/bin/bash
+# Minimal AGI test: play a sound and digits
+
+echo "ANSWER"
+read resp
+
+echo "STREAM FILE beep \"\""
+read resp
+
+echo "SAY DIGITS 12345 \"\""
+read resp
+
+echo "HANGUP"
+exit 0

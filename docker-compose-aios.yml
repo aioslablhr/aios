@@ -1060,7 +1060,6 @@ services:
       EXT_2000_SECRET: ${EXT_2000_SECRET}
       EXT_103_SECRET: ${EXT_103_SECRET}
       EXT_104_SECRET: ${EXT_104_SECRET}
-      EXT_2000_SECRET: ${EXT_2000_SECRET}
       ARI_ADMIN_PASSWORD: ${ARI_ADMIN_PASSWORD}
     cap_add:
       - NET_ADMIN
@@ -1159,6 +1158,7 @@ services:
       ENABLE_TELEMETRY: "false"
       LOG_LEVEL: debug
 <<<<<<< HEAD
+<<<<<<< HEAD
     volumes:
       - ./dograh-patches/ari_manager.py:/app/api/services/telephony/ari_manager.py
 =======
@@ -1166,6 +1166,11 @@ services:
       - ./dograh-patches/ari_manager.py:/app/api/services/telephony/ari_manager.py
 >>>>>>> origin/main
     healthcheck:
+=======
+    volumes:
+      - ./dograh-patches/run_pipeline.py:/app/api/services/pipecat/run_pipeline.py
+    healthcheck:
+>>>>>>> afaad01 (fix: ext 102 latency - switch to general-reasoning (free), VAD 0.85, TTS speed 0.9)
       test: ["CMD-SHELL", 'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8000/api/v1/health'').read()"']
       interval: 30s
       timeout: 10s
