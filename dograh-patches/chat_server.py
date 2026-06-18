@@ -46,15 +46,35 @@ class ChatHandler(http.server.SimpleHTTPRequestHandler):
             body = self.rfile.read(length) if length else b'{}'
             try:
                 target = self.translate(self.path)
-                # Revert: no knowledge injection - text_chat_runner.py patch handles it
-                req = urllib.request.Request(target, data=body,
-                    headers={"X-API-Key": API_KEY, "Content-Type": "application/json"},
-                    method='POST')
-                with urllib.request.urlopen(req, timeout=60) as r:
-                    self.send_response(r.status)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(r.read())
+                # Inject knowledge into new sessions
+                if self.path == '/api/sessions':
+                    req = urllib.request.Request(target, data=body,
+                        headers={"X-API-Key": API_KEY, "Content-Type": "application/json"},
+                        method='POST')
+                    with urllib.request.urlopen(req, timeout=60) as r:
+                        resp_data = r.read()
+                        session = json.loads(resp_data)
+                        sid = session.get("workflow_run_id")
+                        if sid:
+                            msg_body = json.dumps({"text": KNOWLEDGE_MSG}).encode()
+                            msg_url = target + "/" + str(sid) + "/messages"
+                            msg_req = urllib.request.Request(msg_url, data=msg_body,
+                                headers={"X-API-Key": API_KEY, "Content-Type": "application/json"},
+                                method='POST')
+                            urllib.request.urlopen(msg_req, timeout=60)
+                        self.send_response(r.status)
+                        self.send_header('Content-Type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(resp_data)
+                else:
+                    req = urllib.request.Request(target, data=body,
+                        headers={"X-API-Key": API_KEY, "Content-Type": "application/json"},
+                        method='POST')
+                    with urllib.request.urlopen(req, timeout=60) as r:
+                        self.send_response(r.status)
+                        self.send_header('Content-Type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(r.read())
             except urllib.error.HTTPError as e:
                 self.send_response(e.code)
                 self.send_header('Content-Type', 'application/json')
