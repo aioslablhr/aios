@@ -858,4 +858,41 @@ wiki/
 **Fix**: `docker run --rm --privileged --net=host alpine ip route add default via 10.0.0.1` restored gateway. Created `aios-default-gw.service` systemd unit to persist across reboots. Updated `aios-stack.service` to depend on it.
 **Verification**: Bifrost → OpenRouter returns 200 OK. LLM calls working from Dograh API container.
 
+---
+
+## Session 13 — June 19: Frigate + Dahua Camera Integration
+
+### 80. Camera RTSP Auth — Root Cause: Dahua `*` Digest Auth Bug ✅
+- Camera password `admin:Lahore*999` — `*` character breaks Dahua Digest auth over TCP RTSP (response code computed differently for `*`). UDP transport bypasses the issue.
+- Frigate config initially had `input_args: preset-rtsp-udp` but ffmpeg cmd still used TCP (Frigate v0.17.1 built-in preset resolution order issue).
+- **Fix**: Changed camera password to `Lahore999!` (no special chars). Also rebooted camera via CGI (`magicBox.cgi?action=reboot`) to clear IP-based auth lockout after repeated failed attempts.
+- Key lesson: `*` in RTSP URLs causes Digest auth failures. Escape with `%2A` doesn't help because the URL is decoded before Digest computation.
+
+### 81. Frigate CUDA HWAccel — Removed (M4000 Incompatible) ✅
+- Quadro M4000 (Maxwell CC 5.0, 2015) doesn't support HEVC hardware decode with `cuda` hwaccel.
+- **Error**: `[hevc @ ...] Hardware is lacking required capabilities` — camera streams HEVC (H.265), M4000 only has H.264 HW decode.
+- **Fix**: Removed `hwaccel_args: preset-nvidia-h264` from config.yml entirely. CPU decode works fine for 704×576 at 5fps.
+- Record stream (2560×1440) uses `-c:v copy` — no decode needed for recording.
+
+### 82. Camera in Frigate — Live and Streaming ✅
+- Dual-stream config:
+  - **Sub (detect)**: 704×576 @ 5fps, `-rtsp_transport udp`, CPU decode → `eq=gamma=1.4` filter
+  - **Main (record)**: 2560×1440, `-rtsp_transport udp`, `-c:v copy`, 10s segments to `/tmp/cache/`
+- Detector: CPU (single CPU detector, sufficient for 1 camera at 5fps)
+- go2rtc: Both main + sub stream restreamed for WebRTC/MSE playback
+- MQTT: Enabled at 10.50.0.20:1883 on `frigate/` topic prefix
+
+### Known Issues
+- M4000 CUDA hwaccel disabled — CPU decode for detect stream (negligible load at 5fps)
+- No object detection events yet — MQTT → n8n alert workflow not built
+- Camera records continuously (no motion-based event trigger configured)
+
+### Config File
+`/aios/configs/frigate/config.yml` on server (bind-mounted to Frigate container at `/config/config.yml`)
+
+### Next Steps
+- Wire MQTT events → n8n workflow → WhatsApp alerts
+- Configure motion-based recording triggers
+- Add Frigate metrics to Prometheus/Grafana
+
 (End of file - total 505 lines)

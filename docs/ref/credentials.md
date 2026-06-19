@@ -97,7 +97,7 @@
 ## SSH Access
 - **Host**: 10.0.0.100
 - **User**: ai
-- **Password**: Lahore*999
+- **Password**: Lahore999!
 - **OS**: Ubuntu 22.04.5 LTS
 
 ---

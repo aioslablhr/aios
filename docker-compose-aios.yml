@@ -636,6 +636,7 @@ services:
     image: ghcr.io/blakeblackshear/frigate:stable
     container_name: aios-frigate
     hostname: frigate
+    shm_size: 128mb
     networks:
       aios-ai:
         ipv4_address: 10.40.0.50

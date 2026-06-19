@@ -148,7 +148,7 @@
 | OpenRouter | API key | `.env` | sk-or-v1-0855e04fc... (REAL KEY — May 26) |
 | Cloudflare | API key | `.env` | (see .env on server) |
 | CrowdSec | API key | `.env` | (see .env on server) |
-| Frigate RTSP | password | `.env` | Lahore*999 |
+| Frigate RTSP | password | config.yml | Lahore999! |
 | Flowise | user/pass | — | admin / admin |
 | Portainer | host port | `.env` / compose | http://10.0.0.100:9000 (admin setup required) |
 | AWS IAM | access keys | `/aios/aios_accessKeys.csv` | AKIA565H4TDW4RHSX7TJ |
@@ -248,9 +248,9 @@ VOICE PIPELINE
     → Chatterbox/Kokoro TTS (Dograh auto-selects GPU or CPU)
   → Audio back → Asterisk → Caller
 
-SURVEILLANCE PIPELINE (pending camera setup)
-  IP Camera → RTSP → Frigate NVR
-    → GPU object detection (person, vehicle, animal)
+SURVEILLANCE PIPELINE (active)
+  IP Camera (10.0.0.51, Dahua IPC-B1E49-A-IL) → RTSP UDP → Frigate NVR
+    → GPU object detection (person, vehicle, animal — CPU decoder, M4000 hwaccel unstable)
     → MQTT events → n8n workflow
     → WhatsApp alert (via Bifrost/OpenRouter)
 
