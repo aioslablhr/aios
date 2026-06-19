@@ -825,6 +825,7 @@ wiki/
 - WireGuard sysctl removed — optimal routing not guaranteed
 - Mosquitto port 9001 blocked by MinIO (runs on internal net only — sufficient for Dograh)
 - systemd `aios-stack.service` needs threshold-based restart (single container should not fail entire stack)
+- **IPv4 default gateway missing after reboot** — Docker bridge networks are IPv4-only, need `10.0.0.1` as default gw. Systemd service `aios-default-gw.service` created to set it at boot. If server reboots and internet is down from containers, check this first.
 
 ### Next Steps
 - Dockerize chat server (add to docker-compose-aios.yml)
@@ -837,14 +838,24 @@ wiki/
 |------|--------|
 | `docker-compose-aios.yml` | Removed wireguard sysctl (host network mode incompatibility) |
 | `docs/CHECKPOINT.md` | Updated to v9.0 with Session 12 (reboot recovery) |
+| `/etc/systemd/system/aios-default-gw.service` (server) | New — sets IPv4 default gw on boot |
+| `/etc/systemd/system/aios-stack.service` (server) | Added dependency on aios-default-gw.service |
 
-### Container Status (End of Session 12)
+### Container Status (End of Session 12 — Final)
 | Metric | Value |
 |--------|-------|
 | Total running | 54 (same as pre-reboot) |
 | Healthy | 40+ (all healthcheck-enabled services) |
+| Bifrost → OpenRouter | ✅ Internet restored, LLM calls working |
+| Dograh ARI | ✅ WebSocket connected to Asterisk |
 | Chat server | ✅ screen session, port 8081 |
 | WireGuard | ✅ running (sysctl removed) |
 | Keycloak | 🟡 health: starting (~2min) |
+
+### Root Cause: Ext 102 "Busy" + Chat 500
+**Problem**: Calling Ext 102 played greeting then failed. Chat returned HTTP 500.
+**Root cause**: Server reboot at ~09:30 UTC wiped IPv4 default gateway. Host had only IPv6 default route. Docker bridge networks are IPv4-only → all 54 containers lost internet → Bifrost couldn't reach OpenRouter → LLM calls returned 500 → Dograh pipeline errored ("pipeline_error").
+**Fix**: `docker run --rm --privileged --net=host alpine ip route add default via 10.0.0.1` restored gateway. Created `aios-default-gw.service` systemd unit to persist across reboots. Updated `aios-stack.service` to depend on it.
+**Verification**: Bifrost → OpenRouter returns 200 OK. LLM calls working from Dograh API container.
 
 (End of file - total 505 lines)
