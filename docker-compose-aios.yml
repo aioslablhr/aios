@@ -1239,7 +1239,9 @@ services:
     restart: unless-stopped
 
   # ---
-  # AI LAYER CONTINUED --- Whisper STT (CPU — Urdu speech-to-text)
+  # AI LAYER CONTINUED --- Whisper STT (CPU, ZOMBIE — not used by any workflow)
+  #   Dograh uses Deepgram cloud STT instead. Kept for offline fallback if internet
+  #   goes down. Speaches is the intended local replacement (same docker-compose.yml).
   # ---
 
   whisper-stt:
@@ -1262,6 +1264,8 @@ services:
   # AI LAYER CONTINUED --- Speaches STT/TTS (OpenAI-compatible, faster-whisper)
   #   Replaces whisper-stt for Dograh's OpenAI-compatible STT needs.
   #   Uses faster-whisper-large-v3 for Urdu support.
+  #   INTERNAL PORT: 8000 (not 8080 — confirmed from container inspection)
+  #   Dograh STT/TTS/LLM provider: not configured — cloud services used instead.
   # ---
 
   speaches:
@@ -1306,6 +1310,14 @@ services:
       PORT: 8880
     restart: unless-stopped
 
+  # ---
+  # AI LAYER CONTINUED --- Dia-1.6B-Urdu TTS (BROKEN — model fails to load)
+  #   Pydantic schema mismatch in dia library: decoder_config/encoder_config
+  #   fields missing from HuggingFace model config (nari-labs/Dia-1.6B).
+  #   Container starts, health returns "loaded":false. Needs library fix.
+  #   GPU reservation kept for when fix is available.
+  # ---
+
   dia-tts:
     build:
       context: /aios/configs/dia-tts
@@ -1331,6 +1343,13 @@ services:
     environment:
       CUDA_VISIBLE_DEVICES: "0"
     restart: unless-stopped
+
+  # ---
+  # AI LAYER CONTINUED --- TTS Router (cloud-only — routes to UpliftAI/ElevenLabs/Google)
+  #   OpenAI-compatible TTS proxy. Backends: upliftai (default), elevenlabs, google_tts.
+  #   Does NOT route to local TTS (Chatterbox, Kokoro, XTTS). All TTS calls go to cloud.
+  #   Workflow 105 (Urdu agent) uses this via OpenAI TTS provider in Dograh.
+  # ---
 
   tts-router:
     build:
@@ -1362,8 +1381,8 @@ services:
     container_name: aios-open-webui
     hostname: open-webui
     networks:
-      aios-foss:
-        ipv4_address: 10.70.0.200
+      aios-ai:
+        ipv4_address: 10.40.0.35
     ports:
       - "3011:8080"
     volumes:

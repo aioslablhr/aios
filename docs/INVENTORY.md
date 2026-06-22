@@ -1,15 +1,16 @@
 # AIOS — Complete Resource Inventory
 ## Single source of truth for every service, port, credential, and dependency
+## Last verified: June 22, 2026 — all 48 containers inspected
 
 ---
 
-## 1. SERVICES — All 47 Compose Services Running
+## 1. SERVICES — All 48 Containers Running
 
 ### DMZ Zone — 10.10.0.0/24
 | Service | Container | Image | IP | Ports | Status | Endpoint |
 |---------|-----------|-------|----|-------|--------|----------|
-| Traefik | aios-traefik | traefik:latest | 10.10.0.10 | 80, 443 | running | admin.socialbeesai.com |
-| CrowdSec | aios-crowdsec | crowdsecurity/crowdsec:latest | 10.10.0.11 | 8080 | running | (internal — WAF API) |
+| Traefik | aios-traefik | traefik:latest | 10.10.0.10 | 80, 443 | healthy | admin.socialbeesai.com |
+| CrowdSec | aios-crowdsec | crowdsecurity/crowdsec:latest | 10.10.0.11 | 8080 | crash-loop | (internal — WAF API, YAML bug) |
 
 ### App Zone — 10.20.0.0/24
 | Service | Container | Image | IP | Ports | Status | Endpoint |
@@ -21,7 +22,7 @@
 | n8n-worker-2 | aios-n8n-worker-2 | n8nio/n8n:latest | 10.20.0.12 | — | running | concurrency=10 |
 | Flowise | aios-flowise | flowiseai/flowise:latest | 10.20.0.20 | 3000 | running | app.socialbeesai.com/flowise |
 | MCP Server | aios-mcp | mcp-server:latest (custom) | 10.20.0.30 | 8000 | running | mcp.socialbeesai.com |
-| GitOps | aios-gitops | alpine:latest | 10.20.0.100 | — | running | (internal — polls GitHub) |
+| GitOps | aios-gitops | alpine:latest | 10.20.0.100 | — | crash-loop | (internal — polls GitHub, keeps dying) |
 | Hermes | aios-hermes | alpine:latest | 10.20.0.70 | — | running | (internal — 24/7 ops) |
 
 ### Data Zone — 10.30.0.0/24 (internal:true — NO internet access)
@@ -30,29 +31,30 @@
 | PostgreSQL | aios-postgres | pgvector/pgvector:0.8.0-pg16 | 10.30.0.10 | 5432 | healthy | (internal) |
 | Qdrant | aios-qdrant | qdrant/qdrant:latest | 10.30.0.20 | 6333, 6334 | healthy | qdrant.socialbeesai.com/dashboard |
 | Redis | aios-redis | redis:7-alpine | 10.30.0.30 | 6379 | healthy | (internal — n8n queue + cache) |
-| MinIO | aios-minio | minio/minio:latest | 10.30.0.40 | 9000, 9001 | **unhealthy** | data.socialbeesai.com/minio |
+| MinIO | aios-minio | minio/minio:latest | 10.30.0.40 | 9000, 9001 | unhealthy | data.socialbeesai.com/minio |
 
 ### AI Zone — 10.40.0.0/24
 | Service | Container | Image | IP | Ports | Status | Endpoint |
 |---------|-----------|-------|----|-------|--------|----------|
 | Bifrost (LiteLLM) | aios-bifrost | ghcr.io/berriai/litellm:main-latest | 10.40.0.10 | 4000 | healthy | ai.socialbeesai.com |
-| Ollama | aios-ollama | ollama/ollama:latest | 10.40.0.20 | 11434 | healthy | (internal — embeddings + vision) |
-| Chatterbox TTS | aios-chatterbox | travisvn/chatterbox-tts-api:latest | 10.40.0.30 | 4123 | running (starting) | (internal — GPU TTS primary, Dograh auto-selects) |
-| Kokoro TTS | aios-kokoro | ghcr.io/remsky/kokoro-fastapi:latest | 10.40.0.31 | 8880 | running | (internal — CPU TTS fallback, Dograh auto-selects) |
-| Dia-1.6B-Urdu | aios-dia-tts | aios-dia-tts:latest (custom) | 10.40.0.34 | 8034 | running (CPU) | (internal — GPU Urdu TTS primary, replaces XTTS for Urdu, CPU fallback on Quadro) |
-| XTTS Urdu | aios-xtts-urdu | aios-xtts-urdu:latest (custom) | 10.40.0.32 | 8020 | running | (internal — Urdu TTS fallback, voice cloned) |
-| Speaches STT/TTS | aios-speaches | ghcr.io/speaches-ai/speaches:latest-cpu | 10.40.0.41 | 8141 | healthy | (internal — faster-whisper-large-v3, OpenAI-compatible) |
-| Whisper STT | aios-whisper-stt | onerahmet/openai-whisper-asr-webservice:latest | 10.40.0.40 | 9000 | running | (internal — large-v3, English primary) |
-| TTS Router | aios-tts-router | aios-tts-router:latest (custom) | 10.40.0.33 | 8030 | running | (internal — ElevenLabs REST API proxy) |
-| Frigate NVR | aios-frigate | ghcr.io/blakeblackshear/frigate:stable | 10.40.0.50 | 5000 | healthy | frigate.socialbeesai.com |
+| Ollama | aios-ollama | ollama/ollama:latest | 10.40.0.20 | 11434 | healthy | (internal — CPU embeddings + vision) |
+| Chatterbox TTS | aios-chatterbox | travisvn/chatterbox-tts-api:latest | 10.40.0.30 | 4123 | running (healthy) | (internal — GPU 4GB VRAM, UNUSED by Dograh) |
+| Kokoro TTS | aios-kokoro | ghcr.io/remsky/kokoro-fastapi-cpu:latest | 10.40.0.31 | 8880 | running | (internal — CPU TTS, UNUSED by Dograh) |
+| XTTS Urdu | aios-xtts-urdu | aios-xtts-urdu:latest (custom) | 10.40.0.32 | 8020 (127.0.0.1) | running | (internal — Urdu TTS, CPU forced, voice cloned) |
+| TTS Router | aios-tts-router | aios-tts-router:latest (custom) | 10.40.0.33 | 8030 (127.0.0.1) | running | (internal — cloud-only: UpliftAI/ElevenLabs/Google) |
+| Dia-1.6B-Urdu | aios-dia-tts | aios-dia-tts:latest (custom) | 10.40.0.34 | 8034 (127.0.0.1) | running but BROKEN | (GPU Urdu TTS — model fails to load, Pydantic bug) |
+| Open WebUI | aios-open-webui | ghcr.io/open-webui/open-webui:main | 10.40.0.35 | 3011:8080 | running | chat.socialbeesai.com |
+| Whisper STT | aios-whisper-stt | onerahmet/openai-whisper-asr-webservice:latest | 10.40.0.40 | 9000 (127.0.0.1:8140) | running | (internal — ZOMBIE, not used by any workflow) |
+| Speaches STT/TTS | aios-speaches | ghcr.io/speaches-ai/speaches:latest-cpu | 10.40.0.41 | 8000 (127.0.0.1:8141) | healthy | (internal — faster-whisper-large-v3, UNUSED) |
 | Docling | aios-docling | aios-docling:latest (custom) | 10.40.0.42 | — | healthy | (internal — document parsing) |
 | Mem0 | aios-mem0 | aios-mem0:latest (custom) | 10.40.0.43 | — | healthy | (internal — memory layer) |
+| Frigate NVR | aios-frigate | ghcr.io/blakeblackshear/frigate:stable | 10.40.0.50 | 5000 | healthy | frigate.socialbeesai.com |
 
 ### Voice Zone — 10.50.0.0/24
 | Service | Container | Image | IP | Ports | Status | Endpoint |
 |---------|-----------|-------|----|-------|--------|----------|
 | Mosquitto MQTT | aios-mosquitto | eclipse-mosquitto:latest | 10.50.0.20 | 1883, 9001 | running | (internal — event bus) |
-| Dograh API | aios-dograh-api | ghcr.io/dograh-hq/dograh-api:latest | 10.50.0.30 | 8000 | healthy | (internal — OSS GHCR) |
+| Dograh API | aios-dograh-api | ghcr.io/dograh-hq/dograh-api:latest | 10.50.0.30 | 8000 | healthy | (internal — v1.35.0, OSS GHCR) |
 | Dograh UI | aios-dograh-ui | ghcr.io/dograh-hq/dograh-ui:latest | 10.50.0.31 | 3010 | running | voice.socialbeesai.com |
 
 ### Monitoring Zone — 10.60.0.0/24
@@ -66,36 +68,35 @@
 | Portainer | aios-portainer | portainer/portainer-ce:latest | 10.60.0.50 | 9000 | running | portainer.socialbeesai.com, host:9000 |
 | cAdvisor | aios-cadvisor | gcr.io/cadvisor/cadvisor:latest | 10.60.0.60 | 8080 | healthy | cadvisor.socialbeesai.com |
 | Node Exporter | aios-node-exporter | prom/node-exporter:latest | 10.60.0.61 | 9100 | running | (internal — host metrics) |
-| Dashy | aios-dashy | lissy93/dashy:latest | 10.60.0.70 | 8080 | running (starting) | socialbeesai.com |
+| Dashy | aios-dashy | lissy93/dashy:latest | 10.60.0.70 | 8080 | running | socialbeesai.com |
 
 ### Host Network Mode — 10.0.0.100
 | Service | Container | Image | IP | Ports | Status | Endpoint |
 |---------|-----------|-------|----|-------|--------|----------|
 | Vault | aios-vault | hashicorp/vault:latest | 10.0.0.100 | 8200 | unsealed | vault.socialbeesai.com |
 | Vault Unseal | aios-vault-unseal | hashicorp/vault:latest | 10.0.0.100 | — | (one-shot init) | (internal) |
-| Asterisk | aios-asterisk | aios-asterisk:latest (source build) | 10.0.0.100 | 5060/udp, 5061/tcp, 10000-20000/udp | healthy | (internal — SIP PBX) |
+| Asterisk | aios-asterisk | aios-asterisk:latest (source build) | 10.0.0.100 | 5060/udp, 5061/tcp, 10000-20000/udp | healthy | (internal — SIP PBX 22.9.0) |
 | DNSmasq-TFTP | aios-dnsmasq-tftp | andyshinn/dnsmasq | 10.0.0.100 | 69/udp | running | (internal — Cisco phone provisioning) |
 
-### NOT DEPLOYED (no container, route returns 502)
-| Service | Endpoint | Action Needed |
-|---------|----------|---------------|
-| WireGuard VPN | vpn.socialbeesai.com | Add compose service + route |
-| Open WebUI | chat.socialbeesai.com | Add compose service + image |
-| Supabase | (none) | Only Postgres running, no Supabase Studio |
+### NOT DEPLOYED
+| Service | Notes |
+|---------|-------|
+| WireGuard VPN | compose service not added |
+| Supabase | only Postgres running, no Supabase Studio |
 
 ---
 
 ## 2. DOCKER NETWORKS
 
-| Network | Subnet | Internal | Used By |
-|---------|--------|----------|---------|
-| aios-dmz | 10.10.0.0/24 | no | Traefik, CrowdSec, Portainer (secondary) |
-| aios-app | 10.20.0.0/24 | no | n8n, n8n-db, n8n-workers, Keycloak, Flowise, MCP, GitOps, Hermes |
-| aios-data | 10.30.0.0/24 | **yes** | PostgreSQL, Qdrant, Redis, MinIO, Langfuse (secondary), Bifrost (secondary) |
-| aios-ai | 10.40.0.0/24 | no | Bifrost, Ollama, Chatterbox, Kokoro, Frigate |
-| aios-voice | 10.50.0.0/24 | no | Mosquitto, Dograh API, Dograh UI, Chatterbox (secondary) |
-| aios-mon | 10.60.0.0/24 | no | Langfuse, ClickHouse, Prometheus, Grafana, Loki, Portainer, cAdvisor, Node Exporter, Dashy |
-| aios-foss | 10.70.0.0/24 | no | (reserved for ERPNext, Odoo, Twenty CRM) |
+| Network | Subnet | Internal | Used By | Traefik On It? |
+|---------|--------|----------|---------|----------------|
+| aios-dmz | 10.10.0.0/24 | no | Traefik, CrowdSec | yes |
+| aios-app | 10.20.0.0/24 | no | n8n, n8n-db, n8n-workers, Keycloak, Flowise, MCP, GitOps, Hermes | yes |
+| aios-data | 10.30.0.0/24 | **yes** | PostgreSQL, Qdrant, Redis, MinIO, Langfuse (secondary), Bifrost (secondary) | yes |
+| aios-ai | 10.40.0.0/24 | no | Bifrost, Ollama, Chatterbox, Kokoro, XTTS, TTS Router, DIA TTS, Speaches, Whisper, Frigate, Docling, Mem0 | yes |
+| aios-voice | 10.50.0.0/24 | no | Mosquitto, Dograh API, Dograh UI, XTTS, TTS Router, DIA TTS, Speaches, Kokoro (secondary) | yes |
+| aios-mon | 10.60.0.0/24 | no | Langfuse, ClickHouse, Prometheus, Grafana, Loki, Portainer, cAdvisor, Node Exporter, Dashy | yes |
+| aios-foss | 10.70.0.0/24 | no | (reserved for ERPNext, Odoo, Twenty CRM) | NO — Traefik not on this net |
 
 ---
 
@@ -235,18 +236,22 @@ LLM ROUTING (via Bifrost — 28 models)
   All logged to Langfuse for observability
 
 GPU (Quadro M4000 8GB — no LLM inference, only utilities)
-  Ollama → nomic-embed-text (embeddings → Qdrant)
-  Ollama → LLaVA (image/OCR for Frigate)
-  Chatterbox → TTS GPU (primary voice cloning for Dograh)
-  Kokoro     → TTS CPU (fallback — Dograh auto-selects)
-  Frigate → GPU-accelerated object detection
+  Chatterbox → TTS GPU (4GB VRAM, unused by Dograh)
+  Frigate → GPU-accelerated object detection (may use GPU if configured)
+  Ollama → CPU only (models too large for remaining 4GB VRAM)
+  XTTS Urdu → CPU only (CUDA_VISIBLE_DEVICES="" — VRAM contention)
 
-VOICE PIPELINE
-  Caller → SIP Trunk → Asterisk → Dograh
-    → Whisper STT (CPU — not GPU)
-    → LLM response (via n8n → Bifrost → OpenRouter)
-    → Chatterbox/Kokoro TTS (Dograh auto-selects GPU or CPU)
+VOICE PIPELINE (current — cloud-dependent)
+  Caller → PJSIP → Asterisk → Stasis(dograh) → Dograh API (v1.35.0)
+    → STT: Deepgram cloud (nova-3-general) — Speaches local unused
+    → LLM: Speaches provider → Bifrost → OpenRouter (frontier-reasoning)
+    → TTS: tts-router → UpliftAI/ElevenLabs cloud — Chatterbox/Kokoro/XTTS local unused
   → Audio back → Asterisk → Caller
+
+  2 active agents: Ext 102 (Shin Travels), Ext 105 (Urdu)
+  ARI connected: 1 active connection, app_name=dograh
+  PJSIP endpoints: 7 defined, 2 registered (101=support trunk, 9000=Cisco phone)
+  Calls processed: 5 total (lightly used)
 
 SURVEILLANCE PIPELINE (active)
   IP Camera (10.0.0.51, Dahua IPC-B1E49-A-IL) → RTSP UDP → Frigate NVR
@@ -268,10 +273,14 @@ DATA LAYER
 
 | Model | Size | Purpose | Status |
 |-------|------|---------|--------|
-| nomic-embed-text | ~500MB | Embeddings for Qdrant | kept |
-| llava:latest | 7B (~4.5GB) | Vision/OCR | kept |
+| nomic-embed-text | 274MB | Embeddings for Qdrant | kept |
+| qwen2.5:7b-instruct-q4_K_M | 4.7GB | General reasoning (local) | kept |
+| llama3.2:3b-instruct-q4_K_M | 2.0GB | Lightweight chat (local) | kept |
+| qalb-1.0-8b / alif-1.0-8b | 4.9GB each | Arabic/Urdu (local) | kept |
+| llava:7b | 4.7GB | Vision/OCR | kept |
 
-All other LLM inference uses OpenRouter $0 tier (25 free models via Bifrost).
+All LLM inference runs CPU-only (no VRAM available for LLM inference on Quadro M4000).
+Main LLM path: Dograh → Bifrost → OpenRouter $0 tier.
 
 ---
 

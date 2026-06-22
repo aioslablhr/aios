@@ -1,5 +1,5 @@
 # AIOS — Traefik Dynamic Configuration
-# Single ingress for ALL external HTTP traffic through Traefik.
+# Centralized ingress for all external HTTP traffic.
 # Internal service-to-service calls use Docker DNS directly (not Traefik).
 
 http:
@@ -23,14 +23,6 @@ http:
         stsPreload: true
         stsSeconds: 31536000
         customFrameOptionsValue: "SAMEORIGIN"
-
-    rate-limit:
-      rateLimit:
-        average: 100
-        burst: 200
-        period: 1m
-        sourceCriterion:
-          requestHost: true
 
     strip-qdrant-prefix:
       stripPrefix:
@@ -151,18 +143,6 @@ http:
         - crowdsec-bouncer
         - secure-headers
 
-    # Chatwoot — crm.socialbeesai.com
-    crm:
-      rule: "Host(`crm.socialbeesai.com`)"
-      service: chatwoot
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: cloudflare
-      middlewares:
-        - crowdsec-bouncer
-        - secure-headers
-
     # Flowise — app.socialbeesai.com
     app:
       rule: "Host(`app.socialbeesai.com`)"
@@ -176,9 +156,9 @@ http:
         - secure-headers
 
     # Open WebUI — chat.socialbeesai.com
-    foss-open-webui:
+    chat:
       rule: "Host(`chat.socialbeesai.com`)"
-      service: foss-open-webui
+      service: open-webui
       entryPoints:
         - websecure
       tls:
@@ -188,7 +168,7 @@ http:
         - secure-headers
 
     # Grafana — grafana.socialbeesai.com
-    monitor-grafana:
+    grafana:
       rule: "Host(`grafana.socialbeesai.com`)"
       service: grafana
       entryPoints:
@@ -200,7 +180,7 @@ http:
         - secure-headers
 
     # Prometheus — prometheus.socialbeesai.com
-    monitor-prometheus:
+    prometheus:
       rule: "Host(`prometheus.socialbeesai.com`)"
       service: prometheus
       entryPoints:
@@ -212,7 +192,7 @@ http:
         - secure-headers
 
     # Portainer — portainer.socialbeesai.com
-    monitor-portainer:
+    portainer:
       rule: "Host(`portainer.socialbeesai.com`)"
       service: portainer
       entryPoints:
@@ -224,7 +204,7 @@ http:
         - secure-headers
 
     # cAdvisor — cadvisor.socialbeesai.com
-    monitor-cadvisor:
+    cadvisor:
       rule: "Host(`cadvisor.socialbeesai.com`)"
       service: cadvisor
       entryPoints:
@@ -249,7 +229,7 @@ http:
         - strip-qdrant-prefix
 
     # MinIO — data.socialbeesai.com/minio
-    data-minio:
+    minio:
       rule: "Host(`data.socialbeesai.com`) && PathPrefix(`/minio`)"
       service: minio-console
       entryPoints:
@@ -262,109 +242,86 @@ http:
         - strip-minio-prefix
 
   services:
-    # Dashy
     landing:
       loadBalancer:
         servers:
           - url: "http://dashy:8080"
 
-    # n8n
     n8n:
       loadBalancer:
         servers:
           - url: "http://n8n:5678"
 
-    # Langfuse
     langfuse:
       loadBalancer:
         servers:
           - url: "http://langfuse:3000"
 
-    # Bifrost (LiteLLM AI Gateway)
     bifrost:
       loadBalancer:
         servers:
           - url: "http://bifrost:4000"
 
-    # Keycloak
     keycloak:
       loadBalancer:
         servers:
           - url: "http://keycloak:8080"
 
-    # Vault (host network — must use host IP, not Docker DNS)
     vault:
       loadBalancer:
         servers:
           - url: "http://10.0.0.100:8200"
 
-    # Dograh UI
     dograh-ui:
       loadBalancer:
         servers:
           - url: "http://dograh-ui:3010"
 
-    # ClickHouse
     clickhouse:
       loadBalancer:
         servers:
           - url: "http://clickhouse:8123"
 
-    # Frigate
     frigate:
       loadBalancer:
         servers:
           - url: "http://frigate:5000"
 
-    # Chatwoot Web
-    chatwoot:
-      loadBalancer:
-        servers:
-          - url: "http://chatwoot-web:3000"
-
-    # Flowise
     flowise:
       loadBalancer:
         servers:
           - url: "http://flowise:3000"
 
-    # Open WebUI
-    foss-open-webui:
+    open-webui:
       loadBalancer:
         servers:
           - url: "http://open-webui:8080"
 
-    # Grafana
     grafana:
       loadBalancer:
         servers:
           - url: "http://grafana:3000"
 
-    # Prometheus
     prometheus:
       loadBalancer:
         servers:
           - url: "http://prometheus:9090"
 
-    # Portainer
     portainer:
       loadBalancer:
         servers:
           - url: "http://portainer:9000"
 
-    # cAdvisor
     cadvisor:
       loadBalancer:
         servers:
           - url: "http://cadvisor:8080"
 
-    # Qdrant Dashboard (via data-qdrant-proxy on mon zone)
     qdrant:
       loadBalancer:
         servers:
           - url: "http://data-qdrant-proxy:6333"
 
-    # MinIO Console (via data-minio-proxy on mon zone)
     minio-console:
       loadBalancer:
         servers:

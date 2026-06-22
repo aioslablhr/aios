@@ -1,174 +1,136 @@
-# AIOS — Session Checkpoint v4.4
+# AIOS — Session Checkpoint v5.0
 
-## This Session (May 26) — Architecture Tune & Refine
+## This Session (June 22) — Voice Layer Deep Dive & File Sync
 
-### OpenRouter Key & Bifrost Upgrade
-- **Real OpenRouter API key** set: `sk-or-v1-0855e04fc...` (was placeholder)
-- **Bifrost model list** expanded from 6 to 28 models (25 OpenRouter $0 + 3 local Ollama)
-- **Bifrost config** fixed: removed `database_url` (LiteLLM DB was storing stale models, caused 400 errors)
-- **Bifrost config** simplified: hardcoded API key in config (no DB dependency), env vars for local models
-- **Bifrost tested**: `openrouter-free`, `gemma-4-31b`, `deepseek-v4`, `auto-router` all working
-- Dograh images switched from Docker Hub `dograhai/*` (paid/cloud requiring Stack Auth) to `ghcr.io/dograh-hq/*` (OSS)
+### Voice Layer Audit — Running System Inspection
+SSH'd to server at 10.0.0.100 and inspected every container, network, config, and database table:
 
-### Architecture Audit (May 26)
-- All 35 containers running and verified
-- Public endpoints: 403 via CrowdSec (expected — Dev PC IP not whitelisted)
-- Internal endpoints: 13/15 core services responding 200
-- Known stale issues documented below
+**48 containers running** (up from 35 in May). Key additions: Speaches, Chatterbox, Kokoro, XTTS, DIA TTS, TTS Router, Open WebUI, Whisper STT, Mosquitto, N8N-worker-2.
 
-## Current State: Phase 4 — All Services Deployed & Verified (May 26, 2026)
+**Traefik config deployed fresh** — 17 routes (was 2). All using Docker DNS names, no hardcoded IPs. Backups created on server.
 
-### 35 Containers Running
+**Open WebUI** moved from `aios-foss` to `aios-ai` zone (10.40.0.35) — correct architecture.
 
-#### DMZ Zone — 10.10.0.0/24
-| Service | Container | IP | Port | Status |
-|---------|-----------|----|------|--------|
-| Traefik | aios-traefik | 10.10.0.10 | 80, 443 | running — reverse proxy, SSL termination |
-| CrowdSec | aios-crowdsec | 10.10.0.11 | 8080 | running — WAF bouncer active |
-
-#### App Zone — 10.20.0.0/24
-| Service | Container | IP | Port | Status |
-|---------|-----------|----|------|--------|
-| Keycloak | aios-keycloak | 10.20.0.40 | 8080 | running (health starting) — SSO, admin console accessible |
-| n8n | aios-n8n | 10.20.0.10 | 5678 | running — workflow orchestration, queue mode |
-| n8n-db | aios-n8n-db | 10.20.0.15 | 5432 | healthy — n8n dedicated PostgreSQL |
-| n8n-worker-1 | aios-n8n-worker-1 | 10.20.0.13 | — | running — concurrency=10 |
-| n8n-worker-2 | aios-n8n-worker-2 | 10.20.0.12 | — | running — concurrency=10 |
-| Flowise | aios-flowise | 10.20.0.20 | 3000 | running — visual LLM builder (app.socialbeesai.com/flowise) |
-| MCP Server | aios-mcp | 10.20.0.30 | 8000 | running — Model Context Protocol (mcp.socialbeesai.com) |
-| GitOps | aios-gitops | 10.20.0.100 | — | running — polls GitHub every 30s |
-| Hermes | aios-hermes | 10.20.0.70 | — | running — 24/7 autonomous ops |
-
-#### Data Zone — 10.30.0.0/24 (internal:true — NO internet access)
-| Service | Container | IP | Port | Status |
-|---------|-----------|----|------|--------|
-| PostgreSQL | aios-postgres | 10.30.0.10 | 5432 | healthy — pgvector 0.8.0, DBs: aios, dograh, langfuse, litellm, keycloak |
-| Qdrant | aios-qdrant | 10.30.0.20 | 6333, 6334 | healthy — vector DB, RAG fallback |
-| Redis | aios-redis | 10.30.0.30 | 6379 | healthy — n8n queue + cache |
-| MinIO | aios-minio | 10.30.0.40 | 9000, 9001 | **unhealthy** — need check |
-
-#### AI Zone — 10.40.0.0/24
-| Service | Container | IP | Port | Status |
-|---------|-----------|----|------|--------|
-| Bifrost (LiteLLM) | aios-bifrost | 10.40.0.10 | 4000 | healthy — AI Gateway, 28 models |
-| Ollama | aios-ollama | 10.40.0.20 | 11434 | healthy — nomic-embed-text + LLaVA |
-| Chatterbox TTS | aios-chatterbox | 10.40.0.30 | 4123 | running (starting) — GPU text-to-speech |
-| Frigate NVR | aios-frigate | 10.40.0.50 | 5000 | healthy — AI object detection |
-
-#### Voice Zone — 10.50.0.0/24
-| Service | Container | IP | Port | Status |
-|---------|-----------|----|------|--------|
-| Mosquitto MQTT | aios-mosquitto | 10.50.0.20 | 1883, 9001 | running — event bus |
-| Dograh API | aios-dograh-api | 10.50.0.30 | 8000 | healthy — voice agent orchestration (OSS GHCR) |
-| Dograh UI | aios-dograh-ui | 10.50.0.31 | 3010 | running — voice agent dashboard (OSS GHCR) |
-
-#### Monitoring Zone — 10.60.0.0/24
-| Service | Container | IP | Port | Status |
-|---------|-----------|----|------|--------|
-| Langfuse | aios-langfuse | 10.60.0.10 | 3000 | running — LLM observability |
-| ClickHouse | aios-clickhouse | 10.60.0.11 | 8123, 9000 | healthy — Langfuse trace storage |
-| Prometheus | aios-prometheus | 10.60.0.20 | 9090 | running — metrics backend |
-| Grafana | aios-grafana | 10.60.0.30 | 3000 | running — dashboards |
-| Loki | aios-loki | 10.60.0.40 | 3100 | running — log aggregation |
-| Portainer | aios-portainer | 10.60.0.50 | 9000 | running — Docker management UI |
-| cAdvisor | aios-cadvisor | 10.60.0.60 | 8080 | healthy — container resource monitoring |
-| Node Exporter | aios-node-exporter | 10.60.0.61 | 9100 | running — host metrics exporter |
-| Dashy | aios-dashy | 10.60.0.70 | 8080 | running (starting) — service dashboard |
-
-#### Host Network Mode (10.0.0.100)
-| Service | Container | IP | Port | Status |
-|---------|-----------|----|------|--------|
-| Vault | aios-vault | 10.0.0.100 | 8200 | unsealed — secrets management |
-| Asterisk | aios-asterisk | 10.0.0.100 | 5060/udp, 5061/tcp, 10000-20000/udp | healthy — SIP PBX |
-| DNSmasq-TFTP | aios-dnsmasq-tftp | 10.0.0.100 | 69/udp | running — Cisco phone provisioning |
+**Dograh DB inspected** — 2 active workflows found:
+- Ext 102 (Shin Travels Sales Agent) — uses user defaults
+- Ext 105 (Urdu Agent) — model_overrides for LLM/TTS
 
 ---
 
-### 14 Public Endpoints — All via Traefik HTTPS
+### Voice Layer — Full Pipeline Status
 
-| URL | Target | Status |
-|-----|--------|--------|
-| https://socialbeesai.com | Dashy | 403 (CrowdSec) — was 200 before CrowdSec |
-| https://admin.socialbeesai.com | Traefik Dashboard | 403 (CrowdSec) |
-| https://n8n.socialbeesai.com | n8n | 403 (CrowdSec) |
-| https://ai.socialbeesai.com | Bifrost | 403 (CrowdSec) |
-| https://langfuse.socialbeesai.com | Langfuse | 403 (CrowdSec) |
-| https://keycloak.socialbeesai.com | Keycloak | 403 (CrowdSec) |
-| https://vault.socialbeesai.com | Vault | 403 (CrowdSec) |
-| https://voice.socialbeesai.com | Dograh UI | 403 (CrowdSec) |
-| https://app.socialbeesai.com/flowise | Flowise | 403 (CrowdSec) |
-| https://data.socialbeesai.com/minio | MinIO Console | 403 (CrowdSec) |
-| https://grafana.socialbeesai.com | Grafana | 403 (CrowdSec) |
-| https://frigate.socialbeesai.com | Frigate NVR | 403 (CrowdSec) |
-| https://clickhouse.socialbeesai.com | ClickHouse | 403 (CrowdSec) |
-| https://mcp.socialbeesai.com | MCP Server | 403 (CrowdSec) |
+#### Running Voice Containers (all inspected)
+| Container | Status | Purpose |
+|-----------|--------|---------|
+| aios-asterisk | ✅ healthy v22.9.0 | SIP PBX, ARI connected |
+| aios-dograh-api | ✅ healthy v1.35.0 | Voice agent orchestration, ARI active |
+| aios-dograh-ui | ✅ up | Agent management UI |
+| aios-speaches | ✅ healthy | STT (faster-whisper-large-v3, UNUSED) |
+| aios-chatterbox | ✅ up (GPU 4GB) | TTS (CUDA, UNUSED) |
+| aios-kokoro | ✅ up | TTS CPU fallback, UNUSED |
+| aios-tts-router | ✅ up v4.2.0 | Cloud-only TTS proxy (UpliftAI/ElevenLabs) |
+| aios-xtts-urdu | ✅ up | Urdu TTS (CPU forced) |
+| aios-dia-tts | ⚠️ broken | Model fails to load (Pydantic bug) |
+| aios-whisper-stt | ✅ up | Legacy STT, ZOMBIE (unused) |
+| aios-mosquitto | ✅ up | MQTT broker |
 
-**Note**: All public endpoints return 403 via external IP due to CrowdSec WAF. Internal Docker DNS resolves correctly (200s verified from server).
+#### PJSIP Endpoints
+7 defined. 2 registered: 101 (support trunk @ 10.0.0.11) and 9000 (Cisco phone, RTT 19ms).
+3 AI agent extensions (102, 105, 2000) route to `Stasis(dograh)`.
+
+#### Actual Provider Config (from Dograh DB user_configurations)
+| Component | Provider | Location |
+|-----------|----------|----------|
+| STT | **Deepgram cloud** (nova-3-general) | Cloud — API key in DB |
+| TTS | **ElevenLabs / UpliftAI cloud** | Cloud — API keys in DB/env |
+| LLM | Speaches provider → **Bifrost** → OpenRouter | Local (Bifrost) → Cloud (OpenRouter) |
+
+#### Call History
+5 calls processed total. 1 successful test call logged: TTS served "Hello, thank you for calling SHIN Travels..." via UpliftAI.
 
 ---
 
-### Bifrost — 28 Available Models
+### 17 Traefik Routes — All Deployed & Verified
 
-| Category | Models |
-|----------|--------|
-| **Local Ollama (free)** | mistral-7b, qwen-2.5-7b, llama-3-8b |
-| **OpenRouter $0 tier** | openrouter-free, gemma-4-31b, gemma-4-26b, llama-70b, llama-3b, deepseek-v4, qwen-coder, qwen-80b, hermes-405b, cobuddy, owl-alpha, liquid-thinking, liquid-instruct, minimax-m2, gpt-oss-120b, gpt-oss-20b, nemotron-reasoning, nemotron-nano-30b, nemotron-120b, nemotron-vl, nemotron-9b, glm-4, dolphin-24b, poolside-xs, poolside-m |
-
-Routing: Local first → OpenRouter fallback. Tested working: cobuddy, openrouter-free, gemma-4-31b, deepseek-v4, auto-router.
+| Route | Target | Docker DNS | Status |
+|-------|--------|------------|--------|
+| socialbeesai.com | Dashy | dashy:8080 | ✅ |
+| admin.socialbeesai.com | Traefik Dashboard | traefik:8080 | ✅ |
+| n8n.socialbeesai.com | n8n | n8n:5678 | ✅ |
+| ai.socialbeesai.com | Bifrost | bifrost:4000 | ✅ |
+| langfuse.socialbeesai.com | Langfuse | langfuse:3000 | ✅ |
+| keycloak.socialbeesai.com | Keycloak | keycloak:8080 | ✅ |
+| vault.socialbeesai.com | Vault | 10.0.0.100:8200 | ✅ |
+| voice.socialbeesai.com | Dograh UI | dograh-ui:3010 | ✅ |
+| app.socialbeesai.com | Flowise | flowise:3000 | ✅ |
+| data.socialbeesai.com/minio | MinIO Console | data-minio-proxy:9001 | ✅ |
+| grafana.socialbeesai.com | Grafana | grafana:3000 | ✅ |
+| frigate.socialbeesai.com | Frigate | frigate:5000 | ✅ |
+| clickhouse.socialbeesai.com | ClickHouse | clickhouse:8123 | ✅ |
+| mcp.socialbeesai.com | MCP Server | mcp:8000 | ✅ |
+| chat.socialbeesai.com | Open WebUI | open-webui:8080 | ✅ |
+| portainer.socialbeesai.com | Portainer | portainer:9000 | ✅ |
+| cadvisor.socialbeesai.com | cAdvisor | cadvisor:8080 | ✅ |
 
 ---
 
 ### Known Issues
 
-1. **MinIO unhealthy** — container shows `(unhealthy)`, health check failing
-2. **Keycloak health check** staying `(health: starting)` — service works (admin console accessible)
-3. **CrowdSec returning 403** on all public endpoints from external IP — need to whitelist Dev PC or disable for testing
-4. **Prometheus targets**: bifrost/n8n/frigate metrics endpoints `down` — need `/metrics` endpoint enabled upstream
-5. **WireGuard VPN** not deployed — no compose service
-6. **Open WebUI** not deployed — route exists at `chat.socialbeesai.com` (502)
-7. **Supabase** not deployed — only Postgres running (no Supabase Studio)
-8. **IP Cameras** — RTSP feeds not configured for Frigate
-9. **No Langfuse admin user** created yet — observability pipeline incomplete
-10. **Vault** on host networking (not Docker network) — needs migration to `aios-app` zone
-11. **MCP SSE** returns 421 through Traefik — SSE-specific proxy config required
-12. **Portainer** requires admin account creation in browser session (first visit)
-13. **Chatterbox** health still starting — needs investigation
+| # | Issue | Severity | Status |
+|---|-------|----------|--------|
+| 1 | **CrowdSec crash-looping** — duplicate YAML key in acquis.yaml | high | deferred |
+| 2 | **GitOps agent crash-looping** — keeps dying ("Terminated") | high | deferred |
+| 3 | **DIA TTS model fails to load** — Pydantic schema mismatch in dia library, `"loaded":false` | medium | unfixed |
+| 4 | **STT uses Deepgram cloud** — Speaches local STT unused | low | local GPU can't handle it |
+| 5 | **TTS uses UpliftAI/ElevenLabs cloud** — Chatterbox/Kokoro/XTTS unused | low | local GPU can't handle it |
+| 6 | **API keys in DB plaintext** — ElevenLabs/Deepgram keys in user_configurations | medium | needs Vault migration |
+| 7 | **Whisper STT zombie** — container runs, no workflow uses it | low | keep as offline fallback |
+| 8 | **LLM provider label mismatch** — "speaches" provider with Bifrost URL | low | works correctly |
+| 9 | **Workflow 102 has no model_overrides** — uses defaults, breaks silently if creds expire | medium | needs fix |
+| 10 | **MinIO unhealthy** — health check failing | low | need investigation |
+| 11 | **Keycloak health starting** — service works, probe too aggressive | low | minor |
+| 12 | **CrowdSec 403** — all public endpoints blocked from external | medium | needs whitelist |
+| 13 | **Prometheus targets down** — bifrost/n8n/frigate metrics endpoints missing | medium | needs /metrics |
+| 14 | **Vault on host networking** — should be in aios-app zone | low | migration needed |
+| 15 | **Open WebUI OLLAMA_BASE_URL points to Bifrost** — should be OPENAI_BASE_URL semantically | low | works but confusing |
+| 16 | **chat_server.py** defined on disk, NOT running (port 8081 dead) | low | deferred |
+| 17 | **Speaches on CPU image** — uses `latest-cpu`, GPU image available | low | local GPU can't handle |
 
 ---
 
 ### Next Steps
 
-1. Fix MinIO health check — investigate minio container logs
-2. Fix CrowdSec 403 on public endpoints — whitelist Dev PC IP
-3. Deploy WireGuard VPN (add compose service + route)
-4. Deploy Open WebUI (add compose service + image + route `chat.socialbeesai.com`)
-5. Configure Frigate — add camera RTSP feeds, enable metrics endpoint
-6. Fix Keycloak health check — update health probe for v26.1
-7. Set up Langfuse admin user for LLM observability pipeline
-8. Fix MCP SSE 421 through Traefik
-9. Build 4 use case workflows (Surveillance, HR, CRM, Voice Receptionist)
-10. Migrate Vault to `aios-app` zone
+1. Fix CrowdSec acquis.yaml (add `-` list prefix to source blocks)
+2. Fix GitOps agent crash-loop
+3. Wire up Dograh patches (ari_manager.py, service_factory.py) — currently stock versions running
+4. Start chat_server.py and wire to same RAG pipeline as voice agents
+5. Fix DIA TTS model loading (upgrade dia library or switch model)
+6. Add aios-foss network to Traefik (for future FOSS services)
+7. Migrate API keys from DB to Vault
 
 ---
 
 ### Credentials Quick Ref
 
-| Service | URL | User | Pass |
-|---------|-----|------|------|
-| Dashy | https://socialbeesai.com | — | — |
-| n8n | https://n8n.socialbeesai.com | (browser session) | — |
-| Bifrost | https://ai.socialbeesai.com | sk-aios-master-admin-key-change-me | — |
-| Langfuse | https://langfuse.socialbeesai.com | (create account) | — |
-| Keycloak | https://keycloak.socialbeesai.com | admin | admin |
-| Vault | https://vault.socialbeesai.com | root token in .vault-keys | — |
-| MinIO | https://data.socialbeesai.com/minio | admin | minioadmin |
-| Grafana | https://grafana.socialbeesai.com | admin | grafana_admin_2026 |
-| Dograh | https://voice.socialbeesai.com | Sign up on first visit | — |
-| Frigate | https://frigate.socialbeesai.com | — | — |
-| Flowise | https://app.socialbeesai.com/flowise | admin | admin |
-| Portainer | https://portainer.socialbeesai.com | (create on first visit) | — |
-| Qdrant | https://qdrant.socialbeesai.com/dashboard | API key: aios_qdrant_2026 | — |
-| ClickHouse | https://clickhouse.socialbeesai.com | default | clickhouse |
-| Full creds: `docs/ref/credentials.md` | | | |
+| Service | URL | Auth |
+|---------|-----|------|
+| Dashy | https://socialbeesai.com | — |
+| n8n | https://n8n.socialbeesai.com | browser session |
+| Bifrost | https://ai.socialbeesai.com | sk-aios-master-admin-key-change-me |
+| Langfuse | https://langfuse.socialbeesai.com | create account |
+| Keycloak | https://keycloak.socialbeesai.com | admin / admin |
+| Vault | https://vault.socialbeesai.com | root token in .vault-keys |
+| MinIO | https://data.socialbeesai.com/minio | admin / minioadmin |
+| Grafana | https://grafana.socialbeesai.com | admin / grafana_admin_2026 |
+| Dograh | https://voice.socialbeesai.com | sign up on first visit |
+| Frigate | https://frigate.socialbeesai.com | — |
+| Flowise | https://app.socialbeesai.com/flowise | admin / admin |
+| Portainer | https://portainer.socialbeesai.com | create on first visit |
+| Qdrant | https://qdrant.socialbeesai.com/dashboard | API key: aios_qdrant_2026 |
+| ClickHouse | https://clickhouse.socialbeesai.com | default / clickhouse |
+| Open WebUI | https://chat.socialbeesai.com | signup disabled |
+| cAdvisor | https://cadvisor.socialbeesai.com | — |
 
-*Updated May 26, 2026 — AIOS Session Checkpoint v4.4*
+Full creds: `docs/ref/credentials.md`
+
+*Updated June 22, 2026 — AIOS Session Checkpoint v5.0*
