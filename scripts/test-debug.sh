@@ -1,10 +1,10 @@
 #!/bin/bash
 echo "=== Prometheus verbose ==="
-curl -sS --connect-timeout 5 --max-time 10 -o /dev/null -w "HTTP %{http_code}\nLocation: %{redirect_url}\n" --max-time 10 "https://monitor.socialbeesai.com/prometheus" 2>/dev/null
+curl -sS --connect-timeout 5 --max-time 10 -o /dev/null -w "HTTP %{http_code}\nLocation: %{redirect_url}\n" --max-time 10 "https://prometheus.socialbeesai.com" 2>/dev/null
 
 echo ""
 echo "=== Grafana verbose ==="
-curl -sS --connect-timeout 5 --max-time 10 -o /dev/null -w "HTTP %{http_code}\nLocation: %{redirect_url}\n" --max-time 10 "https://monitor.socialbeesai.com/grafana" 2>/dev/null
+curl -sS --connect-timeout 5 --max-time 10 -o /dev/null -w "HTTP %{http_code}\nLocation: %{redirect_url}\n" --max-time 10 "https://grafana.socialbeesai.com" 2>/dev/null
 
 echo ""
 echo "=== Dograh verbose ==="

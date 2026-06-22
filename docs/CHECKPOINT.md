@@ -98,7 +98,7 @@
 | https://voice.socialbeesai.com | Dograh UI | 403 (CrowdSec) |
 | https://app.socialbeesai.com/flowise | Flowise | 403 (CrowdSec) |
 | https://data.socialbeesai.com/minio | MinIO Console | 403 (CrowdSec) |
-| https://monitor.socialbeesai.com/grafana | Grafana | 403 (CrowdSec) |
+| https://grafana.socialbeesai.com | Grafana | 403 (CrowdSec) |
 | https://frigate.socialbeesai.com | Frigate NVR | 403 (CrowdSec) |
 | https://clickhouse.socialbeesai.com | ClickHouse | 403 (CrowdSec) |
 | https://mcp.socialbeesai.com | MCP Server | 403 (CrowdSec) |
@@ -162,11 +162,11 @@ Routing: Local first → OpenRouter fallback. Tested working: cobuddy, openroute
 | Keycloak | https://keycloak.socialbeesai.com | admin | admin |
 | Vault | https://vault.socialbeesai.com | root token in .vault-keys | — |
 | MinIO | https://data.socialbeesai.com/minio | admin | minioadmin |
-| Grafana | https://monitor.socialbeesai.com/grafana | admin | grafana_admin_2026 |
+| Grafana | https://grafana.socialbeesai.com | admin | grafana_admin_2026 |
 | Dograh | https://voice.socialbeesai.com | Sign up on first visit | — |
 | Frigate | https://frigate.socialbeesai.com | — | — |
 | Flowise | https://app.socialbeesai.com/flowise | admin | admin |
-| Portainer | https://monitor.socialbeesai.com/portainer | (create on first visit) | — |
+| Portainer | https://portainer.socialbeesai.com | (create on first visit) | — |
 | Qdrant | https://qdrant.socialbeesai.com/dashboard | API key: aios_qdrant_2026 | — |
 | ClickHouse | https://clickhouse.socialbeesai.com | default | clickhouse |
 | Full creds: `docs/ref/credentials.md` | | | |

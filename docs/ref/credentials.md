@@ -16,10 +16,10 @@
 | Vault | https://vault.socialbeesai.com | Root token in .vault-keys on server | — | Secrets management |
 | Dograh UI | https://voice.socialbeesai.com | Sign up on first visit (first user = admin) | — | Voice agent orchestration |
 | MinIO Console | https://data.socialbeesai.com/minio | admin | minioadmin | S3 storage |
-| Grafana | https://monitor.socialbeesai.com/grafana | admin | grafana_admin_2026 | Metrics dashboards |
-| Prometheus | https://monitor.socialbeesai.com/prometheus | — | — | Metrics backend |
-| Portainer | https://monitor.socialbeesai.com/portainer, http://10.0.0.100:9000 | (create on first visit) | — | Docker management, host port 9000 |
-| cAdvisor | https://monitor.socialbeesai.com/cadvisor | — | — | Container monitoring |
+| Grafana | https://grafana.socialbeesai.com | admin | grafana_admin_2026 | Metrics dashboards |
+| Prometheus | https://prometheus.socialbeesai.com | — | — | Metrics backend |
+| Portainer | https://portainer.socialbeesai.com, http://10.0.0.100:9000 | (create on first visit) | — | Docker management, host port 9000 |
+| cAdvisor | https://cadvisor.socialbeesai.com | — | — | Container monitoring |
 | Qdrant Dashboard | https://qdrant.socialbeesai.com/dashboard | API key: aios_qdrant_2026 | — | Vector database UI |
 | ClickHouse Play | https://clickhouse.socialbeesai.com | default | clickhouse | Analytics queries |
 | Frigate NVR | https://frigate.socialbeesai.com | — | — | AI surveillance |

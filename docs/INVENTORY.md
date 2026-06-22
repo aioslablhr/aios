@@ -60,11 +60,11 @@
 |---------|-----------|-------|----|-------|--------|----------|
 | Langfuse | aios-langfuse | langfuse/langfuse:latest | 10.60.0.10 | 3000 | running | langfuse.socialbeesai.com |
 | ClickHouse | aios-clickhouse | clickhouse/clickhouse-server:latest | 10.60.0.11 | 8123, 9000 | healthy | clickhouse.socialbeesai.com |
-| Prometheus | aios-prometheus | prom/prometheus:latest | 10.60.0.20 | 9090 | running | monitor.socialbeesai.com/prometheus |
-| Grafana | aios-grafana | grafana/grafana:latest | 10.60.0.30 | 3000 | running | monitor.socialbeesai.com/grafana |
+| Prometheus | aios-prometheus | prom/prometheus:latest | 10.60.0.20 | 9090 | running | prometheus.socialbeesai.com |
+| Grafana | aios-grafana | grafana/grafana:latest | 10.60.0.30 | 3000 | running | grafana.socialbeesai.com |
 | Loki | aios-loki | grafana/loki:latest | 10.60.0.40 | 3100 | running | (internal — logs) |
-| Portainer | aios-portainer | portainer/portainer-ce:latest | 10.60.0.50 | 9000 | running | monitor.socialbeesai.com/portainer, host:9000 |
-| cAdvisor | aios-cadvisor | gcr.io/cadvisor/cadvisor:latest | 10.60.0.60 | 8080 | healthy | monitor.socialbeesai.com/cadvisor |
+| Portainer | aios-portainer | portainer/portainer-ce:latest | 10.60.0.50 | 9000 | running | portainer.socialbeesai.com, host:9000 |
+| cAdvisor | aios-cadvisor | gcr.io/cadvisor/cadvisor:latest | 10.60.0.60 | 8080 | healthy | cadvisor.socialbeesai.com |
 | Node Exporter | aios-node-exporter | prom/node-exporter:latest | 10.60.0.61 | 9100 | running | (internal — host metrics) |
 | Dashy | aios-dashy | lissy93/dashy:latest | 10.60.0.70 | 8080 | running (starting) | socialbeesai.com |
 

@@ -8,9 +8,9 @@ for url in \
   "https://n8n.socialbeesai.com" \
   "https://voice.socialbeesai.com" \
   "https://data.socialbeesai.com/minio" \
-  "https://monitor.socialbeesai.com/grafana" \
-  "https://monitor.socialbeesai.com/prometheus" \
-  "https://monitor.socialbeesai.com/portainer" \
+  "https://grafana.socialbeesai.com" \
+  "https://prometheus.socialbeesai.com" \
+  "https://portainer.socialbeesai.com" \
   "https://admin.socialbeesai.com" \
   "https://socialbeesai.com"; do
   code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "$url" 2>/dev/null || echo "FAIL")

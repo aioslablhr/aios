@@ -4,9 +4,9 @@ for url in \
   "https://socialbeesai.com" \
   "https://app.socialbeesai.com/n8n" \
   "https://n8n.socialbeesai.com" \
-  "https://monitor.socialbeesai.com/grafana" \
-  "https://monitor.socialbeesai.com/portainer" \
-  "https://monitor.socialbeesai.com/prometheus" \
+  "https://grafana.socialbeesai.com" \
+  "https://portainer.socialbeesai.com" \
+  "https://prometheus.socialbeesai.com" \
   "https://voice.socialbeesai.com/dograh" \
   "https://admin.socialbeesai.com" \
   "https://data.socialbeesai.com/minio"; do

@@ -32,14 +32,6 @@ http:
         sourceCriterion:
           requestHost: true
 
-    strip-monitor-prefix:
-      stripPrefix:
-        prefixes:
-          - /grafana
-          - /portainer
-          - /prometheus
-          - /cadvisor
-
     strip-qdrant-prefix:
       stripPrefix:
         prefixes:
@@ -195,9 +187,9 @@ http:
         - crowdsec-bouncer
         - secure-headers
 
-    # Grafana — monitor.socialbeesai.com/grafana
+    # Grafana — grafana.socialbeesai.com
     monitor-grafana:
-      rule: "Host(`monitor.socialbeesai.com`) && PathPrefix(`/grafana`)"
+      rule: "Host(`grafana.socialbeesai.com`)"
       service: grafana
       entryPoints:
         - websecure
@@ -206,11 +198,10 @@ http:
       middlewares:
         - crowdsec-bouncer
         - secure-headers
-        - strip-monitor-prefix
 
-    # Prometheus — monitor.socialbeesai.com/prometheus
+    # Prometheus — prometheus.socialbeesai.com
     monitor-prometheus:
-      rule: "Host(`monitor.socialbeesai.com`) && PathPrefix(`/prometheus`)"
+      rule: "Host(`prometheus.socialbeesai.com`)"
       service: prometheus
       entryPoints:
         - websecure
@@ -219,11 +210,10 @@ http:
       middlewares:
         - crowdsec-bouncer
         - secure-headers
-        - strip-monitor-prefix
 
-    # Portainer — monitor.socialbeesai.com/portainer
+    # Portainer — portainer.socialbeesai.com
     monitor-portainer:
-      rule: "Host(`monitor.socialbeesai.com`) && PathPrefix(`/portainer`)"
+      rule: "Host(`portainer.socialbeesai.com`)"
       service: portainer
       entryPoints:
         - websecure
@@ -232,11 +222,10 @@ http:
       middlewares:
         - crowdsec-bouncer
         - secure-headers
-        - strip-monitor-prefix
 
-    # cAdvisor — monitor.socialbeesai.com/cadvisor
+    # cAdvisor — cadvisor.socialbeesai.com
     monitor-cadvisor:
-      rule: "Host(`monitor.socialbeesai.com`) && PathPrefix(`/cadvisor`)"
+      rule: "Host(`cadvisor.socialbeesai.com`)"
       service: cadvisor
       entryPoints:
         - websecure
@@ -245,7 +234,6 @@ http:
       middlewares:
         - crowdsec-bouncer
         - secure-headers
-        - strip-monitor-prefix
 
     # Qdrant — qdrant.socialbeesai.com/dashboard
     qdrant:

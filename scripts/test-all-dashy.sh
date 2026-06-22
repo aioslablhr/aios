@@ -10,14 +10,14 @@ test_url() {
 }
 
 test_url "https://chat.socialbeesai.com" "Open WebUI"
-test_url "https://monitor.socialbeesai.com/langfuse" "Langfuse"
+test_url "https://langfuse.socialbeesai.com" "Langfuse"
 test_url "https://app.socialbeesai.com/n8n" "n8n"
 test_url "https://app.socialbeesai.com/flowise" "Flowise"
 test_url "https://data.socialbeesai.com" "Supabase"
 test_url "https://data.socialbeesai.com/minio" "MinIO"
-test_url "https://monitor.socialbeesai.com/grafana" "Grafana"
-test_url "https://monitor.socialbeesai.com/prometheus" "Prometheus"
-test_url "https://monitor.socialbeesai.com/portainer" "Portainer"
+test_url "https://grafana.socialbeesai.com" "Grafana"
+test_url "https://prometheus.socialbeesai.com" "Prometheus"
+test_url "https://portainer.socialbeesai.com" "Portainer"
 test_url "https://voice.socialbeesai.com" "Dograh"
 test_url "https://admin.socialbeesai.com" "Traefik Dashboard"
 test_url "https://admin.socialbeesai.com/keycloak" "Keycloak Admin"
