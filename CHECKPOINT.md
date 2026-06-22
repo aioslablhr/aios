@@ -305,10 +305,8 @@ TTS Pipeline (via Speaches provider):
 | Telephony Config ID 1 | Asterisk-Local, ARI provider, endpoint `http://10.0.0.100:8088`, org 1 |
 | Phone Number Ext 102 | Linked to Workflow ID 1 (English), type: sip_extension |
 | Phone Number Ext 105 | Linked to Workflow ID 5 (Urdu), type: sip_extension |
-| Phone Number Ext 2000 | Linked to Workflow ID 6 (Shin Travels), type: sip_extension |
 | Workflow ID 1 | "AI Voice Receptionist" (English), active, v2 |
 | Workflow ID 5 | "Urdu Voice Receptionist", active, v1 |
-| Workflow ID 6 | "Shin Travels" (English), active, v3 |
 | User Config (user_id=1) | **Single config for all workflows.** LLM=Speaches→Bifrost(multilingual, 10.40.0.10:4000), STT=Deepgram(nova-3,en), TTS=Speaches→TTS Router(10.40.0.33:8030, voice=default→ElevenLabs, speed=0.9). WF 5 overrides: stt.language=ur, tts.voice=uplift. |
 
 ---
@@ -328,6 +326,12 @@ TTS Pipeline (via Speaches provider):
 | Deploy AIOS docker-compose to AWS EC2 | Low | ❌ pending instance upgrade |
 
 ---
+
+13. **Knowledge strategy**: Two-tier approach in production:
+    - **LLM Wiki** (primary) — Small knowledge bases (<50k tokens). Compiled once from raw docs into structured wiki, injected into agent prompt at session start. Used for Shin Travels (Ext 102) and Imperium (Ext 105). Faster (no vector search latency), cheaper, more reliable for this scale.
+    - **Vector RAG via Qdrant** (secondary) — For future clients with large document sets (100k+ tokens). Uses Flowise UI or ingest pipeline (docling → knowledge-ingest → Qdrant). To be tested and validated after Wiki path is fully operational.
+    - Both paths coexist. Wiki is default. RAG is available when needed.
+14. **Odoo deployment**: Planned after voice agent knowledge layer is stable. Odoo integrates at runtime — Dograh agents query Odoo API live during calls (client lookup, booking status, payment verification). Not static data sync. Odoo lives in docker-compose-apps.yml (never started yet).
 
 ## Key Architectural Decisions
 
@@ -783,4 +787,82 @@ wiki/
 - Add chat server to docker-compose for reboot persistence
 - Monitor Chatwoot sync for edge cases
 - Native Urdu TTS voice cloning
-(End of file - total 505 lines)
+- Fix Ext 105 Urdu pronunciation (LLM outputting English instead of Roman Urdu)
+
+---
+
+## Session 15 — June 23, 2026: Ext 105 Urdu TTS Troubleshooting + Ext 500 Test Setup
+
+### Summary
+Extensive debugging of Urdu pronunciation issues on Ext 105. User confirmed UpliftAI voice `helpdesk-agent` produces perfect Urdu on other systems, but through the pipeline zero Urdu was heard. Root cause was likely a combination of:
+1. **Sample rate**: `TARGET_SAMPLE_RATE=8000` (monster voice fixed) but ffmpeg resampling (22050→8000) degrades Urdu consonant quality
+2. **Prompt**: Nastaliq Urdu script instruction caused LLM to output English rejections ("I'm sorry, but I can...")
+3. **Audio pipeline**: PCM_22050_16 → ffmpeg → 8000Hz introduces artifacts; replaced with ULAW_8000_8 direct from UpliftAI (native 8kHz mu-law, no ffmpeg)
+
+### Changes Made
+
+**tts-router server.py:**
+- Added ULAW-based PCM path: requests `ULAW_8000_8` from UpliftAI, decodes mu-law to 16-bit PCM at 8kHz
+- No ffmpeg resampling needed for UpliftAI PCM path (native 8kHz from API)
+- Falls back to ffmpeg only when speed != 1.0 (atempo)
+- UpliftAI's internal 22050→8000 conversion is higher quality than ffmpeg swresample
+
+**docker-compose-aios.yml:**
+- `UPLIFTAI_VOICE_ID: helpdesk-agent` (user confirmed working)
+- `TARGET_SAMPLE_RATE: 8000` (prevents monster voice from 24000Hz mismatch)
+
+**Bifrost config.yaml:**
+- Removed custom `urdu` model (was pointing to Qwen)
+- Restored original `multilingual` (Gemma) as primary
+- Restored original fallback chains
+
+**Prompt (update_imperium_prompt.py):**
+- Reverted from Nastaliq script instruction to Roman Urdu
+- Added stronger "YOU MUST SPEAK URDU" directive
+- Restored original Roman Urdu examples
+
+**Database:**
+- Ext 105 workflow model reverted from `urdu` to `multilingual`
+- `agent_triggers` restored for 102, 105, 500
+- Ext 500 (Quick Urdu Test) workflow created (id=5)
+
+**New Extension 500:**
+- Clean test extension with no wiki, no complex prompt
+- Greeting: "Assalam-o-Alaikum! Yeh test Urdu call hai. Aap kaisay hain?"
+- Simple Roman Urdu prompt
+- LLM: Bifrost `general-reasoning` (Gemma 4 free)
+- TTS: UpliftAI `helpdesk-agent` via ULAW
+- STT: Deepgram Urdu
+- Dialplan: `exten => 500,1,Stasis(dograh)`
+- Phone mapping: `telephony_phone_numbers` entry for 500 → workflow 5
+
+### Current State
+| Service | Status |
+|---------|--------|
+| Ext 500 (Test Urdu) | Dial 500 from any SIP phone |
+| Ext 105 (Imperium/Zara) | Pronunciation still needs fixing (LLM output issue) |
+| Ext 102 (SHIN/Emma) | Should be unaffected |
+| tts-router (ULAW) | v4.2.0, returning audio/L16;rate=8000;channels=1 via ULAW path |
+| Bifrost | Restarted, stock config |
+| Dograh API | Restarted, agent_triggers restored |
+| Asterisk | Dialplan reloaded with ext 500 |
+
+### Files Changed
+| File | Changes |
+|------|---------|
+| `configs/tts-router/server.py` | ULAW-based PCM path, no ffmpeg for UpliftAI |
+| `docker-compose-aios.yml` | helpdesk-agent voice, TARGET_SAMPLE_RATE=8000 |
+| `configs/bifrost/config.yaml` | Reverted to original (removed urdu model) |
+| `configs/asterisk/extensions.conf` | Added ext 500 |
+| `update_imperium_prompt.py` | Reverted to Roman Urdu + stronger Urdu directive |
+| `CHECKPOINT.md` | Updated |
+
+### Key Files Reference
+| File | Purpose |
+|------|---------|
+| `/aios/configs/tts-router/server.py` | TTS router v4.2.0 with ULAW PCM path |
+| `/aios/docker-compose-aios.yml` | Service definitions, env vars |
+| `/aios/configs/bifrost/config.yaml` | Bifrost model routing |
+| `/aios/update_imperium_prompt.py` | Ext 105 prompt updater |
+| `/aios/configs/asterisk/extensions.conf` | Dialplan with ext 500 |
+(End of file)

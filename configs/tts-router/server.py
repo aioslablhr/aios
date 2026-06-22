@@ -80,6 +80,8 @@ async def convert_to_pcm_speed(audio_data: bytes, fmt: str, speed: float) -> byt
 
     if fmt == "pcm_22050":
         cmd = ffmpeg_cmd(["-f", "s16le", "-ar", "22050", "-ac", "1"], filter_args)
+    elif fmt == "pcm_8000":
+        cmd = ffmpeg_cmd(["-f", "s16le", "-ar", "8000", "-ac", "1"], filter_args)
     elif fmt == "mp3":
         cmd = ffmpeg_cmd([], filter_args)
     elif fmt == "wav":
@@ -119,8 +121,43 @@ async def call_with_retry(fn, text_for_log: str, max_retries: int = 3) -> bytes:
     raise last_exc
 
 
+_ULAW_TABLE: list[int] | None = None
+
+def _get_ulaw_table() -> list[int]:
+    global _ULAW_TABLE
+    if _ULAW_TABLE is not None:
+        return _ULAW_TABLE
+    table = [0] * 256
+    for i in range(256):
+        u = (~i) & 0xFF
+        sign = u & 0x80
+        exponent = (u >> 4) & 0x07
+        mantissa = u & 0x0F
+        sample = ((mantissa << 3) + 0x84) << (exponent + 2)
+        if not sign:
+            sample = -sample
+        if sample > 32767:
+            sample = 32767
+        elif sample < -32768:
+            sample = -32768
+        table[i] = sample
+    _ULAW_TABLE = table
+    return table
+
+
+def ulaw_to_pcm(ulaw_data: bytes) -> bytes:
+    import array
+    table = _get_ulaw_table()
+    out = array.array("h")
+    for b in ulaw_data:
+        out.append(table[b])
+    return out.tobytes()
+
+
 async def call_upliftai(text: str, speed: float = 1.0, output_format: str = "mp3") -> bytes:
-    fmt = "MP3_22050_128" if output_format == "mp3" else "PCM_22050_16"
+    if output_format == "pcm":
+        return await call_upliftai_pcm(text, speed)
+    fmt = "MP3_22050_128"
     payload = {
         "voiceId": UPLIFTAI_VOICE_ID,
         "text": text,
@@ -140,7 +177,32 @@ async def call_upliftai(text: str, speed: float = 1.0, output_format: str = "mp3
         data = resp.content
         logger.info(f"Uplift AI TTS: speed={speed} {len(text)} chars -> {len(data)} bytes {fmt}")
         return data
+    return await call_with_retry(_do_call, text)
 
+
+async def call_upliftai_pcm(text: str, speed: float = 1.0) -> bytes:
+    payload = {
+        "voiceId": UPLIFTAI_VOICE_ID,
+        "text": text,
+        "outputFormat": "ULAW_8000_8",
+    }
+    if speed != 1.0:
+        payload["speed"] = speed
+    headers = {"Authorization": f"Bearer {UPLIFTAI_API_KEY}", "Content-Type": "application/json"}
+
+    async def _do_call():
+        client = await get_http_client()
+        resp = await client.post(
+            "https://api.upliftai.org/v1/synthesis/text-to-speech",
+            json=payload, headers=headers
+        )
+        resp.raise_for_status()
+        ulaw_data = resp.content
+        logger.info(f"Uplift AI PCM: speed={speed} {len(text)} chars -> {len(ulaw_data)} bytes ULAW_8000_8")
+        pcm_data = ulaw_to_pcm(ulaw_data)
+        if speed != 1.0:
+            pcm_data = await convert_to_pcm_speed(pcm_data, "pcm_8000", speed)
+        return pcm_data
     return await call_with_retry(_do_call, text)
 
 
@@ -217,15 +279,14 @@ async def synthesize(req: TTSRequest):
                     for i in range(0, len(audio_data), CHUNK_SIZE):
                         yield audio_data[i:i + CHUNK_SIZE]
                 return StreamingResponse(chunk_gen(), media_type="audio/mpeg")
-            audio_data = await call_upliftai(req.input, req.speed, "pcm")
+            pcm_data = await call_upliftai(req.input, req.speed, "pcm")
         else:
             audio_data = await {
                 "elevenlabs": call_elevenlabs,
                 "google_tts": call_google_tts,
             }[backend_name](req.input)
-
-        fmt = BACKEND_FORMATS[backend_name]
-        pcm_data = await convert_to_pcm_speed(audio_data, fmt, req.speed)
+            fmt = BACKEND_FORMATS[backend_name]
+            pcm_data = await convert_to_pcm_speed(audio_data, fmt, req.speed)
 
         def chunk_gen():
             for i in range(0, len(pcm_data), CHUNK_SIZE):

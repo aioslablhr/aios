@@ -273,10 +273,29 @@ def save_wiki_page(wiki_dir: Path, category: str | None, filename: str, content_
 
 def main():
     parser = argparse.ArgumentParser(description="AIOS Knowledge Compiler")
-    parser.add_argument("--company", required=True, help="Company slug (e.g. shin-travels)")
+    parser.add_argument("--company", help="Company slug (e.g. shin-travels)")
+    parser.add_argument("--force", action="store_true", help="Compile ALL companies with raw data")
     args = parser.parse_args()
     config = load_config()
-    compile_company(config, args.company)
+    if args.force:
+        if not COMPANIES_DIR.exists():
+            logger.error(f"Companies directory not found: {COMPANIES_DIR}")
+            sys.exit(1)
+        companies = sorted(d.name for d in COMPANIES_DIR.iterdir() if d.is_dir())
+        if not companies:
+            logger.warning("No company directories found")
+            return
+        for slug in companies:
+            raw_dir = COMPANIES_DIR / slug / "raw"
+            if raw_dir.exists() and any(raw_dir.glob("*.md")):
+                compile_company(config, slug)
+            else:
+                logger.info(f"  Skipping {slug} — no raw documents")
+    elif args.company:
+        compile_company(config, args.company)
+    else:
+        parser.print_help()
+        sys.exit(1)
 
 
 if __name__ == "__main__":

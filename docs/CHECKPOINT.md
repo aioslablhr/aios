@@ -36,7 +36,7 @@ SSH'd to server at 10.0.0.100 and inspected every container, network, config, an
 
 #### PJSIP Endpoints
 7 defined. 2 registered: 101 (support trunk @ 10.0.0.11) and 9000 (Cisco phone, RTT 19ms).
-3 AI agent extensions (102, 105, 2000) route to `Stasis(dograh)`.
+2 AI agent extensions (102, 105) route to `Stasis(dograh)`.
 
 #### Actual Provider Config (from Dograh DB user_configurations)
 | Component | Provider | Location |

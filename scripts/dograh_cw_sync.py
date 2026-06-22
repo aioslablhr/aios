@@ -20,7 +20,7 @@ INBOX_IDENTIFIER = os.environ.get('CW_INBOX_IDENTIFIER', '8xXig1ed5a9Ps4hQVjuMsr
 STATE_FILE = os.environ.get('STATE_FILE', '/tmp/cw_sync_state.json')
 POLL_INTERVAL = int(os.environ.get('POLL_INTERVAL', '15'))
 
-WORKFLOW_NAMES = {1: 'English', 5: 'Urdu', 6: 'Shin Travels'}
+WORKFLOW_NAMES = {1: 'English', 5: 'Urdu'}
 
 
 def log(msg):

@@ -593,7 +593,7 @@ frigate:
     - frigate-data:/media/frigate
     - /dev/bus/usb:/dev/bus/usb  # For USB Coral (future)
   environment:
-    - FRIGATE_RTSP_PASSWORD=${EXT_2000_SECRET}
+    - FRIGATE_RTSP_PASSWORD=${FRIGATE_RTSP_PASSWORD}
   networks:
     aios-ai:
       ipv4_address: 10.40.0.50

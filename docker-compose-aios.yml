@@ -317,13 +317,11 @@ services:
         ipv4_address: 10.20.0.56
       aios-data:
     volumes:
+      - /aios/knowledge/companies:/app/companies:ro
       - /aios/knowledge/wiki:/app/wiki
     environment:
-      QDRANT_HOST: 10.30.0.20
-      QDRANT_API_KEY: ${QDRANT_API_KEY}
-      MEM0_URL: http://10.20.0.50:8000/v1
       LLM_BASE_URL: http://10.40.0.10:4000/v1
-      LLM_MODEL: gemma-4-31b
+      LLM_MODEL: general-reasoning
       LLM_API_KEY: sk-aios-bifrost
     depends_on:
       qdrant:
@@ -1052,7 +1050,6 @@ services:
       EXT_100_SECRET: ${EXT_100_SECRET}
       EXT_101_SECRET: ${EXT_101_SECRET}
       EXT_102_SECRET: ${EXT_102_SECRET}
-      EXT_2000_SECRET: ${EXT_2000_SECRET}
       EXT_9000_SECRET: ${EXT_9000_SECRET}
       EXT_103_SECRET: ${EXT_103_SECRET}
       EXT_104_SECRET: ${EXT_104_SECRET}
@@ -1157,6 +1154,8 @@ services:
     volumes:
       - ./dograh-patches/run_pipeline.py:/app/api/services/pipecat/run_pipeline.py
       - ./dograh-patches/chatwoot_sync.py:/app/api/services/pipecat/chatwoot_sync.py
+      - ./dograh-patches/wiki_loader.py:/app/api/services/workflow/wiki_loader.py
+      - /aios/knowledge/companies:/knowledge:ro
     healthcheck:
       test: ["CMD-SHELL", 'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8000/api/v1/health'').read()"']
       interval: 30s
@@ -1369,6 +1368,7 @@ services:
       ELEVENLABS_VOICE_ID: G1gUElsVCoazUpfBnLnt
       UPLIFTAI_API_KEY: ${UPLIFTAI_API_KEY}
       UPLIFTAI_VOICE_ID: helpdesk-agent
+      TARGET_SAMPLE_RATE: 8000
     restart: unless-stopped
 
   # ================================================================

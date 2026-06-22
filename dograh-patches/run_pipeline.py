@@ -472,6 +472,28 @@ async def _run_pipeline(
         workflow_run_id, initial_context=merged_call_context_vars
     )
 
+    # ── Wiki knowledge injection ───────────────────────────────────────
+    # If the workflow has a "company" field in its config, load the
+    # compiled wiki and inject it into template variables as {{wiki_content}}.
+    company = (run_configs or {}).get("company")
+    if company and "wiki_content" not in merged_call_context_vars:
+        try:
+            from api.services.workflow.wiki_loader import load_company_wiki
+
+            wiki_text = load_company_wiki(company)
+            if wiki_text:
+                merged_call_context_vars["wiki_content"] = wiki_text
+                logger.info(
+                    "Injected wiki for '%s' (%d chars) into call context vars",
+                    company,
+                    len(wiki_text),
+                )
+            else:
+                logger.warning("Wiki for '%s' returned empty content", company)
+        except Exception:
+            logger.exception("Failed to load wiki for '%s'", company)
+    # ── End wiki injection ─────────────────────────────────────────────
+
     workflow_graph = WorkflowGraph(ReactFlowDTO.model_validate(run_workflow_json))
 
     # Pre-call fetch: fire early so it runs concurrently with remaining setup

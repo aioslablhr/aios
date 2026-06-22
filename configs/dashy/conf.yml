@@ -1,8 +1,8 @@
 ---
 pageInfo:
   title: AIOS AI Control Panel
-  description: 'Enterprise AI Platform v1.0 — 41 containers · 8 zones · Lahore AI Lab'
-  footer: AIOS v4.7 | 41 containers running | ai@10.0.0.100
+  description: 'Enterprise AI Platform v4.7 — 49 containers · 8 zones · Lahore AI Lab'
+  footer: AIOS v4.7 | 49 containers running | ai@10.0.0.100 | Lahore
 
 appConfig:
   theme: colorful
@@ -18,52 +18,56 @@ sections:
     icon: fas fa-shield-alt
     items:
       - title: Traefik
-        description: 'Reverse proxy · HTTPS · Let''s Encrypt SSL'
+        description: 'Reverse proxy · HTTPS · Let''s Encrypt SSL · ingress'
         icon: fas fa-exchange-alt
-        url: http://10.0.0.100:8082
+        url: https://socialbeesai.com
         target: newtab
       - title: CrowdSec
-        description: 'WAF · IP reputation · Rate limiting'
+        description: 'WAF · IP reputation · Rate limiting · Bouncer'
         icon: fas fa-user-shield
         url: ''
       - title: Keycloak
         description: 'SSO · OAuth2/OIDC · Identity management'
         icon: fas fa-id-card
-        url: http://10.0.0.100:8080
+        url: https://keycloak.socialbeesai.com
         target: newtab
       - title: Vault
-        description: 'Secrets management · Encrypted at rest'
+        description: 'Secrets management · Encrypted at rest · host-net'
         icon: fas fa-key
-        url: http://10.0.0.100:8200
+        url: https://vault.socialbeesai.com
         target: newtab
+      - title: WireGuard
+        description: 'VPN tunnel · Dev-to-server · Mesh networking'
+        icon: fas fa-network-wired
+        url: ''
 
   - name: Data Layer
     icon: fas fa-database
     items:
       - title: PostgreSQL
-        description: 'Relational DB + pgvector 0.8.0 — all operational data'
+        description: 'Relational DB · pgvector · AIOS central store'
         icon: fas fa-database
         url: ''
       - title: Qdrant
         description: 'Vector store · RAG · mem0 memory · Semantic search'
         icon: fas fa-vector-square
-        url: http://10.0.0.100:6333/dashboard
+        url: https://qdrant.socialbeesai.com/dashboard
         target: newtab
       - title: Redis
         description: 'Cache · n8n queue · Session store · Streams'
         icon: fas fa-memory
         url: ''
       - title: MinIO
-        description: 'S3-compatible storage · Client docs · Recordings'
+        description: 'S3-compatible storage · Recordings · Client docs'
         icon: fas fa-hdd
-        url: http://10.0.0.100:9001
+        url: https://data.socialbeesai.com/minio
         target: newtab
       - title: ClickHouse
         description: 'Columnar analytics · Langfuse event store'
         icon: fas fa-chart-bar
         url: ''
       - title: mem0
-        description: 'Agent memory layer — multi-user sessions'
+        description: 'Agent memory layer · Multi-user sessions'
         icon: fas fa-brain
         url: http://10.0.0.100:8000/docs
         target: newtab
@@ -72,21 +76,31 @@ sections:
     icon: fas fa-microchip
     items:
       - title: Bifrost (LiteLLM)
-        description: 'AI Gateway — 4-tier routing · 28 models · Langfuse logging'
+        description: 'AI Gateway · 4-tier routing · 11 models · Langfuse logging'
         icon: fas fa-random
-        url: http://10.0.0.100:4000
+        url: https://ai.socialbeesai.com
         target: newtab
       - title: Ollama
-        description: 'Local GPU inference · nomic-embed · LLaVA · Qalb-1.0'
+        description: 'Local GPU inference · nomic-embed · LLaVA · Mistral'
         icon: fas fa-brain
         url: ''
       - title: Frigate NVR
         description: 'GPU object detection · YOLO · Camera management'
         icon: fas fa-video
-        url: http://10.0.0.100:5000
+        url: https://frigate.socialbeesai.com
         target: newtab
-      - title: TTS Router
-        description: 'Language-aware routing: Urdu→XTTS, English→Chatterbox, fallback→Kokoro'
+      - title: Open WebUI
+        description: 'Chat interface · LLM playground · Multi-user'
+        icon: fas fa-comment-dots
+        url: https://chat.socialbeesai.com
+        target: newtab
+      - title: docling
+        description: 'Document parser · PDFs, invoices, contracts → Markdown'
+        icon: fas fa-file-alt
+        url: http://10.0.0.100:8001/docs
+        target: newtab
+      - title: TTS Router v4.2
+        description: 'Cloud TTS routing: UpliftAI (default), ElevenLabs, Google TTS'
         icon: fas fa-volume-up
         url: ''
 
@@ -94,22 +108,46 @@ sections:
     icon: fas fa-phone
     items:
       - title: Asterisk PBX
-        description: 'SIP trunking · 6 extensions (100-104, 9000) · IVR'
+        description: 'SIP PBX 22.9.0 · 7 extensions (100-105, 9000) · IVR · ARI'
         icon: fas fa-phone
         url: ''
       - title: Dograh API
-        description: 'Voice agent orchestration — replaces Retell AI'
+        description: 'Voice agent orchestration · ARI driver · Pipeline engine'
         icon: fas fa-robot
         url: http://10.0.0.100:8085/docs
         target: newtab
       - title: Dograh UI
-        description: 'Voice dashboard · Call logs · Agent config'
+        description: 'Voice dashboard · Call logs · Agent configuration'
         icon: fas fa-tachometer-alt
-        url: http://10.0.0.100:3010
+        url: https://voice.socialbeesai.com
         target: newtab
       - title: Mosquitto MQTT
         description: 'Event bus · Frigate alerts · Inter-service messaging'
         icon: fas fa-comments
+        url: ''
+      - title: Chatterbox
+        description: 'Primary GPU TTS · Voice cloning · 4GB VRAM'
+        icon: fas fa-volume-up
+        url: ''
+      - title: Kokoro
+        description: 'CPU-fallback TTS · Lighter/faster alternative'
+        icon: fas fa-microchip
+        url: ''
+      - title: XTTS Urdu
+        description: 'XTTS v2 · Urdu TTS · CPU-forced (no free GPU)'
+        icon: fas fa-language
+        url: ''
+      - title: DIA TTS
+        description: 'DIA TTS engine · CPU-only on Quadro (CUDA 12 req)'
+        icon: fas fa-microchip
+        url: ''
+      - title: Speaches
+        description: 'LLM wrapper · OpenAI-compatible · Bifrost passthrough'
+        icon: fas fa-code-branch
+        url: ''
+      - title: Whisper STT
+        description: 'Offline STT fallback · large-v3 · Unused (Deepgram primary)'
+        icon: fas fa-microphone-alt
         url: ''
 
   - name: Orchestration Layer
@@ -118,37 +156,32 @@ sections:
       - title: n8n
         description: 'Workflow orchestration · 2 workers · Redis queue mode'
         icon: fas fa-code-branch
-        url: http://10.0.0.100:5678
+        url: https://n8n.socialbeesai.com
         target: newtab
       - title: Flowise
         description: 'Visual no-code agent builder · RAG flows'
         icon: fas fa-project-diagram
-        url: http://10.0.0.100:3001
+        url: https://app.socialbeesai.com
         target: newtab
       - title: MCP Server
-        description: 'Model Context Protocol — unified tool access for all agents'
+        description: 'Model Context Protocol · Unified tool access for agents'
         icon: fas fa-toolbox
         url: http://10.0.0.100:8100
         target: newtab
       - title: GitOps Agent
-        description: 'CD · polls GitHub every 30s · auto-deploys to Docker'
+        description: 'CD · Auto-deploys from GitHub · Polls every 30s'
         icon: fas fa-sync-alt
         url: ''
 
   - name: Knowledge & Documents
     icon: fas fa-book
     items:
-      - title: docling
-        description: 'Document parser — PDFs, invoices, contracts → Markdown'
-        icon: fas fa-file-alt
-        url: http://10.0.0.100:8001/docs
-        target: newtab
       - title: Knowledge Ingest
-        description: 'Daemon — watches MinIO raw-uploads → chunks → Qdrant'
+        description: 'Daemon · Watches MinIO raw-uploads → chunks → Qdrant'
         icon: fas fa-upload
         url: ''
       - title: Knowledge Compile
-        description: 'LLM Wiki compiler — runs every 4 hours'
+        description: 'LLM Wiki compiler · Runs every 4 hours'
         icon: fas fa-sync
         url: ''
 
@@ -158,29 +191,29 @@ sections:
       - title: Langfuse
         description: 'LLM observability · Cost tracking · Prompt registry'
         icon: fas fa-eye
-        url: http://10.0.0.100:3000
+        url: https://langfuse.socialbeesai.com
         target: newtab
       - title: Grafana
-        description: 'Visualization · Infra + LLM + Business dashboards'
+        description: 'Dashboards · Infra + LLM + Business metrics'
         icon: fas fa-chart-pie
-        url: http://10.0.0.100:3000
+        url: https://grafana.socialbeesai.com
         target: newtab
       - title: Prometheus
         description: 'Metrics · CPU/RAM/GPU/Disk · All containers'
         icon: fas fa-chart-bar
-        url: http://10.0.0.100:9090
+        url: https://prometheus.socialbeesai.com
         target: newtab
       - title: Loki
-        description: 'Log aggregation — all 41 container logs'
+        description: 'Log aggregation · All 49 container logs'
         icon: fas fa-clipboard-list
         url: ''
       - title: Portainer
-        description: 'Docker management UI — containers · volumes · networks'
+        description: 'Docker management · Containers · Volumes · Networks'
         icon: fas fa-ship
-        url: http://10.0.0.100:9000
+        url: https://portainer.socialbeesai.com
         target: newtab
       - title: cAdvisor
-        description: 'Container resource metrics · real-time'
+        description: 'Container resource metrics · Real-time'
         icon: fas fa-tachometer-alt
         url: ''
       - title: Node Exporter
@@ -188,7 +221,7 @@ sections:
         icon: fas fa-server
         url: ''
       - title: Dashy
-        description: 'Central nav · You are here'
+        description: 'Central navigation · You are here'
         icon: fas fa-home
         url: http://10.0.0.100:8082
         target: newtab
@@ -197,7 +230,7 @@ sections:
         icon: fas fa-robot
         url: ''
 
-  - name: Voice Extensions
+  - name: Phone Extensions
     icon: fas fa-address-book
     items:
       - title: 'Ext 100 — Softphone'
@@ -209,9 +242,10 @@ sections:
         icon: fas fa-check-circle
         color: green
         url: ''
-      - title: 'Ext 102 — Softphone'
-        description: 'Unavailable'
-        icon: fas fa-circle
+      - title: 'Ext 102 — AI Agent (English)'
+        description: 'SHIN Travels Sales · Emma · Bifrost→OpenRouter'
+        icon: fas fa-robot
+        color: blue
         url: ''
       - title: 'Ext 103 — Softphone'
         description: 'Unavailable'
@@ -221,13 +255,18 @@ sections:
         description: 'Unavailable'
         icon: fas fa-circle
         url: ''
+      - title: 'Ext 105 — AI Agent (Urdu)'
+        description: 'Mix Urdu/English · Deepgram Urdu → Bifrost multilingual → UpliftAI'
+        icon: fas fa-robot
+        color: blue
+        url: ''
       - title: 'Ext 9000 — Cisco 7962G'
-        description: 'Registered · TCP · 10.0.0.12'
+        description: 'Registered · TCP · 10.0.0.12 · RTT 19ms'
         icon: fas fa-check-circle
         color: green
         url: ''
 
-  - name: FOSS Applications (Not Started)
+  - name: FOSS Apps (Not Started)
     icon: fas fa-cubes
     items:
       - title: Nextcloud
@@ -242,10 +281,6 @@ sections:
         description: 'Analytics · Dashboards — metabase.socialbeesai.com'
         icon: fas fa-chart-line
         url: ''
-      - title: Open WebUI
-        description: 'Chat interface — chat.socialbeesai.com'
-        icon: fas fa-comment-dots
-        url: ''
 
   - name: System Info
     icon: fas fa-info-circle
@@ -255,11 +290,11 @@ sections:
         icon: fas fa-server
         url: ''
       - title: GPU
-        description: 'Quadro M4000 · 8GB VRAM · 1664 CUDA cores'
+        description: 'Quadro M4000 · 8GB VRAM · 4175/8125 MiB used'
         icon: fas fa-microchip
         url: ''
       - title: Containers
-        description: '41 running · 6 zones · All healthy'
+        description: '49 running · 8 zones · All healthy'
         icon: fas fa-cube
         url: ''
       - title: Dev PC
