@@ -1,0 +1,24 @@
+http:
+  routers:
+    emma-chat:
+      rule: "Host(`voice.socialbeesai.com`) && PathPrefix(`/chat`)"
+      service: emma-chat
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - strip-chat-prefix
+
+  middlewares:
+    strip-chat-prefix:
+      stripPrefix:
+        prefixes:
+          - /chat
+
+  services:
+    emma-chat:
+      loadBalancer:
+        servers:
+          - url: "http://10.0.0.100:8081"

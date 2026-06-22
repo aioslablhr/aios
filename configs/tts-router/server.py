@@ -119,11 +119,12 @@ async def call_with_retry(fn, text_for_log: str, max_retries: int = 3) -> bytes:
     raise last_exc
 
 
-async def call_upliftai(text: str, speed: float = 1.0) -> bytes:
+async def call_upliftai(text: str, speed: float = 1.0, output_format: str = "mp3") -> bytes:
+    fmt = "MP3_22050_128" if output_format == "mp3" else "PCM_22050_16"
     payload = {
         "voiceId": UPLIFTAI_VOICE_ID,
         "text": text,
-        "outputFormat": "PCM_22050_16",
+        "outputFormat": fmt,
     }
     if speed != 1.0:
         payload["speed"] = speed
@@ -137,7 +138,7 @@ async def call_upliftai(text: str, speed: float = 1.0) -> bytes:
         )
         resp.raise_for_status()
         data = resp.content
-        logger.info(f"Uplift AI TTS: speed={speed} {len(text)} chars -> {len(data)} bytes PCM 22050Hz")
+        logger.info(f"Uplift AI TTS: speed={speed} {len(text)} chars -> {len(data)} bytes {fmt}")
         return data
 
     return await call_with_retry(_do_call, text)
@@ -177,11 +178,11 @@ BACKEND_FORMATS = {
 
 
 def get_backend(voice: str) -> str:
-    if voice in ("uplift", "upliftai", "helpdesk-agent"):
-        return "upliftai"
     if voice in ("urdu", "google_tts", "google"):
         return "google_tts"
-    return "elevenlabs"
+    if voice in ("elevenlabs",):
+        return "elevenlabs"
+    return "upliftai"
 
 
 # ── Models ──
@@ -190,7 +191,7 @@ class TTSRequest(BaseModel):
     model: str = "tts-1"
     input: str
     voice: str = "default"
-    response_format: str = "pcm"
+    response_format: str = "mp3"
     speed: float = 1.0
     language: str | None = None
 
@@ -206,10 +207,17 @@ class LegacyTTSRequest(BaseModel):
 @app.post("/v1/audio/speech")
 async def synthesize(req: TTSRequest):
     backend_name = get_backend(req.voice)
-    logger.info(f"TTS backend={backend_name} voice={req.voice} ({len(req.input)} chars): {req.input[:60]}")
+    want_mp3 = req.response_format == "mp3"
+    logger.info(f"TTS backend={backend_name} voice={req.voice} fmt={req.response_format} ({len(req.input)} chars): {req.input[:60]}")
     try:
         if backend_name == "upliftai":
-            audio_data = await call_upliftai(req.input, req.speed)
+            if want_mp3:
+                audio_data = await call_upliftai(req.input, req.speed, "mp3")
+                def chunk_gen():
+                    for i in range(0, len(audio_data), CHUNK_SIZE):
+                        yield audio_data[i:i + CHUNK_SIZE]
+                return StreamingResponse(chunk_gen(), media_type="audio/mpeg")
+            audio_data = await call_upliftai(req.input, req.speed, "pcm")
         else:
             audio_data = await {
                 "elevenlabs": call_elevenlabs,

@@ -1,26 +1,24 @@
 # AIOS — Session Checkpoint
 
-**Version:** 9.0
-**Date:** June 19, 2026
+**Version:** 10.1
+**Date:** June 22, 2026
 **Branch:** main
-**Last commit:** 050d7ee (dev PC)
+**Last commit:** adeb949
 
 ---
 
-## Container Status (Server — June 18, 2026)
+## Container Status (Server — June 22, 2026)
 
 ### Running (54 — all services healthy)
-aios-asterisk, aios-bifrost, aios-cadvisor, aios-chatterbox, aios-chatwoot-db, aios-chatwoot-redis, aios-chatwoot-web, aios-chatwoot-worker, aios-clickhouse, aios-crowdsec, aios-dashy, aios-data-minio-proxy, aios-data-qdrant-proxy, aios-dia-tts, aios-dnsmasq-tftp, aios-docling, aios-dograh-api, aios-dograh-ui, aios-flowise, aios-frigate, aios-gitops, aios-grafana, aios-hermes, aios-keycloak, aios-knowledge-compile, aios-knowledge-ingest, aios-kokoro, aios-langfuse, aios-llm-proxy, aios-loki, aios-mcp, aios-mem0, aios-minio, aios-mosquitto, aios-n8n, aios-n8n-db, aios-n8n-worker-1, aios-n8n-worker-2, aios-node-exporter, aios-ollama, aios-open-webui, aios-portainer, aios-postgres, aios-prometheus, aios-qdrant, aios-redis, aios-speaches, aios-traefik, aios-tts-router, aios-vault, aios-vault-unseal, aios-whisper-stt, aios-wireguard, aios-xtts-urdu, chat_server (screen session on 10.0.0.100:8081)
+aios-asterisk, aios-bifrost, aios-cadvisor, aios-chatterbox, aios-chatwoot-db, aios-chatwoot-redis, aios-chatwoot-web, aios-chatwoot-worker, aios-clickhouse, aios-crowdsec, aios-dashy, aios-data-minio-proxy, aios-data-qdrant-proxy, aios-dia-tts, aios-dnsmasq-tftp, aios-docling, aios-dograh-api, aios-dograh-ui, aios-flowise, aios-frigate, aios-gitops, aios-grafana, aios-hermes, aios-keycloak, aios-knowledge-compile, aios-knowledge-ingest, aios-kokoro, aios-langfuse, aios-llm-proxy, aios-loki, aios-mcp, aios-mem0, aios-minio, aios-mosquitto, aios-n8n, aios-n8n-db, aios-n8n-worker-1, aios-n8n-worker-2, aios-node-exporter, aios-ollama, aios-open-webui, aios-portainer, aios-postgres, aios-prometheus, aios-qdrant, aios-redis, aios-speaches, aios-traefik, aios-tts-router, aios-vault, aios-vault-unseal, aios-whisper-stt, aios-wireguard, aios-xtts-urdu
 
 ### Known Issues
 - Chatterbox: runs with model loaded on CUDA but Docker healthcheck marks unhealthy
 - Keycloak: health: starting (takes ~2min to become healthy)
-- WireGuard: sysctl `net.ipv4.conf.all.src_valid_mark` removed from compose (container would fail to start in host network mode). WG starts but routing may be sub-optimal.
+- WireGuard: Created state (sysctl `net.ipv4.conf.all.src_valid_mark` not allowed in host network namespace)
 - dia-tts: CPU-only on Quadro M4000 (can't run CUDA 12.x)
 - **TTS English words**: ElevenLabs voice mispronounces English words in Urdu
 - **Chat server**: runs in screen session, not Docker (manual restart needed after reboot)
-- Mosquitto port 9001 conflicts with MinIO console (host port 9001). Mosquitto runs on internal network only.
-- systemd `aios-stack.service` failed on reboot (WireGuard conflict) — needs `systemctl reset-failed` after sudo
 
 ### Written but NOT started
 - Nextcloud, Odoo, Metabase — docker-compose-apps.yml exists, never started
@@ -785,114 +783,4 @@ wiki/
 - Add chat server to docker-compose for reboot persistence
 - Monitor Chatwoot sync for edge cases
 - Native Urdu TTS voice cloning
----
-
-## Session 12 — June 19: Server Reboot Recovery (54 Containers Restored)
-
-### Completed
-
-#### 75. Server Reboot — Full Stack Recovery ✅
-- Server at 10.0.0.100 rebooted at ~09:30 UTC. Only 6 containers running after boot.
-- 48 containers in "Created" state (never started).
-- systemd `aios-stack.service` failed: WireGuard container name conflict (old aios-wireguard still listed in Docker).
-- **Lessons from Session 5 applied**: same root cause pattern as June 12 reboot.
-
-#### 76. Root Cause: WireGuard Container Name Conflict ✅
-- **systemd log**: `Error response from daemon: Conflict. The container name "/aios-wireguard" is already in use by container "a83ecb..."`
-- Old WireGuard container (from a previous manual start outside compose) existed when `docker compose up -d` tried to create a new one with the same name.
-- Docker Compose fails the ENTIRE `up -d` when a single container has a name conflict — all containers are created but NONE are started.
-- **Fix**: `docker rm -f aios-wireguard` to remove stale container, then re-ran compose.
-
-#### 77. WireGuard Sysctl — Removed (Host Network Mode) ✅
-- Root cause of original June 12 failure: `sysctls: - net.ipv4.conf.all.src_valid_mark=1` can't be set inside a container in `network_mode: host` on this kernel.
-- **Fix**: Removed the sysctl line from `docker-compose-aios.yml` on server.
-- WireGuard now starts clean. The sysctl is a routing optimization, not strictly required.
-- Updated Dev PC compose to match.
-- **TODO**: Set sysctl at host level via `/etc/sysctl.conf` or systemd sysctl service for proper WG routing.
-
-#### 78. Chat Server — Restarted ✅
-- Chat server runs in screen session (not Docker) — died on reboot.
-- **Fix**: `screen -dmS chat_server bash -c 'cd /aios/dograh-patches && python3 chat_server.py'`
-- Server back on port 8081, Traefik route for `voice.socialbeesai.com/chat` working.
-
-#### 79. Stack Running — 54 Containers ✅
-- All containers healthy (Keycloak needs ~2min warmup).
-- Mosquitto port 9001 conflict with MinIO: container started without host port mapping (internal network only).
-- Services verified: Asterisk, Bifrost, Langfuse, Dograh, n8n, Chatwoot, Grafana, etc.
-
-### Known Issues (Updated)
-- Chat server still not Dockerized (survives logout but not reboot)
-- WireGuard sysctl removed — optimal routing not guaranteed
-- Mosquitto port 9001 blocked by MinIO (runs on internal net only — sufficient for Dograh)
-- systemd `aios-stack.service` needs threshold-based restart (single container should not fail entire stack)
-- **IPv4 default gateway missing after reboot** — Docker bridge networks are IPv4-only, need `10.0.0.1` as default gw. Systemd service `aios-default-gw.service` created to set it at boot. If server reboots and internet is down from containers, check this first.
-
-### Next Steps
-- Dockerize chat server (add to docker-compose-aios.yml)
-- Fix systemd service: script that retries failed containers instead of failing entire compose
-- Set host-level sysctl for WireGuard routing
-- Add backup cron
-
-### Key Files Changed This Session
-| File | Change |
-|------|--------|
-| `docker-compose-aios.yml` | Removed wireguard sysctl (host network mode incompatibility) |
-| `docs/CHECKPOINT.md` | Updated to v9.0 with Session 12 (reboot recovery) |
-| `/etc/systemd/system/aios-default-gw.service` (server) | New — sets IPv4 default gw on boot |
-| `/etc/systemd/system/aios-stack.service` (server) | Added dependency on aios-default-gw.service |
-
-### Container Status (End of Session 12 — Final)
-| Metric | Value |
-|--------|-------|
-| Total running | 54 (same as pre-reboot) |
-| Healthy | 40+ (all healthcheck-enabled services) |
-| Bifrost → OpenRouter | ✅ Internet restored, LLM calls working |
-| Dograh ARI | ✅ WebSocket connected to Asterisk |
-| Chat server | ✅ screen session, port 8081 |
-| WireGuard | ✅ running (sysctl removed) |
-| Keycloak | 🟡 health: starting (~2min) |
-
-### Root Cause: Ext 102 "Busy" + Chat 500
-**Problem**: Calling Ext 102 played greeting then failed. Chat returned HTTP 500.
-**Root cause**: Server reboot at ~09:30 UTC wiped IPv4 default gateway. Host had only IPv6 default route. Docker bridge networks are IPv4-only → all 54 containers lost internet → Bifrost couldn't reach OpenRouter → LLM calls returned 500 → Dograh pipeline errored ("pipeline_error").
-**Fix**: `docker run --rm --privileged --net=host alpine ip route add default via 10.0.0.1` restored gateway. Created `aios-default-gw.service` systemd unit to persist across reboots. Updated `aios-stack.service` to depend on it.
-**Verification**: Bifrost → OpenRouter returns 200 OK. LLM calls working from Dograh API container.
-
----
-
-## Session 13 — June 19: Frigate + Dahua Camera Integration
-
-### 80. Camera RTSP Auth — Root Cause: Dahua `*` Digest Auth Bug ✅
-- Camera password `admin:Lahore*999` — `*` character breaks Dahua Digest auth over TCP RTSP (response code computed differently for `*`). UDP transport bypasses the issue.
-- Frigate config initially had `input_args: preset-rtsp-udp` but ffmpeg cmd still used TCP (Frigate v0.17.1 built-in preset resolution order issue).
-- **Fix**: Changed camera password to `Lahore999!` (no special chars). Also rebooted camera via CGI (`magicBox.cgi?action=reboot`) to clear IP-based auth lockout after repeated failed attempts.
-- Key lesson: `*` in RTSP URLs causes Digest auth failures. Escape with `%2A` doesn't help because the URL is decoded before Digest computation.
-
-### 81. Frigate CUDA HWAccel — Removed (M4000 Incompatible) ✅
-- Quadro M4000 (Maxwell CC 5.0, 2015) doesn't support HEVC hardware decode with `cuda` hwaccel.
-- **Error**: `[hevc @ ...] Hardware is lacking required capabilities` — camera streams HEVC (H.265), M4000 only has H.264 HW decode.
-- **Fix**: Removed `hwaccel_args: preset-nvidia-h264` from config.yml entirely. CPU decode works fine for 704×576 at 5fps.
-- Record stream (2560×1440) uses `-c:v copy` — no decode needed for recording.
-
-### 82. Camera in Frigate — Live and Streaming ✅
-- Dual-stream config:
-  - **Sub (detect)**: 704×576 @ 5fps, `-rtsp_transport udp`, CPU decode → `eq=gamma=1.4` filter
-  - **Main (record)**: 2560×1440, `-rtsp_transport udp`, `-c:v copy`, 10s segments to `/tmp/cache/`
-- Detector: CPU (single CPU detector, sufficient for 1 camera at 5fps)
-- go2rtc: Both main + sub stream restreamed for WebRTC/MSE playback
-- MQTT: Enabled at 10.50.0.20:1883 on `frigate/` topic prefix
-
-### Known Issues
-- M4000 CUDA hwaccel disabled — CPU decode for detect stream (negligible load at 5fps)
-- No object detection events yet — MQTT → n8n alert workflow not built
-- Camera records continuously (no motion-based event trigger configured)
-
-### Config File
-`/aios/configs/frigate/config.yml` on server (bind-mounted to Frigate container at `/config/config.yml`)
-
-### Next Steps
-- Wire MQTT events → n8n workflow → WhatsApp alerts
-- Configure motion-based recording triggers
-- Add Frigate metrics to Prometheus/Grafana
-
 (End of file - total 505 lines)
