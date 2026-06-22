@@ -66,6 +66,13 @@ Voice, video, LLMs, autonomous agents, and AI transformation use cases.
 - `docker inspect` to verify network membership before changing service configs
 - Host-networked services (Vault, Asterisk) need \`10.0.0.100\` as backend address, not Docker IP
 
+### Principle 9: Traefik for External Ingress, Docker DNS for Internal
+- **External HTTP**: Traefik is the sole ingress — no direct host port bindings for any web service. Cloudflare → Traefik → service. This eliminates port conflicts, enforces consistent auth/WAF/rate limiting, and keeps the attack surface minimal.
+- **Internal service-to-service**: Direct Docker DNS resolution — services call each other by name (`bifrost:4000`, `postgres:5432`, `qdrant:6333`), not by hardcoded IP. No unnecessary hop through Traefik, no single point of failure for east-west traffic.
+- **Cross-network calls**: If auth/transformation is needed between zones, route through Traefik explicitly (opt-in, not default).
+- **Non-HTTP protocols** (SIP, RTP, MQTT, database wire): Always direct, never through Traefik.
+- **Adding a new service?** No host port bindings for web services. If external: add Traefik route first. If internal-only: use Docker DNS name in env vars, not hardcoded IPs.
+
 ---
 
-*Updated May 26, 2026 — AIOS architecture philosophy v4.2*
+*Updated June 22, 2026 — AIOS architecture philosophy v5.0*

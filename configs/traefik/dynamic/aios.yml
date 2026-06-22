@@ -1,5 +1,6 @@
 # AIOS — Traefik Dynamic Configuration
-# Public: landing page + FOSS apps (deployed). Internal via LAN/WireGuard.
+# Single ingress for ALL external HTTP traffic through Traefik.
+# Internal service-to-service calls use Docker DNS directly (not Traefik).
 
 http:
   middlewares:
@@ -23,11 +24,157 @@ http:
         stsSeconds: 31536000
         customFrameOptionsValue: "SAMEORIGIN"
 
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 200
+        period: 1m
+        sourceCriterion:
+          requestHost: true
+
+    strip-monitor-prefix:
+      stripPrefix:
+        prefixes:
+          - /grafana
+          - /portainer
+          - /prometheus
+          - /cadvisor
+
+    strip-qdrant-prefix:
+      stripPrefix:
+        prefixes:
+          - /dashboard
+
+    strip-minio-prefix:
+      stripPrefix:
+        prefixes:
+          - /minio
+
   routers:
-    # Landing page — socialbeesai.com
+    # Landing — socialbeesai.com → Dashy
     landing:
       rule: "Host(`socialbeesai.com`) || Host(`www.socialbeesai.com`)"
       service: landing
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+
+    # n8n — n8n.socialbeesai.com
+    n8n:
+      rule: "Host(`n8n.socialbeesai.com`)"
+      service: n8n
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+
+    # Langfuse — langfuse.socialbeesai.com
+    langfuse:
+      rule: "Host(`langfuse.socialbeesai.com`)"
+      service: langfuse
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+
+    # Bifrost — ai.socialbeesai.com
+    bifrost:
+      rule: "Host(`ai.socialbeesai.com`)"
+      service: bifrost
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+
+    # Keycloak — keycloak.socialbeesai.com
+    keycloak:
+      rule: "Host(`keycloak.socialbeesai.com`)"
+      service: keycloak
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+
+    # Vault — vault.socialbeesai.com
+    vault:
+      rule: "Host(`vault.socialbeesai.com`)"
+      service: vault
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+
+    # Dograh UI — voice.socialbeesai.com
+    voice:
+      rule: "Host(`voice.socialbeesai.com`)"
+      service: dograh-ui
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+
+    # ClickHouse — clickhouse.socialbeesai.com
+    clickhouse:
+      rule: "Host(`clickhouse.socialbeesai.com`)"
+      service: clickhouse
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+
+    # Frigate — frigate.socialbeesai.com
+    frigate:
+      rule: "Host(`frigate.socialbeesai.com`)"
+      service: frigate
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+
+    # Chatwoot — crm.socialbeesai.com
+    crm:
+      rule: "Host(`crm.socialbeesai.com`)"
+      service: chatwoot
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+
+    # Flowise — app.socialbeesai.com
+    app:
+      rule: "Host(`app.socialbeesai.com`)"
+      service: flowise
       entryPoints:
         - websecure
       tls:
@@ -46,16 +193,191 @@ http:
         certResolver: cloudflare
       middlewares:
         - crowdsec-bouncer
+        - secure-headers
+
+    # Grafana — monitor.socialbeesai.com/grafana
+    monitor-grafana:
+      rule: "Host(`monitor.socialbeesai.com`) && PathPrefix(`/grafana`)"
+      service: grafana
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+        - strip-monitor-prefix
+
+    # Prometheus — monitor.socialbeesai.com/prometheus
+    monitor-prometheus:
+      rule: "Host(`monitor.socialbeesai.com`) && PathPrefix(`/prometheus`)"
+      service: prometheus
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+        - strip-monitor-prefix
+
+    # Portainer — monitor.socialbeesai.com/portainer
+    monitor-portainer:
+      rule: "Host(`monitor.socialbeesai.com`) && PathPrefix(`/portainer`)"
+      service: portainer
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+        - strip-monitor-prefix
+
+    # cAdvisor — monitor.socialbeesai.com/cadvisor
+    monitor-cadvisor:
+      rule: "Host(`monitor.socialbeesai.com`) && PathPrefix(`/cadvisor`)"
+      service: cadvisor
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+        - strip-monitor-prefix
+
+    # Qdrant — qdrant.socialbeesai.com/dashboard
+    qdrant:
+      rule: "Host(`qdrant.socialbeesai.com`) && PathPrefix(`/dashboard`)"
+      service: qdrant
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+        - strip-qdrant-prefix
+
+    # MinIO — data.socialbeesai.com/minio
+    data-minio:
+      rule: "Host(`data.socialbeesai.com`) && PathPrefix(`/minio`)"
+      service: minio-console
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+      middlewares:
+        - crowdsec-bouncer
+        - secure-headers
+        - strip-minio-prefix
 
   services:
-    # Landing page — points to Dashy
+    # Dashy
     landing:
       loadBalancer:
         servers:
-          - url: "http://10.60.0.70:8080"
+          - url: "http://dashy:8080"
 
-    # Open WebUI — public chat interface
+    # n8n
+    n8n:
+      loadBalancer:
+        servers:
+          - url: "http://n8n:5678"
+
+    # Langfuse
+    langfuse:
+      loadBalancer:
+        servers:
+          - url: "http://langfuse:3000"
+
+    # Bifrost (LiteLLM AI Gateway)
+    bifrost:
+      loadBalancer:
+        servers:
+          - url: "http://bifrost:4000"
+
+    # Keycloak
+    keycloak:
+      loadBalancer:
+        servers:
+          - url: "http://keycloak:8080"
+
+    # Vault (host network — must use host IP, not Docker DNS)
+    vault:
+      loadBalancer:
+        servers:
+          - url: "http://10.0.0.100:8200"
+
+    # Dograh UI
+    dograh-ui:
+      loadBalancer:
+        servers:
+          - url: "http://dograh-ui:3010"
+
+    # ClickHouse
+    clickhouse:
+      loadBalancer:
+        servers:
+          - url: "http://clickhouse:8123"
+
+    # Frigate
+    frigate:
+      loadBalancer:
+        servers:
+          - url: "http://frigate:5000"
+
+    # Chatwoot Web
+    chatwoot:
+      loadBalancer:
+        servers:
+          - url: "http://chatwoot-web:3000"
+
+    # Flowise
+    flowise:
+      loadBalancer:
+        servers:
+          - url: "http://flowise:3000"
+
+    # Open WebUI
     foss-open-webui:
       loadBalancer:
         servers:
-          - url: "http://10.70.0.200:8080"
+          - url: "http://open-webui:8080"
+
+    # Grafana
+    grafana:
+      loadBalancer:
+        servers:
+          - url: "http://grafana:3000"
+
+    # Prometheus
+    prometheus:
+      loadBalancer:
+        servers:
+          - url: "http://prometheus:9090"
+
+    # Portainer
+    portainer:
+      loadBalancer:
+        servers:
+          - url: "http://portainer:9000"
+
+    # cAdvisor
+    cadvisor:
+      loadBalancer:
+        servers:
+          - url: "http://cadvisor:8080"
+
+    # Qdrant Dashboard (via data-qdrant-proxy on mon zone)
+    qdrant:
+      loadBalancer:
+        servers:
+          - url: "http://data-qdrant-proxy:6333"
+
+    # MinIO Console (via data-minio-proxy on mon zone)
+    minio-console:
+      loadBalancer:
+        servers:
+          - url: "http://data-minio-proxy:9001"

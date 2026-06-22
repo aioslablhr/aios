@@ -236,14 +236,29 @@ OLLAMA_URL=http://10.40.0.20:11434
 # vLLM: NOT DEPLOYED (Quadro M4000 has no VRAM for LLM inference)
 ```
 
-### Rule 5: Git before production
+### Rule 5: Traefik is external ingress only — no direct host ports for HTTP
+```yaml
+# WRONG — never do this for HTTP services
+ports:
+  - "3000:3000"   # direct host port — FORBIDDEN
+
+# CORRECT — route external through Traefik, internal through Docker DNS
+# No host port bindings for web services. Traefik handles external access.
+# Internal services use Docker DNS: http://bifrost:4000
+networks:
+  - aios-traefik  # Traefik must be on the service's network for external routes
+```
+
+Every external-facing web service MUST go through Traefik. Internal service-to-service calls use Docker DNS by service name — direct on their network, no extra hop through Traefik. Host port bindings are only permitted for non-HTTP protocols (SIP, RTP, MQTT, database wire).
+
+### Rule 6: Git before production
 ```bash
 # ALWAYS commit before any production change
 git add . && git commit -m "description" && git push
 # GitOps Agent deploys automatically after push
 ```
 
-### Rule 6: Always log every LLM call to Langfuse
+### Rule 7: Always log every LLM call to Langfuse
 ```
 Every call through Bifrost must be logged to Langfuse.
 This is how we track cost and observability per use case.
