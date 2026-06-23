@@ -1367,7 +1367,7 @@ services:
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY}
       ELEVENLABS_VOICE_ID: G1gUElsVCoazUpfBnLnt
       UPLIFTAI_API_KEY: ${UPLIFTAI_API_KEY}
-      UPLIFTAI_VOICE_ID: v_meklc281
+      UPLIFTAI_VOICE_ID: helpdesk-agent
       TARGET_SAMPLE_RATE: 8000
     restart: unless-stopped
 
